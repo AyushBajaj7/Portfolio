@@ -1,0 +1,68 @@
+{
+  "personal": {
+    "name": "Ayush Bajaj",
+    "title": "Software Developer",
+    "tagline": "Building comprehensive systems and interactive applications.",
+    "bio": "I'm a Software Developer with experience in building full-stack platforms, machine learning models, and complex data pipelines. I focus on clean architecture, honest implementation, and solving real-world problems.",
+    "about": "My expertise spans web development, machine learning, and cloud infrastructure. I thrive on building tools and experiences that are functional, robust, and driven by real-world needs, from agricultural platforms to AI-powered video pipelines.",
+    "location": "India",
+    "email": "ayushbajaj215@gmail.com"
+  },
+  "projects": [
+    {
+      "id": 1,
+      "title": "AgriConnect",
+      "subtitle": "Full-stack Agricultural Platform",
+      "tech": ["React.js", "Node.js", "Express.js", "MongoDB"],
+      "link": "https://github.com/AyushBajaj7/AgriConnect",
+      "description": "Full-stack platform designed to centralize agricultural data and schemes. Built to improve usability and access to critical information for farmers using a robust React-based frontend and MongoDB backend."
+    },
+    {
+      "id": 2,
+      "title": "AI-Based PPT Explainer & Video Generator",
+      "subtitle": "Cloud-Deployed ML Pipeline",
+      "tech": ["Python", "FLAN-T5", "Amazon Polly", "Wav2Lip", "FFmpeg", "AWS EC2"],
+      "link": "https://github.com/AyushBajaj7/Avatar-for-presentation-",
+      "description": "An automated pipeline deployed on AWS EC2 that converts PowerPoint slides into narrated videos. Extracts text using python-pptx, generates contextual explanations using FLAN-T5, synthesizes speech via Amazon Polly, syncs lip movements using Wav2Lip, and renders the final video with FFmpeg."
+    },
+    {
+      "id": 3,
+      "title": "AI Disease Prediction Model",
+      "subtitle": "Classification-Based ML System",
+      "tech": ["Python", "Scikit-learn", "KNN", "Decision Tree", "Naive Bayes"],
+      "link": "https://github.com/AyushBajaj7",
+      "description": "A classification-based machine learning model for predicting diseases. Involved comprehensive feature engineering and comparative evaluation of algorithms, including KNN, Decision Tree, Naive Bayes, and Extra Trees, to identify the most effective predictive approach."
+    },
+    {
+      "id": 4,
+      "title": "3D Architecture Visualization System",
+      "subtitle": "Interactive 3D Walkthrough",
+      "tech": ["Blender", "Unity", "Python", "OpenGL"],
+      "link": "https://github.com/AyushBajaj7",
+      "description": "An interactive 3D walkthrough system for architectural visualization. Built using Blender for modeling and Unity for the interactive experience, integrating Python and OpenGL concepts to enhance rendering and interactivity."
+    }
+  ],
+  "skills": [
+    {
+      "category": "Frontend",
+      "items": ["React.js", "HTML", "CSS", "Basic Three.js"]
+    },
+    {
+      "category": "Backend & Tools",
+      "items": ["Node.js", "Express.js", "REST APIs", "MongoDB / MySQL", "GitHub", "FFmpeg"]
+    },
+    {
+      "category": "AI & ML",
+      "items": ["Python", "Scikit-learn", "Basic NLP", "Transformers (FLAN-T5)"]
+    },
+    {
+      "category": "Cloud",
+      "items": ["AWS EC2", "IAM", "Amazon Polly"]
+    }
+  ],
+  "socials": [
+    { "platform": "GitHub",   "url": "https://github.com/AyushBajaj7",   "icon": "github"   },
+    { "platform": "LinkedIn", "url": "https://linkedin.com", "icon": "linkedin" },
+    { "platform": "Twitter",  "url": "https://twitter.com",  "icon": "twitter"  }
+  ]
+}

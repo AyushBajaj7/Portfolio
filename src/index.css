@@ -1,0 +1,278 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;600;700;800&display=swap');
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0a0f;
+  --surface: #0a0a0f;
+  --on-surface: #e8e8ec;
+  --on-surface-variant: #9ca3af;
+  --primary: #9cff93;
+  --primary-dim: #00ec3b;
+  --tertiary: #8af2ff;
+  --tertiary-dim: #00dbec;
+  --outline: rgba(255, 255, 255, 0.04);
+  --glass-bg: rgba(10, 10, 15, 0.15);
+  --glow-1: #00F2FF;
+  --glow-2: #9cff93;
+  --glow-3: #a855f7;
+  --glow-opacity: 0.06;
+  --surface-high: #14141e;
+  --surface-highest: #1a1a24;
+  --title-gradient-from: #00F2FF;
+  --title-gradient-via: #9cff93;
+  --title-gradient-to: #00ec3b;
+  --glow-secondary: rgba(0, 242, 255, 0.15);
+}
+
+.light-theme {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --on-surface: #000000;
+  --on-surface-variant: #1e293b;
+  --primary: #059669;
+  --primary-dim: #047857;
+  --tertiary: #0891b2;
+  --tertiary-dim: #0e7490;
+  --outline: rgba(0, 0, 0, 0.06);
+  --glass-bg: rgba(255, 255, 255, 0.35);
+  --glow-1: #a7f3d0;
+  --glow-2: #10b981;
+  --glow-3: #8b5cf6;
+  --glow-opacity: 0.05;
+  --surface-high: #f1f5f9;
+  --surface-highest: #e2e8f0;
+  --title-gradient-from: #00F2FF;
+  --title-gradient-via: #14ec00;
+  --title-gradient-to: #00ec3b;
+  --glow-secondary: rgba(16, 185, 129, 0.1);
+}
+
+/* Theme specific overrides */
+.light-theme .font-display {
+  font-weight: 700;
+}
+
+.light-theme .glass-panel {
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.02);
+}
+
+
+@theme {
+  --color-background: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-container-high: var(--surface-high);
+  --color-surface-container-highest: var(--surface-highest);
+  --color-primary: var(--primary);
+  --color-primary-dim: var(--primary-dim);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-tertiary: var(--tertiary);
+  --color-tertiary-dim: var(--tertiary-dim);
+  --color-outline-variant: var(--outline);
+
+  --font-headline: "Space Grotesk", sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-label: "Space Grotesk", sans-serif;
+  --font-space-grotesk: "Space Grotesk", sans-serif;
+}
+
+@layer utilities {
+  .glass-panel {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: var(--glass-bg);
+    border: 1px solid var(--outline);
+  }
+
+  .glass-panel-solid {
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    background: rgba(14, 14, 24, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .cyber-grid {
+    background-image: linear-gradient(rgba(0, 242, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 242, 255, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .glow-cyan {
+    text-shadow: 0 0 20px var(--glow-1), 0 0 40px var(--glow-secondary);
+  }
+
+  .glow-green {
+    text-shadow: 0 0 20px var(--glow-2), 0 0 40px rgba(16, 185, 129, 0.15);
+  }
+}
+
+/* ─── Reset ──────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--on-surface);
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.5s ease, color 0.5s ease;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--on-surface);
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ─── Root Layout ────────────────────────────────────────────────── */
+#root {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── Canvas (WebGL Layer - always behind everything) ─────────── */
+.canvas-container {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.canvas-container canvas {
+  pointer-events: auto !important;
+}
+
+/* ─── Scroll Overlay ─────────────────────────────────────────────── */
+.ui-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+.ui-overlay::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ui-overlay::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ui-overlay::-webkit-scrollbar-thumb {
+  background: rgba(156, 255, 147, 0.3);
+  border-radius: 4px;
+}
+
+.ui-overlay::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 255, 147, 0.5);
+}
+
+/* ─── Custom Cursor ──────────────────────────────────────────────── */
+.custom-cursor {
+  position: fixed;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(156, 255, 147, 0.6);
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform;
+  transition: width 0.25s, height 0.25s, background-color 0.25s, border-color 0.25s;
+}
+
+.custom-cursor.hovering {
+  width: 48px;
+  height: 48px;
+  background: rgba(156, 255, 147, 0.1);
+  border-color: rgba(156, 255, 147, 0.3);
+}
+
+/* ─── Animations ──────────────────────────────────────────────────── */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes scan-line {
+  0% {
+    transform: translateY(-100%);
+  }
+
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+/* ─── MOBILE (≤ 768px) ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+
+  html,
+  body,
+  #root {
+    overflow: auto;
+    height: auto;
+  }
+
+  #root {
+    height: unset;
+  }
+
+  .canvas-container {
+    display: none;
+  }
+
+  .ui-overlay {
+    position: static;
+    overflow: visible;
+    height: auto;
+  }
+}
