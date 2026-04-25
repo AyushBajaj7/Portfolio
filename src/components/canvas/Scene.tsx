@@ -46,11 +46,12 @@ export const Scene: React.FC = () => {
 
   // Preload images into memory
   const images = useMemo(() => {
+    const baseUrl = import.meta.env.BASE_URL || '/';
     const imgs: HTMLImageElement[] = [];
     for (let i = 1; i <= FRAME_COUNT; i++) {
       const img = new Image();
       const num = i.toString().padStart(4, '0');
-      img.src = `/frames/male${num}.png`;
+      img.src = `${baseUrl}frames/male${num}.png`;
       imgs.push(img);
     }
     return imgs;
