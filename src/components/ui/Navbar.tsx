@@ -82,7 +82,7 @@ export const Navbar: React.FC = () => {
 
             {/* Resume Button in Navbar */}
             <a
-              href="/resume.pdf"
+              href="resume.pdf"
               download
               className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/8 border border-primary/20 text-primary-dim text-xs font-bold tracking-wider uppercase hover:bg-primary hover:text-on-primary transition-all duration-300"
             >
@@ -139,7 +139,7 @@ export const Navbar: React.FC = () => {
             </div>
 
             <a
-              href="/resume.pdf"
+              href="resume.pdf"
               download
               className="flex items-center justify-center gap-3 w-full py-4 mt-2 rounded-2xl bg-primary text-on-primary font-bold text-sm tracking-widest uppercase shadow-lg shadow-primary/20"
             >

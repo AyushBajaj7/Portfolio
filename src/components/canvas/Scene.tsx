@@ -7,36 +7,43 @@ function scaleImage(img: HTMLImageElement, ctx: CanvasRenderingContext2D) {
   const canvas = ctx.canvas;
   const isMobile = canvas.width < 1024;
   
-  // Use 'cover' for desktop to fill background, 'contain' for mobile
+  // Calculate base ratios using 'cover' to fill screen
   const hRatio = canvas.width / img.width;
   const vRatio = canvas.height / img.height;
-  
-  // On mobile, use cover to fill the screen, on desktop too
   const ratio = Math.max(hRatio, vRatio);
   
-  let centerShift_x = (canvas.width - img.width * ratio) / 2;
-  let centerShift_y = (canvas.height - img.height * ratio) / 2;
-
-  // On desktop, shift the avatar to the right so it isn't hidden behind the text panel
+  const drawWidth = img.width * ratio;
+  const drawHeight = img.height * ratio;
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  
+  // Position centered horizontally
+  let centerShift_x = centerX - (drawWidth / 2);
+  let centerShift_y = centerY - (drawHeight / 2);
+  
+  // On desktop (>=1024): shift slightly right to avoid text overlap
   if (!isMobile) {
-    centerShift_x = (canvas.width - img.width * ratio) * 0.8; // Shift towards right
-  } else {
-    // On mobile, anchor to right edge so avatar is visible
-    centerShift_x = canvas.width - img.width * ratio;
-    centerShift_y = (canvas.height - img.height * ratio) / 2;
+    centerShift_x = (canvas.width * 0.6) - (drawWidth / 2);
   }
+  
+  // Clamp positions only if image would be completely off-canvas
+  // On mobile: allow centered positioning
+  // On desktop: keep the right-shift but prevent complete disappearance
+  if (!isMobile) {
+    // Desktop: clamp to keep at least 30% of image visible
+    centerShift_x = Math.max(-drawWidth * 0.3, Math.min(centerShift_x, canvas.width - drawWidth * 0.7));
+  }
+  // Always ensure at least some portion is vertically visible
+  centerShift_y = Math.max(-drawHeight * 0.3, Math.min(centerShift_y, canvas.height - drawHeight * 0.7));
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(
     img,
-    0,
-    0,
-    img.width,
-    img.height,
+    0, 0, img.width, img.height,
     centerShift_x,
     centerShift_y,
-    img.width * ratio,
-    img.height * ratio
+    drawWidth,
+    drawHeight
   );
 }
 

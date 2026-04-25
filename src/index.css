@@ -53,9 +53,9 @@
 }
 
 .light-theme .glass-panel {
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+  background: rgba(255, 255, 255, 0.05);
   box-shadow: 0 4px 32px rgba(0, 0, 0, 0.02);
 }
 
@@ -82,16 +82,16 @@
 
 @layer utilities {
   .glass-panel {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    background: var(--glass-bg);
+    backdrop-filter: blur(1px);
+    -webkit-backdrop-filter: blur(1px);
+    background: rgba(14, 14, 24, 0.05);
     border: 1px solid var(--outline);
   }
 
   .glass-panel-solid {
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    background: rgba(14, 14, 24, 0.75);
+    backdrop-filter: blur(1px);
+    -webkit-backdrop-filter: blur(1px);
+    background: rgba(14, 14, 24, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
@@ -266,9 +266,10 @@ a {
     height: unset;
   }
 
-  .canvas-container {
+  /* Canvas now visible on all screen sizes */
+  /* .canvas-container {
     display: none;
-  }
+  } */
 
   .ui-overlay {
     position: static;

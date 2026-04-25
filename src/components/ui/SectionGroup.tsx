@@ -91,8 +91,8 @@ export const SectionGroup: React.FC = () => {
           <div className="w-full max-w-screen-2xl mx-auto px-6 sm:px-8 lg:px-16 xl:px-24">
             <div className="flex flex-col lg:flex-row items-end lg:items-center justify-between gap-8 lg:gap-12">
 
-              {/* Left: Text Content — reduced glass backdrop so the avatar isn't hidden */}
-              <div className="lg:w-[55%] space-y-6 p-6 lg:p-8 rounded-3xl glass-panel !bg-surface/10 !backdrop-blur-sm lg:!bg-transparent lg:!backdrop-blur-none lg:border-none relative z-10">
+              {/* Left: Text Content — glass-panel with 5% blur */}
+              <div className="w-full lg:w-[55%] space-y-6 p-6 lg:p-8 rounded-3xl glass-panel lg:!bg-transparent lg:!backdrop-blur-none lg:border-none relative z-10">
                 {/* Status Badge */}
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5">
                   <span className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_var(--primary)] animate-pulse"></span>
@@ -130,12 +130,12 @@ export const SectionGroup: React.FC = () => {
                     Get in Touch
                   </button>
                   <a
-                    href="/resume.pdf"
+                    href="resume.pdf"
                     download
                     className="w-full sm:w-auto px-7 py-3.5 rounded-lg bg-surface-container-high border border-outline-variant/50 text-on-surface font-semibold tracking-tight text-sm hover:border-primary/40 hover:bg-primary/5 transition-all duration-300 flex items-center justify-center gap-2"
                   >
                     <span className="material-symbols-outlined text-primary text-lg">download</span>
-                    Download CV
+                    Download Resume
                   </a>
                 </div>
 
