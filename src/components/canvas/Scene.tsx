@@ -7,13 +7,12 @@ function scaleImage(img: HTMLImageElement, ctx: CanvasRenderingContext2D) {
   const canvas = ctx.canvas;
   const isMobile = canvas.width < 1024;
   
-  // Use 'cover' for desktop to fill background, 'contain' (Math.min) or a smaller cover for mobile
-  // Actually, for mobile, we want to make sure the face isn't cropped.
+  // Use 'cover' for desktop to fill background, 'contain' for mobile
   const hRatio = canvas.width / img.width;
   const vRatio = canvas.height / img.height;
   
-  // On mobile, use a scale that doesn't crop the sides too aggressively
-  const ratio = isMobile ? Math.min(hRatio, vRatio) * 1.5 : Math.max(hRatio, vRatio);
+  // On mobile, use cover to fill the screen, on desktop too
+  const ratio = Math.max(hRatio, vRatio);
   
   let centerShift_x = (canvas.width - img.width * ratio) / 2;
   let centerShift_y = (canvas.height - img.height * ratio) / 2;
@@ -22,8 +21,9 @@ function scaleImage(img: HTMLImageElement, ctx: CanvasRenderingContext2D) {
   if (!isMobile) {
     centerShift_x = (canvas.width - img.width * ratio) * 0.8; // Shift towards right
   } else {
-    // On mobile, shift slightly up to avoid being covered by bottom text
-    centerShift_y = (canvas.height - img.height * ratio) * 0.2; 
+    // On mobile, anchor to right edge so avatar is visible
+    centerShift_x = canvas.width - img.width * ratio;
+    centerShift_y = (canvas.height - img.height * ratio) / 2;
   }
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -78,9 +78,13 @@ export const Scene: React.FC = () => {
     };
 
     window.addEventListener('resize', onResize);
-    onResize();
 
-    images[0].onload = onResize;
+    // Wait for first image to load before initial render to avoid blur
+    if (images[0].complete) {
+      onResize();
+    } else {
+      images[0].onload = onResize;
+    }
 
     return () => window.removeEventListener('resize', onResize);
   }, [images]);
@@ -125,7 +129,7 @@ export const Scene: React.FC = () => {
         style={{ 
           width: '100%', 
           height: '100%', 
-          display: 'block', 
+          display: 'block',
           // Dark mode: natural avatar, no inversion. Light mode: no inversion either, just a subtle correction.
           filter: theme === 'dark' 
             ? 'contrast(1.1) brightness(0.95)' 
