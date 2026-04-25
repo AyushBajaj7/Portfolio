@@ -1,3 +1,9 @@
+/**
+ * @fileoverview ESLint configuration for the portfolio application.
+ * Configures TypeScript, React Hooks, and React Refresh linting rules.
+ * @author Ayush Bajaj
+ */
+
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
@@ -5,6 +11,10 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
+/**
+ * ESLint configuration array.
+ * Applies recommended rules for TypeScript and React.
+ */
 export default defineConfig([
   globalIgnores(['dist']),
   {

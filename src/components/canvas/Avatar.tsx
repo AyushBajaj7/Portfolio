@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Avatar component - 3D avatar renderer using Three.js and React Three Fiber.
+ * Supports both image-based avatar (current) and GLB model-based avatar (future).
+ * Includes scroll-driven animations, mouse tracking, and shader-based image transitions.
+ * @author Ayush Bajaj
+ */
+
 import React, { useRef, useMemo, Suspense, useEffect, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useTexture, useGLTF, useAnimations } from '@react-three/drei';

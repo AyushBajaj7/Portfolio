@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Global styles for the portfolio application.
+ * Includes CSS variables for theming, Tailwind CSS integration, custom utility classes,
+ * and responsive design rules.
+ * @author Ayush Bajaj
+ */
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;600;700;800&display=swap');
 @import "tailwindcss";
 
@@ -259,17 +266,8 @@ a {
   body,
   #root {
     overflow: auto;
-    height: auto;
-  }
-
-  #root {
     height: unset;
   }
-
-  /* Canvas now visible on all screen sizes */
-  /* .canvas-container {
-    display: none;
-  } */
 
   .ui-overlay {
     position: static;

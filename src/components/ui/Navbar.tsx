@@ -1,25 +1,55 @@
+/**
+ * @fileoverview Navbar component - Fixed navigation with scroll detection and section highlighting.
+ * Provides smooth scroll navigation, mobile menu, and active section indication.
+ * @author Ayush Bajaj
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../store/useStore';
 
+/**
+ * Navigation bar component with scroll effects and mobile responsive menu.
+ * @returns {React.ReactElement} The navigation component
+ */
 export const Navbar: React.FC = () => {
+  /**
+   * scrolled: Tracks if user has scrolled past 40px threshold.
+   * When true, navbar shows glass-morphism background. When false, transparent.
+   */
   const [scrolled, setScrolled] = useState(false);
+  
+  /** mobileOpen: Controls mobile menu visibility with slide-down animation */
   const [mobileOpen, setMobileOpen] = useState(false);
+  
+  /** activeSection: Current visible section from Zustand store for nav highlighting */
   const activeSection = useStore((s) => s.activeSection);
 
+  /**
+   * Detect scroll position to toggle navbar background.
+   * Listens to 'scroll-container' (the fixed overlay that scrolls on desktop).
+   * Threshold: 40px triggers the glass-morphism background change.
+   */
   useEffect(() => {
-    const el = document.getElementById('scroll-container');
-    if (!el) return;
-    const onScroll = () => setScrolled(el.scrollTop > 40);
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
+    const scrollContainer = document.getElementById('scroll-container');
+    if (!scrollContainer) return;
+    
+    const onScroll = () => setScrolled(scrollContainer.scrollTop > 40);
+    scrollContainer.addEventListener('scroll', onScroll, { passive: true });
+    
+    return () => scrollContainer.removeEventListener('scroll', onScroll);
   }, []);
 
+  /**
+   * Smooth scroll to a section by ID and close mobile menu.
+   * @param {string} id - The target section ID
+   */
   const scrollTo = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
+    const element = document.getElementById(id);
+    if (element) element.scrollIntoView({ behavior: 'smooth' });
     setMobileOpen(false);
   };
 
+  /** Navigation links mapping section IDs to display labels */
   const links = [
     { id: 'hero', label: 'Home' },
     { id: 'projects', label: 'Projects' },
@@ -32,8 +62,8 @@ export const Navbar: React.FC = () => {
     <nav
       className={`fixed top-0 w-full z-50 transition-all duration-500 ${
         scrolled
-          ? 'glass-panel shadow-lg border-x-0 border-t-0 rounded-none'
-          : 'bg-transparent'
+          ? 'glass-panel shadow-lg border-x-0 border-t-0 rounded-none'  // Glass effect after scroll
+          : 'bg-transparent'  // Fully transparent at top of page
       }`}
     >
       <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">

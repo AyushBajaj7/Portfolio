@@ -1,3 +1,9 @@
+/**
+ * @fileoverview SectionGroup component - Main content sections with scroll-driven animations.
+ * Handles scroll progress calculation, section visibility tracking, and animated reveals.
+ * @author Ayush Bajaj
+ */
+
 import React, { useEffect, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { useStore } from '../../store/useStore';
@@ -27,6 +33,13 @@ const SOCIAL_ICONS: Record<string, React.ReactNode> = {
   twitter: <TwitterIcon />,
 };
 
+/**
+ * Framer Motion animation configuration for fade-up reveal effect.
+ * Elements start invisible (opacity: 0) and 30px below final position (y: 30),
+ * then animate to visible (opacity: 1) at final position (y: 0).
+ * Animation duration: 600ms with ease-out curve for natural deceleration.
+ * Triggers when element is 15% visible in viewport (amount: 0.15).
+ */
 const fadeUp = {
   initial: { opacity: 0, y: 30 },
   whileInView: { opacity: 1, y: 0 },
@@ -34,6 +47,14 @@ const fadeUp = {
   viewport: { once: false, amount: 0.15 },
 };
 
+/**
+ * Wrapper component for individual sections.
+ * Tracks visibility using Framer Motion's useInView and updates active section in store.
+ * 
+ * @param {string} id - Unique section identifier
+ * @param {React.ReactNode} children - Section content
+ * @param {string} [className] - Optional CSS class names
+ */
 const SectionWrapper: React.FC<{ id: string; children: React.ReactNode; className?: string }> = ({
   id, children, className,
 }) => {
@@ -52,6 +73,12 @@ const SectionWrapper: React.FC<{ id: string; children: React.ReactNode; classNam
   );
 };
 
+/**
+ * SectionGroup component - Main content sections with scroll-driven animations.
+ * Calculates scroll progress for both mobile (window scroll) and desktop (container scroll).
+ * 
+ * @returns {React.ReactElement} The section group component
+ */
 export const SectionGroup: React.FC = () => {
   const { personal, projects, skills, socials } = portfolioData;
   const setHoveringAvatar = useStore((s) => s.setHoveringAvatar);
@@ -59,16 +86,52 @@ export const SectionGroup: React.FC = () => {
   const setScrollProgress = useStore((s) => s.setScrollProgress);
   const overlayRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Scroll handler - calculates scroll progress based on screen size.
+   * Mobile (<768px): Uses window scroll
+   * Desktop (≥768px): Uses container scroll
+   */
   useEffect(() => {
-    const el = overlayRef.current;
-    if (!el) return;
+    const scrollContainer = overlayRef.current;
+    if (!scrollContainer) return;
+    
+    /**
+     * Calculate scroll progress (0-1) for avatar animation.
+     * Different scroll sources for mobile vs desktop:
+     * - Mobile (<768px): Uses window scroll (body scrolls naturally)
+     * - Desktop (≥768px): Uses container scroll (fixed overlay scrolls)
+     * 
+     * Scroll progress = currentScroll / maxScrollableDistance
+     * Math.max(1, ...) prevents division by zero when content fits viewport
+     */
     const onScroll = () => {
-      setScrollY(el.scrollTop);
-      const maxScroll = el.scrollHeight - el.clientHeight;
-      setScrollProgress(maxScroll > 0 ? el.scrollTop / maxScroll : 0);
+      const isSmallScreen = window.innerWidth < 768; // Match CSS breakpoint at 768px
+      
+      if (isSmallScreen) {
+        // Mobile: Use document scroll position for avatar animation
+        const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+        setScrollY(window.scrollY);
+        setScrollProgress(window.scrollY / maxScroll);
+      } else {
+        // Desktop: Use container scroll position for avatar animation
+        const maxScroll = Math.max(1, scrollContainer.scrollHeight - scrollContainer.clientHeight);
+        setScrollY(scrollContainer.scrollTop);
+        setScrollProgress(scrollContainer.scrollTop / maxScroll);
+      }
     };
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
+    
+    // Listen to both window and container scroll events (passive for performance)
+    window.addEventListener('scroll', onScroll, { passive: true });
+    scrollContainer.addEventListener('scroll', onScroll, { passive: true });
+    
+    // Calculate initial scroll position on mount
+    onScroll();
+    
+    // Cleanup: Remove listeners on unmount to prevent memory leaks
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      scrollContainer.removeEventListener('scroll', onScroll);
+    };
   }, [setScrollY, setScrollProgress]);
 
   return (
@@ -82,6 +145,10 @@ export const SectionGroup: React.FC = () => {
       </div>
 
       {/* ─── Main Content Area ────────────────────────────────────── */}
+      {/* 
+        z-index: 10 ensures content renders above the canvas background (z-0).
+        All sections are wrapped in SectionWrapper for scroll animation tracking.
+      */}
       <div className="relative z-10">
 
         {/* ══════════════════════════════════════════════════════════ */}
@@ -91,7 +158,13 @@ export const SectionGroup: React.FC = () => {
           <div className="w-full max-w-screen-2xl mx-auto px-6 sm:px-8 lg:px-16 xl:px-24">
             <div className="flex flex-col lg:flex-row items-end lg:items-center justify-between gap-8 lg:gap-12">
 
-              {/* Left: Text Content — glass-panel with 5% blur */}
+              {/* 
+                Left: Hero Text Content
+                - Mobile: Uses glass-panel (semi-transparent background with blur)
+                  for text readability over the canvas avatar
+                - Desktop: Transparent background (lg:!bg-transparent) since avatar 
+                  is positioned to the right side, no overlap occurs
+              */}
               <div className="w-full lg:w-[55%] space-y-6 p-6 lg:p-8 rounded-3xl glass-panel lg:!bg-transparent lg:!backdrop-blur-none lg:border-none relative z-10">
                 {/* Status Badge */}
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5">

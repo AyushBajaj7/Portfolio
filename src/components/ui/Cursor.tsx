@@ -1,7 +1,18 @@
+/**
+ * @fileoverview Cursor component - Custom animated cursor that follows mouse movement.
+ * Scales up when hovering over the avatar area and hides on touch devices.
+ * @author Ayush Bajaj
+ */
+
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useStore } from '../../store/useStore';
 
+/**
+ * Custom cursor component with spring animation and hover detection.
+ * Returns null on touch devices or before mouse position is initialized.
+ * @returns {React.ReactElement | null} The custom cursor or null
+ */
 export const Cursor: React.FC = () => {
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
   const isHoveringAvatar = useStore((state) => state.isHoveringAvatar);

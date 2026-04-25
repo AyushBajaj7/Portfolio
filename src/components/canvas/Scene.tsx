@@ -1,57 +1,68 @@
+/**
+ * @fileoverview Scene component - Renders scroll-driven avatar animation using HTML5 Canvas.
+ * Preloads 300 PNG frames and displays them based on scroll progress for a 3D parallax effect.
+ * @author Ayush Bajaj
+ */
+
 import React, { useRef, useEffect, useMemo } from 'react';
 import { useStore } from '../../store/useStore';
 
+/**
+ * Total number of avatar animation frames.
+ */
 const FRAME_COUNT = 300;
 
+/**
+ * Scales and draws an image on the canvas using either "cover" or "contain" mode
+ * based on screen size. Cover fills the screen (allows cropping), contain fits
+ * the entire image (no cropping) for smaller screens.
+ * 
+ * @param {HTMLImageElement} img - The image to draw
+ * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
+ */
 function scaleImage(img: HTMLImageElement, ctx: CanvasRenderingContext2D) {
   const canvas = ctx.canvas;
-  const isMobile = canvas.width < 1024;
+  const isLargeScreen = canvas.width >= 768;
   
-  // Calculate base ratios using 'cover' to fill screen
-  const hRatio = canvas.width / img.width;
-  const vRatio = canvas.height / img.height;
-  const ratio = Math.max(hRatio, vRatio);
+  const horizontalRatio = canvas.width / img.width;
+  const verticalRatio = canvas.height / img.height;
   
-  const drawWidth = img.width * ratio;
-  const drawHeight = img.height * ratio;
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
+  // Large screens (≥768px): cover mode - fill screen, some cropping OK
+  // Small screens (<768px): contain mode - fit full avatar within bounds
+  const scaleRatio = isLargeScreen 
+    ? Math.max(horizontalRatio, verticalRatio) 
+    : Math.min(horizontalRatio, verticalRatio);
   
-  // Position centered horizontally
-  let centerShift_x = centerX - (drawWidth / 2);
-  let centerShift_y = centerY - (drawHeight / 2);
+  const drawWidth = img.width * scaleRatio;
+  const drawHeight = img.height * scaleRatio;
   
-  // On desktop (>=1024): shift slightly right to avoid text overlap
-  if (!isMobile) {
-    centerShift_x = (canvas.width * 0.6) - (drawWidth / 2);
-  }
-  
-  // Clamp positions only if image would be completely off-canvas
-  // On mobile: allow centered positioning
-  // On desktop: keep the right-shift but prevent complete disappearance
-  if (!isMobile) {
-    // Desktop: clamp to keep at least 30% of image visible
-    centerShift_x = Math.max(-drawWidth * 0.3, Math.min(centerShift_x, canvas.width - drawWidth * 0.7));
-  }
-  // Always ensure at least some portion is vertically visible
-  centerShift_y = Math.max(-drawHeight * 0.3, Math.min(centerShift_y, canvas.height - drawHeight * 0.7));
+  // Center the image on canvas
+  const centerShiftX = (canvas.width - drawWidth) / 2;
+  const centerShiftY = (canvas.height - drawHeight) / 2;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(
     img,
     0, 0, img.width, img.height,
-    centerShift_x,
-    centerShift_y,
+    centerShiftX,
+    centerShiftY,
     drawWidth,
     drawHeight
   );
 }
 
+/**
+ * Scene component - Renders scroll-driven avatar animation using HTML5 Canvas.
+ * Preloads 300 PNG frames and displays them based on scroll progress for a 3D parallax effect.
+ */
 export const Scene: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scrollProgress = useStore((s) => s.scrollProgress);
 
-  // Preload images into memory
+  /**
+   * Preload all 300 avatar animation frames into memory.
+   * Uses useMemo to prevent re-loading on re-renders.
+   */
   const images = useMemo(() => {
     const baseUrl = import.meta.env.BASE_URL || '/';
     const imgs: HTMLImageElement[] = [];
@@ -64,7 +75,10 @@ export const Scene: React.FC = () => {
     return imgs;
   }, []);
 
-  // Handle Canvas Sizing and Initial Render
+  /**
+   * Handle canvas sizing and initial render.
+   * Sets up resize listener and renders the initial frame based on current scroll position.
+   */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -96,7 +110,10 @@ export const Scene: React.FC = () => {
     return () => window.removeEventListener('resize', onResize);
   }, [images]);
 
-  // Handle Scroll Driven Frame Updates
+  /**
+   * Handle scroll-driven frame updates.
+   * Updates the displayed frame based on scroll progress from the Zustand store.
+   */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
