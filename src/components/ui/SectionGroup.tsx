@@ -34,6 +34,42 @@ const SOCIAL_ICONS: Record<string, React.ReactNode> = {
 };
 
 /**
+ * Skill icon component with grayscale-to-color hover effect.
+ * Icons start grayscale and transition to full color on hover.
+ */
+const SkillIcon: React.FC<{ name: string }> = ({ name }) => {
+  // Map skill names to emoji/icons (using emoji as simple icons)
+  const iconMap: Record<string, string> = {
+    'React.js': '⚛️',
+    'HTML': '📄',
+    'CSS': '🎨',
+    'Basic Three.js': '🔮',
+    'Node.js': '🟢',
+    'Express.js': '🚂',
+    'REST APIs': '🔌',
+    'MongoDB / MySQL': '🗄️',
+    'GitHub': '🐙',
+    'FFmpeg': '🎬',
+    'Python': '🐍',
+    'Scikit-learn': '🧠',
+    'Basic NLP': '💬',
+    'Transformers (FLAN-T5)': '🤖',
+    'AWS EC2': '☁️',
+    'IAM': '🔐',
+    'Amazon Polly': '🔊',
+  };
+
+  return (
+    <span
+      className="text-lg grayscale opacity-70 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-110"
+      title={name}
+    >
+      {iconMap[name] || '•'}
+    </span>
+  );
+};
+
+/**
  * AnimatedCounter component - Animates numbers counting up when in view.
  * Uses Framer Motion spring physics for smooth, natural motion.
  * @param target - The final number to count to
@@ -422,9 +458,9 @@ export const SectionGroup: React.FC = () => {
                   </h3>
                   <div className="flex flex-col gap-2.5">
                     {group.items.map((item, j) => (
-                      <div key={j} className="flex items-center gap-2.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary/40"></span>
-                        <span className="text-sm font-body text-on-surface">{item}</span>
+                      <div key={j} className="group flex items-center gap-2.5 cursor-default">
+                        <SkillIcon name={item} />
+                        <span className="text-sm font-body text-on-surface group-hover:text-primary transition-colors duration-300">{item}</span>
                       </div>
                     ))}
                   </div>
