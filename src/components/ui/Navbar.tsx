@@ -18,6 +18,15 @@ export const Navbar: React.FC = () => {
    * When true, navbar shows glass-morphism background. When false, transparent.
    */
   const [scrolled, setScrolled] = useState(false);
+  /**
+   * hidden: Tracks if navbar should be hidden (scroll down) or visible (scroll up).
+   * Implements hide-on-scroll-down, show-on-scroll-up behavior.
+   */
+  const [hidden, setHidden] = useState(false);
+  /**
+   * lastScrollY: Stores previous scroll position to determine scroll direction.
+   */
+  const [lastScrollY, setLastScrollY] = useState(0);
   
   /** mobileOpen: Controls mobile menu visibility with slide-down animation */
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -26,19 +35,38 @@ export const Navbar: React.FC = () => {
   const activeSection = useStore((s) => s.activeSection);
 
   /**
-   * Detect scroll position to toggle navbar background.
-   * Listens to 'scroll-container' (the fixed overlay that scrolls on desktop).
-   * Threshold: 40px triggers the glass-morphism background change.
+   * Detect scroll position and direction to toggle navbar background and visibility.
+   * - Background: Changes to glass-morphism after 40px scroll
+   * - Visibility: Hides when scrolling down, shows when scrolling up
    */
   useEffect(() => {
     const scrollContainer = document.getElementById('scroll-container');
     if (!scrollContainer) return;
-    
-    const onScroll = () => setScrolled(scrollContainer.scrollTop > 40);
+
+    const onScroll = () => {
+      const currentScrollY = scrollContainer.scrollTop;
+
+      // Background change threshold
+      setScrolled(currentScrollY > 40);
+
+      // Hide/show based on scroll direction (only after scrolling past 100px)
+      if (currentScrollY > 100) {
+        if (currentScrollY > lastScrollY) {
+          setHidden(true); // Scrolling down - hide
+        } else {
+          setHidden(false); // Scrolling up - show
+        }
+      } else {
+        setHidden(false); // Always show at top
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
     scrollContainer.addEventListener('scroll', onScroll, { passive: true });
-    
+
     return () => scrollContainer.removeEventListener('scroll', onScroll);
-  }, []);
+  }, [lastScrollY]);
 
   /**
    * Smooth scroll to a section by ID and close mobile menu.
@@ -65,6 +93,8 @@ export const Navbar: React.FC = () => {
         scrolled
           ? 'glass-panel shadow-lg border-x-0 border-t-0 rounded-none'  // Glass effect after scroll
           : 'bg-transparent'  // Fully transparent at top of page
+      } ${
+        hidden ? '-translate-y-full' : 'translate-y-0'  // Hide on scroll down, show on scroll up
       }`}
     >
       <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">
