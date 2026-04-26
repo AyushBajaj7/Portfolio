@@ -5,7 +5,12 @@
  */
 
 import React, { useRef, useEffect, useMemo } from 'react';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useStore } from '../../store/useStore';
+
+// Register GSAP plugin
+gsap.registerPlugin(ScrollTrigger);
 
 /**
  * Total number of avatar animation frames.
@@ -57,6 +62,7 @@ function scaleImage(img: HTMLImageElement, ctx: CanvasRenderingContext2D) {
  */
 export const Scene: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const scrollProgress = useStore((s) => s.scrollProgress);
 
   /**
@@ -134,18 +140,57 @@ export const Scene: React.FC = () => {
 
   const theme = useStore((s) => s.theme);
 
+  /**
+   * GSAP ScrollTrigger parallax effect.
+   * Moves the avatar canvas at 50% speed of scroll for depth effect.
+   * Creates visual separation between foreground content and background avatar.
+   */
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Only apply parallax on desktop (>= 768px)
+    const isDesktop = window.innerWidth >= 768;
+    if (!isDesktop) return;
+
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: document.body,
+        start: 'top top',
+        end: 'bottom bottom',
+        scrub: 1,
+      },
+    });
+
+    // Parallax: move avatar slower than scroll (50% speed)
+    tl.to(container, {
+      y: '15%',
+      ease: 'none',
+    });
+
+    return () => {
+      tl.kill();
+      ScrollTrigger.getAll().forEach(st => {
+        if (st.vars.trigger === document.body) {
+          st.kill();
+        }
+      });
+    };
+  }, []);
+
   return (
-    <div 
-      className="canvas-container" 
-      style={{ 
-        position: 'fixed', 
-        top: 0, 
-        left: 0, 
-        width: '100vw', 
-        height: '100vh', 
-        zIndex: 0, 
-        pointerEvents: 'none', 
-        backgroundColor: 'var(--bg)' 
+    <div
+      ref={containerRef}
+      className="canvas-container"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 0,
+        pointerEvents: 'none',
+        backgroundColor: 'var(--bg)',
       }}
     >
       <canvas 
