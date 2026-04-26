@@ -467,6 +467,30 @@ export const SectionGroup: React.FC = () => {
                 </div>
               ))}
             </div>
+
+            {/* Infinite Tech Stack Marquee */}
+            <div className="mt-12 overflow-hidden">
+              <div className="text-xs font-label tracking-widest uppercase text-on-surface/50 mb-4 text-center">Tech Stack</div>
+              <div className="relative">
+                {/* Gradient masks for smooth fade */}
+                <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#0a0a0f] to-transparent z-10 pointer-events-none"></div>
+                <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#0a0a0f] to-transparent z-10 pointer-events-none"></div>
+
+                {/* Scrolling container */}
+                <div className="flex animate-marquee">
+                  {/* Double the items for seamless loop */}
+                  {[...skills.flatMap(g => g.items), ...skills.flatMap(g => g.items)].map((skill, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 px-6 py-3 mx-2 rounded-full bg-surface-container-high/50 border border-outline-variant/30 whitespace-nowrap hover:border-primary/30 hover:bg-surface-container-high transition-all duration-300"
+                    >
+                      <span className="text-lg grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300">{['⚛️', '📄', '🎨', '🔮', '🟢', '🚂', '🔌', '🗄️', '🐙', '🎬', '🐍', '🧠', '💬', '🤖', '☁️', '🔐', '🔊'][i % 17]}</span>
+                      <span className="text-sm font-body text-on-surface/80">{skill}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </SectionWrapper>
 
