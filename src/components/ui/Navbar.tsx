@@ -4,9 +4,52 @@
  * @author Ayush Bajaj
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useStore } from '../../store/useStore';
+
+/**
+ * MagneticButton component - Adds magnetic hover effect to buttons.
+ * Button subtly attracts to cursor position on hover for interactive feel.
+ */
+const MagneticButton: React.FC<{ children: React.ReactNode; className?: string; onClick?: () => void }> = ({
+  children,
+  className = '',
+  onClick,
+}) => {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const distanceX = e.clientX - centerX;
+    const distanceY = e.clientY - centerY;
+
+    // Magnetic pull strength (15% of distance)
+    setPosition({ x: distanceX * 0.15, y: distanceY * 0.15 });
+  };
+
+  const handleMouseLeave = () => {
+    setPosition({ x: 0, y: 0 });
+  };
+
+  return (
+    <motion.button
+      ref={ref}
+      className={className}
+      onClick={onClick}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      animate={{ x: position.x, y: position.y }}
+      transition={{ type: 'spring', stiffness: 350, damping: 15, mass: 0.5 }}
+    >
+      {children}
+    </motion.button>
+  );
+};
 
 /**
  * Navigation bar component with scroll effects and mobile responsive menu.
@@ -110,7 +153,7 @@ export const Navbar: React.FC = () => {
           <div className="hidden md:flex items-center gap-6">
             <div className="flex items-center gap-1">
               {links.map((link) => (
-                <button
+                <MagneticButton
                   key={link.id}
                   onClick={() => scrollTo(link.id)}
                   className={`px-4 py-2 rounded-lg text-sm font-body font-medium transition-all duration-300 ${
@@ -120,7 +163,7 @@ export const Navbar: React.FC = () => {
                   }`}
                 >
                   {link.label}
-                </button>
+                </MagneticButton>
               ))}
             </div>
 
