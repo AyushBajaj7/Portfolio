@@ -406,6 +406,67 @@ const HorizontalScrollProjects: React.FC = () => {
 };
 
 /**
+ * PinnedSection component - Pins section while content reveals progressively.
+ * Uses GSAP ScrollTrigger for storytelling scroll effects.
+ * @param children - Section content
+ * @param id - Section ID
+ * @param className - Optional CSS classes
+ */
+const PinnedSection: React.FC<{ children: React.ReactNode; id: string; className?: string }> = ({
+  children,
+  id,
+  className = '',
+}) => {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    const content = contentRef.current;
+    if (!section || !content) return;
+
+    // Only apply pinning on desktop
+    const isDesktop = window.innerWidth >= 1024;
+    if (!isDesktop) return;
+
+    const tween = gsap.fromTo(
+      content.children,
+      { opacity: 0.3, y: 50 },
+      {
+        opacity: 1,
+        y: 0,
+        stagger: 0.2,
+        scrollTrigger: {
+          trigger: section,
+          start: 'top 60%',
+          end: 'bottom 40%',
+          scrub: 1,
+          pin: true,
+          pinSpacing: true,
+        },
+      }
+    );
+
+    return () => {
+      tween.kill();
+      ScrollTrigger.getAll().forEach((st) => {
+        if (st.vars.trigger === section) {
+          st.kill();
+        }
+      });
+    };
+  }, []);
+
+  return (
+    <div ref={sectionRef} id={id} className={`relative ${className}`}>
+      <div ref={contentRef} className="h-full">
+        {children}
+      </div>
+    </div>
+  );
+};
+
+/**
  * Framer Motion animation configuration for fade-up reveal effect.
  * Elements start invisible (opacity: 0) and 30px below final position (y: 30),
  * then animate to visible (opacity: 1) at final position (y: 0).
@@ -703,7 +764,7 @@ export const SectionGroup: React.FC = () => {
         {/* ══════════════════════════════════════════════════════════ */}
         {/*                      ABOUT SECTION                       */}
         {/* ══════════════════════════════════════════════════════════ */}
-        <SectionWrapper id="about" className="py-24 lg:py-32">
+        <PinnedSection id="about" className="py-24 lg:py-32 min-h-screen">
           <div className="max-w-screen-2xl mx-auto px-8 lg:px-16 xl:px-24 flex">
             {/* Left side empty for avatar */}
             <div className="hidden lg:block lg:w-[55%]"></div>
@@ -736,12 +797,12 @@ export const SectionGroup: React.FC = () => {
               </div>
             </div>
           </div>
-        </SectionWrapper>
+        </PinnedSection>
 
         {/* ══════════════════════════════════════════════════════════ */}
         {/*                     SKILLS SECTION                       */}
         {/* ══════════════════════════════════════════════════════════ */}
-        <SectionWrapper id="skills" className="py-24 lg:py-32">
+        <PinnedSection id="skills" className="py-24 lg:py-32 min-h-screen">
           <div className="max-w-screen-2xl mx-auto px-8 lg:px-16 xl:px-24">
             <div className="flex items-center gap-4 mb-8 lg:mb-12">
               <div className="w-8 h-[2px] bg-gradient-to-r from-tertiary to-transparent"></div>
@@ -792,7 +853,7 @@ export const SectionGroup: React.FC = () => {
               </div>
             </div>
           </div>
-        </SectionWrapper>
+        </PinnedSection>
 
         {/* ══════════════════════════════════════════════════════════ */}
         {/*                    CONTACT SECTION                       */}
