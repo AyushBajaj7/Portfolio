@@ -4,7 +4,7 @@
  * @author Ayush Bajaj
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { useStore } from '../../store/useStore';
 import portfolioData from '../../data/portfolio.json';
@@ -31,6 +31,53 @@ const SOCIAL_ICONS: Record<string, React.ReactNode> = {
   github: <GithubIcon />,
   linkedin: <LinkedinIcon />,
   twitter: <TwitterIcon />,
+};
+
+/**
+ * AnimatedCounter component - Animates numbers counting up when in view.
+ * Uses Framer Motion spring physics for smooth, natural motion.
+ * @param target - The final number to count to
+ * @param suffix - Optional suffix (e.g., "+", "%")
+ * @param duration - Animation duration in seconds (default: 2)
+ */
+const AnimatedCounter: React.FC<{ target: number; suffix?: string; duration?: number }> = ({
+  target,
+  suffix = '',
+  duration = 2,
+}) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  const isInView = useInView(ref, { once: true, amount: 0.5 });
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!isInView) return;
+
+    let startTime: number;
+    let animationFrame: number;
+
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / (duration * 1000), 1);
+
+      // Ease out cubic for smooth deceleration
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.floor(easeOut * target));
+
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      }
+    };
+
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [isInView, target, duration]);
+
+  return (
+    <span ref={ref}>
+      {count}
+      {suffix}
+    </span>
+  );
 };
 
 /**
@@ -212,18 +259,24 @@ export const SectionGroup: React.FC = () => {
                   </a>
                 </div>
 
-                {/* Stats Row */}
+                {/* Stats Row with Animated Counters */}
                 <div className="flex flex-wrap gap-6 sm:gap-8 pt-6 border-t border-outline-variant/20 mt-2">
                   <div>
-                    <div className="text-xl sm:text-2xl font-display font-bold text-primary-dim">{projects.length}+</div>
+                    <div className="text-xl sm:text-2xl font-display font-bold text-primary-dim">
+                      <AnimatedCounter target={projects.length} suffix="+" duration={1.5} />
+                    </div>
                     <div className="text-[10px] sm:text-[11px] font-label text-on-surface/90 tracking-wider uppercase mt-0.5">Projects</div>
                   </div>
                   <div>
-                    <div className="text-xl sm:text-2xl font-display font-bold text-tertiary-dim">{skills.reduce((acc, g) => acc + g.items.length, 0)}+</div>
+                    <div className="text-xl sm:text-2xl font-display font-bold text-tertiary-dim">
+                      <AnimatedCounter target={skills.reduce((acc, g) => acc + g.items.length, 0)} suffix="+" duration={2} />
+                    </div>
                     <div className="text-[10px] sm:text-[11px] font-label text-on-surface/90 tracking-wider uppercase mt-0.5">Technologies</div>
                   </div>
                   <div>
-                    <div className="text-xl sm:text-2xl font-display font-bold text-secondary-dim">3+</div>
+                    <div className="text-xl sm:text-2xl font-display font-bold text-secondary-dim">
+                      <AnimatedCounter target={3} suffix="+" duration={1.2} />
+                    </div>
                     <div className="text-[10px] sm:text-[11px] font-label text-on-surface/90 tracking-wider uppercase mt-0.5">Years Exp</div>
                   </div>
                 </div>

@@ -121,15 +121,41 @@ export const Navbar: React.FC = () => {
             </a>
           </div>
 
-          {/* Mobile Hamburger */}
+          {/* Mobile Hamburger with Morphing Animation */}
           <button
-            className="md:hidden flex flex-col gap-[5px] p-2"
+            className="md:hidden relative w-10 h-10 flex items-center justify-center"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle menu"
           >
-            <span className={`block w-5 h-[2px] bg-on-surface rounded transition-transform duration-300 ${mobileOpen ? 'rotate-45 translate-y-[7px]' : ''}`}></span>
-            <span className={`block w-5 h-[2px] bg-on-surface rounded transition-opacity duration-300 ${mobileOpen ? 'opacity-0' : ''}`}></span>
-            <span className={`block w-5 h-[2px] bg-on-surface rounded transition-transform duration-300 ${mobileOpen ? '-rotate-45 -translate-y-[7px]' : ''}`}></span>
+            <div className="relative w-5 h-4">
+              <motion.span
+                className="absolute left-0 w-5 h-[2px] bg-on-surface rounded origin-center"
+                initial={false}
+                animate={{
+                  top: mobileOpen ? '7px' : '0px',
+                  rotate: mobileOpen ? 45 : 0,
+                }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              />
+              <motion.span
+                className="absolute left-0 top-[7px] w-5 h-[2px] bg-on-surface rounded"
+                initial={false}
+                animate={{
+                  opacity: mobileOpen ? 0 : 1,
+                  scaleX: mobileOpen ? 0 : 1,
+                }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              />
+              <motion.span
+                className="absolute left-0 w-5 h-[2px] bg-on-surface rounded origin-center"
+                initial={false}
+                animate={{
+                  top: mobileOpen ? '7px' : '14px',
+                  rotate: mobileOpen ? -45 : 0,
+                }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              />
+            </div>
           </button>
         </div>
 
