@@ -6,8 +6,13 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, useInView } from 'framer-motion';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useStore } from '../../store/useStore';
 import portfolioData from '../../data/portfolio.json';
+
+// Register GSAP plugins
+gsap.registerPlugin(ScrollTrigger);
 
 const GithubIcon = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
@@ -242,6 +247,109 @@ const TextScramble: React.FC<{ text: string; className?: string }> = ({
     >
       {displayText}
     </span>
+  );
+};
+
+/**
+ * HorizontalScrollProjects component - Displays projects in horizontal scroll gallery.
+ * Uses GSAP ScrollTrigger to convert vertical scroll into horizontal movement.
+ */
+const HorizontalScrollProjects: React.FC = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { projects } = portfolioData;
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const scrollContent = scrollRef.current;
+    if (!container || !scrollContent) return;
+
+    // Only apply on desktop
+    const isDesktop = window.innerWidth >= 1024;
+    if (!isDesktop) return;
+
+    const scrollWidth = scrollContent.scrollWidth - window.innerWidth;
+
+    const tween = gsap.to(scrollContent, {
+      x: -scrollWidth,
+      ease: 'none',
+      scrollTrigger: {
+        trigger: container,
+        start: 'top top',
+        end: () => `+=${scrollWidth}`,
+        pin: true,
+        scrub: 1,
+        anticipatePin: 1,
+      },
+    });
+
+    return () => {
+      tween.kill();
+      ScrollTrigger.getAll().forEach(st => st.kill());
+    };
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative h-screen hidden lg:block overflow-hidden">
+      <div className="absolute top-8 left-8 z-10">
+        <div className="flex items-center gap-4">
+          <div className="w-8 h-[2px] bg-gradient-to-r from-primary to-transparent"></div>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-on-surface tracking-tight">
+            <TextScramble text="Featured Projects" />
+          </h2>
+        </div>
+        <p className="text-on-surface/60 text-sm mt-2 ml-12">Scroll to explore</p>
+      </div>
+
+      <div ref={scrollRef} className="flex items-center h-full gap-8 px-8 pl-[40vw]">
+        {projects.map((project, idx) => (
+          <motion.a
+            key={project.id}
+            href={project.link}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-shrink-0 w-[400px] h-[500px] rounded-2xl overflow-hidden group relative"
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.1 }}
+            viewport={{ once: true }}
+          >
+            {/* Card Background */}
+            <div className="glass-panel w-full h-full p-8 flex flex-col justify-between relative z-10">
+              {/* Top */}
+              <div>
+                <span className="text-[10px] font-label text-primary-dim tracking-[0.2em] uppercase">
+                  {project.subtitle}
+                </span>
+                <h3 className="text-2xl lg:text-3xl font-display font-bold text-on-surface mt-4 group-hover:text-[#00F2FF] transition-colors duration-300">
+                  {project.title}
+                </h3>
+                <p className="text-on-surface/70 text-sm mt-3 line-clamp-3">
+                  {project.description}
+                </p>
+              </div>
+
+              {/* Bottom */}
+              <div className="flex items-center justify-between">
+                <div className="flex flex-wrap gap-2">
+                  {project.tech.slice(0, 3).map((tech: string, i: number) => (
+                    <span key={i} className="px-3 py-1 rounded-full bg-surface-container-high border border-outline-variant/30 text-[10px] font-label text-on-surface/80">
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+                <div className="w-12 h-12 rounded-full border border-outline-variant flex items-center justify-center group-hover:bg-primary group-hover:border-primary group-hover:text-on-primary transition-all duration-300">
+                  <span className="material-symbols-outlined text-xl">arrow_outward</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Hover Glow */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-tertiary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+          </motion.a>
+        ))}
+      </div>
+    </div>
   );
 };
 
@@ -534,6 +642,11 @@ export const SectionGroup: React.FC = () => {
             </div>
           </div>
         </SectionWrapper>
+
+        {/* ══════════════════════════════════════════════════════════ */}
+        {/*              HORIZONTAL SCROLL PROJECTS GALLERY            */}
+        {/* ══════════════════════════════════════════════════════════ */}
+        <HorizontalScrollProjects />
 
         {/* ══════════════════════════════════════════════════════════ */}
         {/*                      ABOUT SECTION                       */}
