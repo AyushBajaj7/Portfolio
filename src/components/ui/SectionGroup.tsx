@@ -178,6 +178,74 @@ const StaggeredText: React.FC<{ text: string; className?: string; delay?: number
 };
 
 /**
+ * TextScramble component - Creates a text decode effect on hover.
+ * Letters scramble through random characters before resolving to target text.
+ * @param text - The text to display and scramble
+ * @param className - Optional CSS classes
+ */
+const TextScramble: React.FC<{ text: string; className?: string }> = ({
+  text,
+  className = '',
+}) => {
+  const [displayText, setDisplayText] = useState(text);
+  const [isHovering, setIsHovering] = useState(false);
+  const frameRef = useRef<number | null>(null);
+
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+  useEffect(() => {
+    if (!isHovering) {
+      setDisplayText(text);
+      return;
+    }
+
+    let iteration = 0;
+    const totalIterations = text.length * 3;
+
+    const animate = () => {
+      setDisplayText(
+        text
+          .split('')
+          .map((char, index) => {
+            if (char === ' ') return ' ';
+            if (index < iteration / 3) {
+              return text[index];
+            }
+            return chars[Math.floor(Math.random() * chars.length)];
+          })
+          .join('')
+      );
+
+      iteration++;
+
+      if (iteration < totalIterations) {
+        frameRef.current = requestAnimationFrame(animate);
+      } else {
+        setDisplayText(text);
+      }
+    };
+
+    frameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current);
+      }
+    };
+  }, [isHovering, text]);
+
+  return (
+    <span
+      className={`inline-block cursor-pointer ${className}`}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
+      {displayText}
+    </span>
+  );
+};
+
+/**
  * Framer Motion animation configuration for fade-up reveal effect.
  * Elements start invisible (opacity: 0) and 30px below final position (y: 30),
  * then animate to visible (opacity: 1) at final position (y: 0).
@@ -398,7 +466,9 @@ export const SectionGroup: React.FC = () => {
               <div className="w-full lg:w-[45%]">
                 <div className="flex items-center gap-4 mb-8 lg:mb-12">
                   <div className="w-8 h-[2px] bg-gradient-to-r from-primary to-transparent"></div>
-                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-on-surface tracking-tight">Projects</h2>
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-on-surface tracking-tight">
+                    <TextScramble text="Projects" />
+                  </h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -510,7 +580,9 @@ export const SectionGroup: React.FC = () => {
           <div className="max-w-screen-2xl mx-auto px-8 lg:px-16 xl:px-24">
             <div className="flex items-center gap-4 mb-8 lg:mb-12">
               <div className="w-8 h-[2px] bg-gradient-to-r from-tertiary to-transparent"></div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-on-surface tracking-tight">Skills</h2>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-on-surface tracking-tight">
+                <TextScramble text="Skills" />
+              </h2>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
