@@ -303,6 +303,73 @@ const TextScramble: React.FC<{ text: string; className?: string }> = ({
 };
 
 /**
+ * CodeSnippetPreview component - Shows code preview on hover with syntax highlighting simulation.
+ * @param code - The code string to display
+ * @param isVisible - Whether the preview should be shown
+ */
+const CodeSnippetPreview: React.FC<{ code: string; isVisible: boolean }> = ({
+  code,
+  isVisible,
+}) => {
+  const lines = code.split('\n');
+
+  return (
+    <motion.div
+      className="absolute inset-0 bg-[#1a1a2e]/95 backdrop-blur-sm rounded-2xl p-4 overflow-hidden z-20"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: isVisible ? 1 : 0, scale: isVisible ? 1 : 0.95 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+      style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
+    >
+      {/* Mac-style window controls */}
+      <div className="flex items-center gap-1.5 mb-3">
+        <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]"></div>
+        <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
+        <div className="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
+        <span className="ml-2 text-[10px] text-white/40 font-mono">code preview</span>
+      </div>
+
+      {/* Code content */}
+      <pre className="font-mono text-[11px] leading-relaxed overflow-hidden">
+        {lines.map((line, i) => (
+          <div key={i} className="flex">
+            <span className="text-white/30 w-6 text-right mr-3 select-none">{i + 1}</span>
+            <span className="text-[#e6e6e6]">
+              {line.split(/(\s+)/).map((token, j) => {
+                // Simple syntax highlighting simulation
+                const keywords = ['const', 'let', 'var', 'function', 'async', 'await', 'import', 'from', 'try', 'catch', 'if', 'else', 'return', 'def', 'class', 'void', 'float', 'new', 'Vector3', 'Input'];
+                const strings = ["'", '"', '`'];
+                const comments = ['//', '#'];
+                const functions = ['connect', 'console', 'generate', 'fit', 'score', 'GetAxis', 'Translate'];
+
+                const isKeyword = keywords.some(kw => token.includes(kw));
+                const isString = strings.some(str => token.startsWith(str) || token.endsWith(str));
+                const isComment = comments.some(c => token.startsWith(c));
+                const isFunction = functions.some(fn => token.includes(fn) && token.includes('('));
+                const isNumber = !isNaN(Number(token)) && token !== ' ';
+
+                let colorClass = 'text-[#e6e6e6]';
+                if (isComment) colorClass = 'text-[#6a9955]';
+                else if (isString) colorClass = 'text-[#ce9178]';
+                else if (isKeyword) colorClass = 'text-[#569cd6]';
+                else if (isFunction) colorClass = 'text-[#dcdcaa]';
+                else if (isNumber) colorClass = 'text-[#b5cea8]';
+
+                return (
+                  <span key={j} className={colorClass}>
+                    {token}
+                  </span>
+                );
+              })}
+            </span>
+          </div>
+        ))}
+      </pre>
+    </motion.div>
+  );
+};
+
+/**
  * HorizontalScrollProjects component - Displays projects in horizontal scroll gallery.
  * Uses GSAP ScrollTrigger to convert vertical scroll into horizontal movement.
  */
@@ -693,47 +760,62 @@ export const SectionGroup: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  {projects.map((project, idx) => (
-                    <a
-                      key={project.id}
-                      href={project.link}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={`group relative rounded-2xl overflow-hidden transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_8px_40px_rgba(0,242,255,0.1)] ${
-                        idx === 0 ? 'md:col-span-2' : ''
-                      }`}
-                      onMouseEnter={() => setHoveringAvatar(true)}
-                      onMouseLeave={() => setHoveringAvatar(false)}
-                    >
-                      {/* Card Background - transparent with subtle border */}
-                      <div className="glass-panel rounded-2xl p-6 lg:p-8 h-full flex flex-col min-h-[260px] group-hover:border-[#00F2FF]/20 transition-colors duration-500">
-                        {/* Top Row */}
-                        <div className="flex justify-between items-start mb-auto">
-                          <span className="text-[10px] font-label text-primary-dim tracking-[0.2em] uppercase">
-                            {project.subtitle}
-                          </span>
-                          <span className="text-on-surface/90 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-lg">↗</span>
-                        </div>
+                  {projects.map((project, idx) => {
+                    const [showCode, setShowCode] = useState(false);
 
-                        {/* Content */}
-                        <div className="mt-6">
-                          <h3 className="text-xl lg:text-2xl font-display font-bold text-on-surface mb-2 group-hover:text-[#00F2FF] transition-colors duration-300">
-                            {project.title}
-                          </h3>
-                          <p className="text-on-surface/90 text-sm leading-relaxed line-clamp-3 mb-4">
-                            {project.description}
-                          </p>
-                          <div className="flex gap-2 flex-wrap">
-                            {project.tech.slice(0, 4).map(t => (
-                              <span key={t} className="text-[10px] font-label px-2.5 py-1 rounded-full border border-outline-variant/40 text-on-surface/80 tracking-wider">
-                                {t}
-                              </span>
-                            ))}
+                    return (
+                      <a
+                        key={project.id}
+                        href={project.link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={`group relative rounded-2xl overflow-hidden transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_8px_40px_rgba(0,242,255,0.1)] ${
+                          idx === 0 ? 'md:col-span-2' : ''
+                        }`}
+                        onMouseEnter={() => {
+                          setHoveringAvatar(true);
+                          setShowCode(true);
+                        }}
+                        onMouseLeave={() => {
+                          setHoveringAvatar(false);
+                          setShowCode(false);
+                        }}
+                      >
+                        {/* Card Background - transparent with subtle border */}
+                        <div className="glass-panel rounded-2xl p-6 lg:p-8 h-full flex flex-col min-h-[260px] group-hover:border-[#00F2FF]/20 transition-colors duration-500">
+                          {/* Top Row */}
+                          <div className="flex justify-between items-start mb-auto">
+                            <span className="text-[10px] font-label text-primary-dim tracking-[0.2em] uppercase">
+                              {project.subtitle}
+                            </span>
+                            <span className="text-on-surface/90 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-lg">↗</span>
+                          </div>
+
+                          {/* Content */}
+                          <div className="mt-6">
+                            <h3 className="text-xl lg:text-2xl font-display font-bold text-on-surface mb-2 group-hover:text-[#00F2FF] transition-colors duration-300">
+                              {project.title}
+                            </h3>
+                            <p className="text-on-surface/90 text-sm leading-relaxed line-clamp-3 mb-4">
+                              {project.description}
+                            </p>
+                            <div className="flex gap-2 flex-wrap">
+                              {project.tech.slice(0, 4).map(t => (
+                                <span key={t} className="text-[10px] font-label px-2.5 py-1 rounded-full border border-outline-variant/40 text-on-surface/80 tracking-wider">
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </a>
-                  ))}
+
+                        {/* Code Snippet Preview Overlay */}
+                        {project.codePreview && (
+                          <CodeSnippetPreview code={project.codePreview} isVisible={showCode} />
+                        )}
+                      </a>
+                    );
+                  })}
 
                   {/* CTA Card */}
                   <button

@@ -15,7 +15,8 @@
       "subtitle": "Full-stack Agricultural Platform",
       "tech": ["React.js", "Node.js", "Express.js", "MongoDB"],
       "link": "https://github.com/AyushBajaj7/AgriConnect",
-      "description": "Full-stack platform designed to centralize agricultural data and schemes. Built to improve usability and access to critical information for farmers using a robust React-based frontend and MongoDB backend."
+      "description": "Full-stack platform designed to centralize agricultural data and schemes. Built to improve usability and access to critical information for farmers using a robust React-based frontend and MongoDB backend.",
+      "codePreview": "const connectDB = async () => {\n  try {\n    await mongoose.connect(process.env.MONGO_URI);\n    console.log('MongoDB Connected');\n  } catch (error) {\n    console.error('Error:', error);\n  }\n};"
     },
     {
       "id": 2,
@@ -23,7 +24,8 @@
       "subtitle": "Cloud-Deployed ML Pipeline",
       "tech": ["Python", "FLAN-T5", "Amazon Polly", "Wav2Lip", "FFmpeg", "AWS EC2"],
       "link": "https://github.com/AyushBajaj7/Avatar-for-presentation-",
-      "description": "An automated pipeline deployed on AWS EC2 that converts PowerPoint slides into narrated videos. Extracts text using python-pptx, generates contextual explanations using FLAN-T5, synthesizes speech via Amazon Polly, syncs lip movements using Wav2Lip, and renders the final video with FFmpeg."
+      "description": "An automated pipeline deployed on AWS EC2 that converts PowerPoint slides into narrated videos. Extracts text using python-pptx, generates contextual explanations using FLAN-T5, synthesizes speech via Amazon Polly, syncs lip movements using Wav2Lip, and renders the final video with FFmpeg.",
+      "codePreview": "def generate_explanation(text):\n  inputs = tokenizer(text, return_tensors='pt')\n  outputs = model.generate(\n    inputs.input_ids,\n    max_length=200\n  )\n  return tokenizer.decode(outputs[0])"
     },
     {
       "id": 3,
@@ -31,7 +33,8 @@
       "subtitle": "Classification-Based ML System",
       "tech": ["Python", "Scikit-learn", "KNN", "Decision Tree", "Naive Bayes"],
       "link": "https://github.com/AyushBajaj7",
-      "description": "A classification-based machine learning model for predicting diseases. Involved comprehensive feature engineering and comparative evaluation of algorithms, including KNN, Decision Tree, Naive Bayes, and Extra Trees, to identify the most effective predictive approach."
+      "description": "A classification-based machine learning model for predicting diseases. Involved comprehensive feature engineering and comparative evaluation of algorithms, including KNN, Decision Tree, Naive Bayes, and Extra Trees, to identify the most effective predictive approach.",
+      "codePreview": "from sklearn.ensemble import RandomForestClassifier\n\nmodel = RandomForestClassifier(\n  n_estimators=100,\n  max_depth=10\n)\nmodel.fit(X_train, y_train)\naccuracy = model.score(X_test, y_test)"
     },
     {
       "id": 4,
@@ -39,7 +42,8 @@
       "subtitle": "Interactive 3D Walkthrough",
       "tech": ["Blender", "Unity", "Python", "OpenGL"],
       "link": "https://github.com/AyushBajaj7",
-      "description": "An interactive 3D walkthrough system for architectural visualization. Built using Blender for modeling and Unity for the interactive experience, integrating Python and OpenGL concepts to enhance rendering and interactivity."
+      "description": "An interactive 3D walkthrough system for architectural visualization. Built using Blender for modeling and Unity for the interactive experience, integrating Python and OpenGL concepts to enhance rendering and interactivity.",
+      "codePreview": "void Update() {\n  float horizontal = Input.GetAxis(\"Horizontal\");\n  float vertical = Input.GetAxis(\"Vertical\");\n  \n  Vector3 movement = new Vector3(\n    horizontal, 0f, vertical\n  );\n  transform.Translate(movement * speed * Time.deltaTime);\n}"
     }
   ],
   "skills": [
