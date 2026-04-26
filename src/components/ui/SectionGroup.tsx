@@ -183,6 +183,58 @@ const StaggeredText: React.FC<{ text: string; className?: string; delay?: number
 };
 
 /**
+ * KineticText component - Text responds to mouse movement with 3D rotation.
+ * Creates an interactive, immersive effect on the hero text.
+ * @param children - Text content to render
+ * @param className - Optional CSS classes
+ */
+const KineticText: React.FC<{ children: React.ReactNode; className?: string }> = ({
+  children,
+  className = '',
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [transform, setTransform] = useState({ rotateX: 0, rotateY: 0 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    // Calculate distance from center (-1 to 1)
+    const percentX = (e.clientX - centerX) / (rect.width / 2);
+    const percentY = (e.clientY - centerY) / (rect.height / 2);
+
+    // Apply rotation (max 15 degrees)
+    setTransform({
+      rotateX: -percentY * 15,
+      rotateY: percentX * 15,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTransform({ rotateX: 0, rotateY: 0 });
+  };
+
+  return (
+    <motion.div
+      ref={containerRef}
+      className={className}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      animate={{
+        rotateX: transform.rotateX,
+        rotateY: transform.rotateY,
+      }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      style={{ perspective: 1000, transformStyle: 'preserve-3d' }}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+/**
  * TextScramble component - Creates a text decode effect on hover.
  * Letters scramble through random characters before resolving to target text.
  * @param text - The text to display and scramble
@@ -492,11 +544,11 @@ export const SectionGroup: React.FC = () => {
                   <span className="text-[10px] font-label text-primary-dim tracking-[0.2em] uppercase">Available for Work</span>
                 </div>
 
-                {/* Name with Staggered Animation */}
+                {/* Name with Kinetic & Staggered Animation */}
                 <h1 className="text-4xl xs:text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-display font-extrabold leading-[1.1] tracking-tight drop-shadow-xl">
-                  <span className="block text-on-surface">
+                  <KineticText className="block text-on-surface">
                     <StaggeredText text="Ayush Bajaj" delay={0.2} />
-                  </span>
+                  </KineticText>
                   <span className="block bg-clip-text text-transparent bg-gradient-to-r from-[var(--title-gradient-from)] via-[var(--title-gradient-via)] to-[var(--title-gradient-to)] glow-cyan mt-1">
                     Software Developer
                   </span>
