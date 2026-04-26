@@ -534,6 +534,83 @@ const PinnedSection: React.FC<{ children: React.ReactNode; id: string; className
 };
 
 /**
+ * VideoBackground component - Adds video background with poster fallback.
+ * Exported for use in sections that need video backgrounds.
+ * @param videoSrc - URL to video file
+ * @param posterSrc - URL to poster/fallback image
+ */
+export const VideoBackground: React.FC<{ videoSrc?: string; posterSrc?: string }> = ({
+  videoSrc,
+  posterSrc,
+}) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isInView, setIsInView] = useState(true);
+
+  useEffect(() => {
+    if (!videoSrc) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsInView(entry.isIntersecting);
+      },
+      { threshold: 0.1 }
+    );
+
+    const video = videoRef.current;
+    if (video) {
+      observer.observe(video);
+    }
+
+    return () => {
+      if (video) {
+        observer.unobserve(video);
+      }
+    };
+  }, [videoSrc]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (isInView) {
+      video.play();
+    } else {
+      video.pause();
+    }
+  }, [isInView]);
+
+  if (!videoSrc) {
+    return posterSrc ? (
+      <div className="absolute inset-0 z-0">
+        <img
+          src={posterSrc}
+          alt=""
+          className="w-full h-full object-cover opacity-30"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0f] via-transparent to-[#0a0a0f]"></div>
+      </div>
+    ) : null;
+  }
+
+  return (
+    <div className="absolute inset-0 z-0 overflow-hidden">
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        loop
+        playsInline
+        poster={posterSrc}
+        className="w-full h-full object-cover opacity-40"
+      >
+        <source src={videoSrc} type="video/mp4" />
+      </video>
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0f] via-[#0a0a0f]/50 to-[#0a0a0f]"></div>
+    </div>
+  );
+};
+
+/**
  * Framer Motion animation configuration for fade-up reveal effect.
  * Elements start invisible (opacity: 0) and 30px below final position (y: 30),
  * then animate to visible (opacity: 1) at final position (y: 0).
@@ -654,7 +731,9 @@ export const SectionGroup: React.FC = () => {
         {/* ══════════════════════════════════════════════════════════ */}
         {/*                       HERO SECTION                       */}
         {/* ══════════════════════════════════════════════════════════ */}
-        <SectionWrapper id="hero" className="min-h-screen flex flex-col justify-end lg:justify-center pb-12 lg:pb-0 pt-20">
+        <SectionWrapper id="hero" className="min-h-screen flex flex-col justify-end lg:justify-center pb-12 lg:pb-0 pt-20 relative">
+          {/* Video Background - uncomment and add video URL when available */}
+          {/* <VideoBackground videoSrc="/hero-video.mp4" posterSrc="/hero-poster.jpg" /> */}
           <div className="w-full max-w-screen-2xl mx-auto px-6 sm:px-8 lg:px-16 xl:px-24">
             <div className="flex flex-col lg:flex-row items-end lg:items-center justify-between gap-8 lg:gap-12">
 
