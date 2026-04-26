@@ -117,6 +117,67 @@ const AnimatedCounter: React.FC<{ target: number; suffix?: string; duration?: nu
 };
 
 /**
+ * StaggeredText component - Animates text letter by letter on load.
+ * Creates a professional entrance effect for headlines.
+ * @param text - The text to animate
+ * @param className - Optional CSS classes
+ * @param delay - Initial delay before animation starts (default: 0)
+ */
+const StaggeredText: React.FC<{ text: string; className?: string; delay?: number }> = ({
+  text,
+  className = '',
+  delay = 0,
+}) => {
+  const letters = text.split('');
+
+  const container = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05,
+        delayChildren: delay,
+      },
+    },
+  };
+
+  const child = {
+    hidden: {
+      opacity: 0,
+      y: 50,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: 'spring' as const,
+        damping: 12,
+        stiffness: 200,
+      },
+    },
+  };
+
+  return (
+    <motion.span
+      className={`inline-block ${className}`}
+      variants={container}
+      initial="hidden"
+      animate="visible"
+    >
+      {letters.map((letter, index) => (
+        <motion.span
+          key={index}
+          variants={child}
+          className="inline-block"
+        >
+          {letter === ' ' ? '\u00A0' : letter}
+        </motion.span>
+      ))}
+    </motion.span>
+  );
+};
+
+/**
  * Framer Motion animation configuration for fade-up reveal effect.
  * Elements start invisible (opacity: 0) and 30px below final position (y: 30),
  * then animate to visible (opacity: 1) at final position (y: 0).
@@ -255,9 +316,11 @@ export const SectionGroup: React.FC = () => {
                   <span className="text-[10px] font-label text-primary-dim tracking-[0.2em] uppercase">Available for Work</span>
                 </div>
 
-                {/* Name */}
+                {/* Name with Staggered Animation */}
                 <h1 className="text-4xl xs:text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-display font-extrabold leading-[1.1] tracking-tight drop-shadow-xl">
-                  <span className="block text-on-surface">Ayush Bajaj</span>
+                  <span className="block text-on-surface">
+                    <StaggeredText text="Ayush Bajaj" delay={0.2} />
+                  </span>
                   <span className="block bg-clip-text text-transparent bg-gradient-to-r from-[var(--title-gradient-from)] via-[var(--title-gradient-via)] to-[var(--title-gradient-to)] glow-cyan mt-1">
                     Software Developer
                   </span>
