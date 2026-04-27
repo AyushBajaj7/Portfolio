@@ -8,6 +8,42 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;600;700;800&display=swap');
 @import "tailwindcss";
 
+/* Smooth scroll snap for sections */
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+/* Section snap points */
+.section-snap {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* Hide scrollbar but keep functionality */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Magnetic button base styles */
+.magnetic-button {
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Text glow animation */
+@keyframes text-glow {
+  0%, 100% { text-shadow: 0 0 10px currentColor; }
+  50% { text-shadow: 0 0 20px currentColor, 0 0 30px currentColor; }
+}
+
+.text-glow {
+  animation: text-glow 2s ease-in-out infinite;
+}
+
 :root {
   --bg: #0a0a0f;
   --surface: #0a0a0f;
@@ -15,6 +51,8 @@
   --on-surface-variant: #9ca3af;
   --primary: #9cff93;
   --primary-dim: #00ec3b;
+  --primary-container: #1f4d28;
+  --on-primary: #061108;
   --tertiary: #8af2ff;
   --tertiary-dim: #00dbec;
   --outline: rgba(255, 255, 255, 0.04);
@@ -38,6 +76,8 @@
   --on-surface-variant: #1e293b;
   --primary: #059669;
   --primary-dim: #047857;
+  --primary-container: #d1fae5;
+  --on-primary: #ffffff;
   --tertiary: #0891b2;
   --tertiary-dim: #0e7490;
   --outline: rgba(0, 0, 0, 0.06);
@@ -60,10 +100,9 @@
 }
 
 .light-theme .glass-panel {
-  backdrop-filter: blur(1px);
-  -webkit-backdrop-filter: blur(1px);
-  background: rgba(255, 255, 255, 0.05);
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.02);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.1);
 }
 
 
@@ -74,6 +113,8 @@
   --color-surface-container-highest: var(--surface-highest);
   --color-primary: var(--primary);
   --color-primary-dim: var(--primary-dim);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary: var(--on-primary);
   --color-on-surface: var(--on-surface);
   --color-on-surface-variant: var(--on-surface-variant);
   --color-tertiary: var(--tertiary);
@@ -89,15 +130,12 @@
 
 @layer utilities {
   .glass-panel {
-    backdrop-filter: blur(1px);
-    -webkit-backdrop-filter: blur(1px);
-    background: rgba(14, 14, 24, 0.05);
+    background: rgba(14, 14, 24, 0.82);
     border: 1px solid var(--outline);
+    backdrop-filter: blur(18px);
   }
 
   .glass-panel-solid {
-    backdrop-filter: blur(1px);
-    -webkit-backdrop-filter: blur(1px);
     background: rgba(14, 14, 24, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
@@ -123,11 +161,6 @@
   box-sizing: border-box;
 }
 
-html {
-  scroll-behavior: smooth;
-  font-size: 16px;
-}
-
 body {
   background: var(--bg);
   color: var(--on-surface);
@@ -140,6 +173,23 @@ body {
   overflow: hidden;
 }
 
+::selection {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+
 h1,
 h2,
 h3,
@@ -148,7 +198,7 @@ h5,
 h6 {
   font-family: 'Space Grotesk', sans-serif;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   color: var(--on-surface);
 }
 
@@ -174,7 +224,8 @@ a {
 }
 
 .canvas-container canvas {
-  pointer-events: auto !important;
+  pointer-events: none !important;
+  backface-visibility: hidden;
 }
 
 /* ─── Scroll Overlay ─────────────────────────────────────────────── */
@@ -185,6 +236,8 @@ a {
   overflow-y: auto;
   overflow-x: hidden;
   scroll-behavior: smooth;
+  scroll-snap-type: y proximity;
+  scrollbar-gutter: stable;
 }
 
 .ui-overlay::-webkit-scrollbar {
@@ -204,26 +257,22 @@ a {
   background: rgba(156, 255, 147, 0.5);
 }
 
-/* ─── Custom Cursor ──────────────────────────────────────────────── */
-.custom-cursor {
-  position: fixed;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid rgba(156, 255, 147, 0.6);
-  pointer-events: none;
-  z-index: 9999;
+.horizontal-drive {
+  scroll-snap-align: start;
+  scroll-snap-stop: normal;
+}
+
+.horizontal-track {
+  transform: translate3d(var(--rail-x, 0px), 0, 0);
   will-change: transform;
-  transition: width 0.25s, height 0.25s, background-color 0.25s, border-color 0.25s;
 }
 
-.custom-cursor.hovering {
-  width: 48px;
-  height: 48px;
-  background: rgba(156, 255, 147, 0.1);
-  border-color: rgba(156, 255, 147, 0.3);
+.project-card {
+  contain: layout paint;
+  transform: translateZ(0);
 }
 
+/* ─── Custom Cursor ──────────────────────────────────────────────── */
 /* ─── Animations ──────────────────────────────────────────────────── */
 @keyframes float {
 
@@ -277,7 +326,18 @@ a {
   animation-play-state: paused;
 }
 
-/* ─── MOBILE (≤ 768px) ───────────────────────────────────────────── */
+/* Mobile */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @media (max-width: 768px) {
 
   html,
@@ -291,5 +351,6 @@ a {
     position: static;
     overflow: visible;
     height: auto;
+    scroll-snap-type: none;
   }
 }

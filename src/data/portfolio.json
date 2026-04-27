@@ -5,7 +5,7 @@
     "tagline": "Building comprehensive systems and interactive applications.",
     "bio": "I'm a Software Developer with experience in building full-stack platforms, machine learning models, and complex data pipelines. I focus on clean architecture, honest implementation, and solving real-world problems.",
     "about": "My expertise spans web development, machine learning, and cloud infrastructure. I thrive on building tools and experiences that are functional, robust, and driven by real-world needs, from agricultural platforms to AI-powered video pipelines.",
-    "location": "India",
+    "location": "India and Kathmandu, Nepal",
     "email": "ayushbajaj215@gmail.com"
   },
   "projects": [
@@ -32,7 +32,7 @@
       "title": "AI Disease Prediction Model",
       "subtitle": "Classification-Based ML System",
       "tech": ["Python", "Scikit-learn", "KNN", "Decision Tree", "Naive Bayes"],
-      "link": "https://github.com/AyushBajaj7",
+      "link": "https://github.com/RahulNatesan/AI-Disease-Prediction",
       "description": "A classification-based machine learning model for predicting diseases. Involved comprehensive feature engineering and comparative evaluation of algorithms, including KNN, Decision Tree, Naive Bayes, and Extra Trees, to identify the most effective predictive approach.",
       "codePreview": "from sklearn.ensemble import RandomForestClassifier\n\nmodel = RandomForestClassifier(\n  n_estimators=100,\n  max_depth=10\n)\nmodel.fit(X_train, y_train)\naccuracy = model.score(X_test, y_test)"
     },

@@ -4,7 +4,7 @@
  * @author Ayush Bajaj
  */
 
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useStore } from '../../store/useStore';
@@ -17,6 +17,219 @@ gsap.registerPlugin(ScrollTrigger);
  */
 const FRAME_COUNT = 300;
 
+const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
+
+const lerp = (start: number, end: number, amount: number) => start + (end - start) * amount;
+
+type AvatarPose = {
+  frameProgress: number;
+  opacity: number;
+  scale: number;
+  x: number;
+  y: number;
+};
+
+type ViewportTier = 'mobile' | 'tablet' | 'desktop';
+
+const getViewportTier = (viewportWidth: number): ViewportTier => {
+  if (viewportWidth < 768) return 'mobile';
+  if (viewportWidth < 1280) return 'tablet';
+  return 'desktop';
+};
+
+const getAvatarPose = ({
+  activeSection,
+  horizontalProgress,
+  scrollMode,
+  scrollProgress,
+  viewportWidth,
+}: {
+  activeSection: string;
+  horizontalProgress: number;
+  scrollMode: 'vertical' | 'horizontal';
+  scrollProgress: number;
+  viewportWidth: number;
+}): AvatarPose => {
+  const overallProgress = clamp(scrollProgress);
+  const tier = getViewportTier(viewportWidth);
+
+  if (scrollMode === 'horizontal') {
+    if (tier === 'mobile') {
+      return {
+        frameProgress: lerp(0.42, 0.58, horizontalProgress),
+        x: lerp(18, 10, horizontalProgress),
+        y: lerp(8, 12, horizontalProgress),
+        scale: lerp(0.62, 0.68, horizontalProgress),
+        opacity: lerp(0.16, 0.22, horizontalProgress),
+      };
+    }
+
+    if (tier === 'tablet') {
+      return {
+        frameProgress: lerp(0.42, 0.66, horizontalProgress),
+        x: lerp(26, 16, horizontalProgress),
+        y: lerp(2, 6, horizontalProgress),
+        scale: lerp(0.72, 0.8, horizontalProgress),
+        opacity: lerp(0.24, 0.34, horizontalProgress),
+      };
+    }
+
+    return {
+      frameProgress: lerp(0.42, 0.7, horizontalProgress),
+      x: lerp(34, 18, horizontalProgress),
+      y: lerp(-4, 2, horizontalProgress),
+      scale: lerp(0.76, 0.86, horizontalProgress),
+      opacity: lerp(0.26, 0.42, horizontalProgress),
+    };
+  }
+
+  switch (activeSection) {
+    case 'hero': {
+      const heroProgress = clamp(overallProgress / 0.2);
+
+      if (tier === 'mobile') {
+        return {
+          frameProgress: lerp(0.03, 0.12, heroProgress),
+          x: 0,
+          y: lerp(10, 12, heroProgress),
+          scale: lerp(0.68, 0.74, heroProgress),
+          opacity: 0.42,
+        };
+      }
+
+      if (tier === 'tablet') {
+        return {
+          frameProgress: lerp(0.03, 0.14, heroProgress),
+          x: 16,
+          y: lerp(2, 4, heroProgress),
+          scale: lerp(0.82, 0.88, heroProgress),
+          opacity: 0.74,
+        };
+      }
+
+      return {
+        frameProgress: lerp(0.03, 0.16, heroProgress),
+        x: 12,
+        y: lerp(-2, 1, heroProgress),
+        scale: lerp(0.96, 1.02, heroProgress),
+        opacity: 0.88,
+      };
+    }
+    case 'projects':
+      if (tier === 'mobile') {
+        return {
+          frameProgress: 0.34,
+          x: 18,
+          y: 12,
+          scale: 0.64,
+          opacity: 0.16,
+        };
+      }
+      if (tier === 'tablet') {
+        return {
+          frameProgress: 0.38,
+          x: 22,
+          y: 7,
+          scale: 0.76,
+          opacity: 0.3,
+        };
+      }
+      return {
+        frameProgress: 0.36,
+        x: 28,
+        y: -1,
+        scale: 0.82,
+        opacity: 0.34,
+      };
+    case 'about':
+      if (tier === 'mobile') {
+        return {
+          frameProgress: 0.56,
+          x: 20,
+          y: 18,
+          scale: 0.58,
+          opacity: 0.1,
+        };
+      }
+      if (tier === 'tablet') {
+        return {
+          frameProgress: 0.58,
+          x: 28,
+          y: 14,
+          scale: 0.66,
+          opacity: 0.18,
+        };
+      }
+      return {
+        frameProgress: 0.56,
+        x: 34,
+        y: 7,
+        scale: 0.76,
+        opacity: 0.28,
+      };
+    case 'skills':
+      if (tier === 'mobile') {
+        return {
+          frameProgress: 0.64,
+          x: 20,
+          y: 22,
+          scale: 0.56,
+          opacity: 0.08,
+        };
+      }
+      if (tier === 'tablet') {
+        return {
+          frameProgress: 0.66,
+          x: 30,
+          y: 18,
+          scale: 0.6,
+          opacity: 0.12,
+        };
+      }
+      return {
+        frameProgress: 0.68,
+        x: 36,
+        y: 13,
+        scale: 0.68,
+        opacity: 0.22,
+      };
+    case 'contact':
+      if (tier === 'mobile') {
+        return {
+          frameProgress: 0.74,
+          x: 18,
+          y: 24,
+          scale: 0.52,
+          opacity: 0.06,
+        };
+      }
+      if (tier === 'tablet') {
+        return {
+          frameProgress: 0.74,
+          x: 30,
+          y: 20,
+          scale: 0.58,
+          opacity: 0.1,
+        };
+      }
+      return {
+        frameProgress: 0.78,
+        x: 35,
+        y: 16,
+        scale: 0.62,
+        opacity: 0.18,
+      };
+    default:
+      return {
+        frameProgress: overallProgress,
+        x: 0,
+        y: 0,
+        scale: 1,
+        opacity: 1,
+      };
+  }
+};
+
 /**
  * Scales and draws an image on the canvas using either "cover" or "contain" mode
  * based on screen size. Cover fills the screen (allows cropping), contain fits
@@ -27,12 +240,14 @@ const FRAME_COUNT = 300;
  */
 function scaleImage(img: HTMLImageElement, ctx: CanvasRenderingContext2D) {
   const canvas = ctx.canvas;
-  const isLargeScreen = canvas.width >= 768;
+  const width = canvas.clientWidth || window.innerWidth;
+  const height = canvas.clientHeight || window.innerHeight;
+  const isLargeScreen = width >= 768;
   
-  const horizontalRatio = canvas.width / img.width;
-  const verticalRatio = canvas.height / img.height;
+  const horizontalRatio = width / img.width;
+  const verticalRatio = height / img.height;
   
-  // Large screens (≥768px): cover mode - fill screen, some cropping OK
+  // Large screens: cover mode - fill screen, some cropping OK
   // Small screens (<768px): contain mode - fit full avatar within bounds
   const scaleRatio = isLargeScreen 
     ? Math.max(horizontalRatio, verticalRatio) 
@@ -42,10 +257,12 @@ function scaleImage(img: HTMLImageElement, ctx: CanvasRenderingContext2D) {
   const drawHeight = img.height * scaleRatio;
   
   // Center the image on canvas
-  const centerShiftX = (canvas.width - drawWidth) / 2;
-  const centerShiftY = (canvas.height - drawHeight) / 2;
+  const centerShiftX = (width - drawWidth) / 2;
+  const centerShiftY = (height - drawHeight) / 2;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.clearRect(0, 0, width, height);
   ctx.drawImage(
     img,
     0, 0, img.width, img.height,
@@ -63,80 +280,181 @@ function scaleImage(img: HTMLImageElement, ctx: CanvasRenderingContext2D) {
 export const Scene: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const imageCache = useRef(new Map<number, HTMLImageElement>());
+  const poseRef = useRef<AvatarPose | null>(null);
+  const poseAnimationRef = useRef<number | null>(null);
+  const frameIndexRef = useRef(-1);
   const scrollProgress = useStore((s) => s.scrollProgress);
+  const horizontalProgress = useStore((s) => s.horizontalProgress);
+  const scrollMode = useStore((s) => s.scrollMode);
+  const activeSection = useStore((s) => s.activeSection);
 
-  /**
-   * Preload all 300 avatar animation frames into memory.
-   * Uses useMemo to prevent re-loading on re-renders.
-   */
-  const images = useMemo(() => {
+  const getFrameSrc = useCallback((index: number) => {
     const baseUrl = import.meta.env.BASE_URL || '/';
-    const imgs: HTMLImageElement[] = [];
-    for (let i = 1; i <= FRAME_COUNT; i++) {
-      const img = new Image();
-      const num = i.toString().padStart(4, '0');
-      img.src = `${baseUrl}frames/male${num}.png`;
-      imgs.push(img);
-    }
-    return imgs;
+    const frameNumber = String(index + 1).padStart(4, '0');
+    return `${baseUrl}frames/male${frameNumber}.png`;
   }, []);
 
-  /**
-   * Handle canvas sizing and initial render.
-   * Sets up resize listener and renders the initial frame based on current scroll position.
-   */
-  useEffect(() => {
+  const getFrame = useCallback((index: number) => {
+    const safeIndex = Math.min(FRAME_COUNT - 1, Math.max(0, index));
+    const cached = imageCache.current.get(safeIndex);
+    if (cached) return cached;
+
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = getFrameSrc(safeIndex);
+    imageCache.current.set(safeIndex, img);
+    return img;
+  }, [getFrameSrc]);
+
+  const preloadAround = useCallback((index: number) => {
+    const offsets = [-3, -2, -1, 1, 2, 3, 6, 12];
+    offsets.forEach((offset) => {
+      const nextIndex = index + offset;
+      if (nextIndex >= 0 && nextIndex < FRAME_COUNT) {
+        getFrame(nextIndex);
+      }
+    });
+  }, [getFrame]);
+
+  const drawFrame = useCallback((index: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const onResize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-
-      const frameIndex = Math.min(
-        FRAME_COUNT - 1,
-        Math.max(0, Math.floor(useStore.getState().scrollProgress * FRAME_COUNT))
-      );
-      if (images[frameIndex] && images[frameIndex].complete) {
-        scaleImage(images[frameIndex], ctx);
-      }
-    };
-
-    window.addEventListener('resize', onResize);
-
-    // Wait for first image to load before initial render to avoid blur
-    if (images[0].complete) {
-      onResize();
-    } else {
-      images[0].onload = onResize;
+    const frame = getFrame(index);
+    if (frame.complete && frame.naturalWidth > 0) {
+      scaleImage(frame, ctx);
+      preloadAround(index);
+      return;
     }
 
-    return () => window.removeEventListener('resize', onResize);
-  }, [images]);
+    frame.addEventListener(
+      'load',
+      () => {
+        scaleImage(frame, ctx);
+        preloadAround(index);
+      },
+      { once: true }
+    );
+  }, [getFrame, preloadAround]);
 
-  /**
-   * Handle scroll-driven frame updates.
-   * Updates the displayed frame based on scroll progress from the Zustand store.
-   */
   useEffect(() => {
+    for (let i = 0; i < Math.min(18, FRAME_COUNT); i++) {
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = getFrameSrc(i);
+      imageCache.current.set(i, img);
+    }
+  }, [getFrameSrc]);
+
+  const applyPose = useCallback((pose: AvatarPose) => {
+    const container = containerRef.current;
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!container || !canvas) return;
 
     const frameIndex = Math.min(
       FRAME_COUNT - 1,
-      Math.max(0, Math.floor(scrollProgress * FRAME_COUNT))
+      Math.max(0, Math.floor(pose.frameProgress * (FRAME_COUNT - 1)))
     );
 
-    if (images[frameIndex] && images[frameIndex].complete) {
-      requestAnimationFrame(() => {
-        scaleImage(images[frameIndex], ctx);
-      });
+    if (frameIndex !== frameIndexRef.current) {
+      frameIndexRef.current = frameIndex;
+      drawFrame(frameIndex);
     }
-  }, [scrollProgress, images]);
+
+    container.style.opacity = pose.opacity.toFixed(3);
+    canvas.style.transform = `translate3d(${pose.x.toFixed(2)}vw, ${pose.y.toFixed(2)}vh, 0) scale(${pose.scale.toFixed(3)})`;
+  }, [drawFrame]);
+
+  useEffect(() => {
+    const syncCanvasSize = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(window.innerWidth * dpr);
+      canvas.height = Math.floor(window.innerHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const state = useStore.getState();
+      const nextPose = getAvatarPose({
+        activeSection: state.activeSection,
+        horizontalProgress: state.horizontalProgress,
+        scrollMode: state.scrollMode,
+        scrollProgress: state.scrollProgress,
+        viewportWidth: window.innerWidth,
+      });
+
+      poseRef.current = nextPose;
+      applyPose(nextPose);
+    };
+
+    window.addEventListener('resize', syncCanvasSize);
+    syncCanvasSize();
+
+    return () => {
+      window.removeEventListener('resize', syncCanvasSize);
+    };
+  }, [applyPose]);
+
+  useEffect(() => {
+    const targetPose = getAvatarPose({
+      activeSection,
+      horizontalProgress,
+      scrollMode,
+      scrollProgress,
+      viewportWidth: window.innerWidth,
+    });
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || poseRef.current === null) {
+      poseRef.current = targetPose;
+      applyPose(targetPose);
+      return;
+    }
+
+    if (poseAnimationRef.current !== null) {
+      window.cancelAnimationFrame(poseAnimationRef.current);
+    }
+
+    const animate = () => {
+      const currentPose = poseRef.current ?? targetPose;
+      const smoothing = scrollMode === 'horizontal' ? 0.24 : 0.16;
+      const nextPose: AvatarPose = {
+        frameProgress: lerp(currentPose.frameProgress, targetPose.frameProgress, smoothing),
+        x: lerp(currentPose.x, targetPose.x, smoothing),
+        y: lerp(currentPose.y, targetPose.y, smoothing),
+        scale: lerp(currentPose.scale, targetPose.scale, smoothing),
+        opacity: lerp(currentPose.opacity, targetPose.opacity, smoothing),
+      };
+
+      const settled =
+        Math.abs(nextPose.frameProgress - targetPose.frameProgress) < 0.002 &&
+        Math.abs(nextPose.x - targetPose.x) < 0.04 &&
+        Math.abs(nextPose.y - targetPose.y) < 0.04 &&
+        Math.abs(nextPose.scale - targetPose.scale) < 0.002 &&
+        Math.abs(nextPose.opacity - targetPose.opacity) < 0.01;
+
+      const resolvedPose = settled ? targetPose : nextPose;
+      poseRef.current = resolvedPose;
+      applyPose(resolvedPose);
+
+      if (!settled) {
+        poseAnimationRef.current = window.requestAnimationFrame(animate);
+      }
+    };
+
+    poseAnimationRef.current = window.requestAnimationFrame(animate);
+
+    return () => {
+      if (poseAnimationRef.current !== null) {
+        window.cancelAnimationFrame(poseAnimationRef.current);
+      }
+    };
+  }, [activeSection, applyPose, horizontalProgress, scrollMode, scrollProgress]);
 
   const theme = useStore((s) => s.theme);
 
@@ -147,15 +465,17 @@ export const Scene: React.FC = () => {
    */
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    const scrollContainer = document.getElementById('scroll-container');
+    if (!container || !scrollContainer) return;
 
-    // Only apply parallax on desktop (>= 768px)
-    const isDesktop = window.innerWidth >= 768;
+    // Only apply parallax on larger layouts where the avatar has room to move.
+    const isDesktop = window.innerWidth >= 1024;
     if (!isDesktop) return;
 
     const tl = gsap.timeline({
       scrollTrigger: {
-        trigger: document.body,
+        trigger: scrollContainer,
+        scroller: scrollContainer,
         start: 'top top',
         end: 'bottom bottom',
         scrub: 1,
@@ -164,14 +484,14 @@ export const Scene: React.FC = () => {
 
     // Parallax: move avatar slower than scroll (50% speed)
     tl.to(container, {
-      y: '15%',
+      y: '8%',
       ease: 'none',
     });
 
     return () => {
       tl.kill();
       ScrollTrigger.getAll().forEach(st => {
-        if (st.vars.trigger === document.body) {
+        if (st.vars.trigger === scrollContainer) {
           st.kill();
         }
       });
@@ -191,6 +511,7 @@ export const Scene: React.FC = () => {
         zIndex: 0,
         pointerEvents: 'none',
         backgroundColor: 'var(--bg)',
+        opacity: 0,
       }}
     >
       <canvas 
@@ -199,10 +520,13 @@ export const Scene: React.FC = () => {
           width: '100%', 
           height: '100%', 
           display: 'block',
-          // Dark mode: natural avatar, no inversion. Light mode: no inversion either, just a subtle correction.
+          transform: 'translate3d(0, 0, 0) scale(1)',
+          transformOrigin: 'center center',
+          willChange: 'transform, opacity',
+          // Dark mode: natural avatar. Light mode: subtle correction.
           filter: theme === 'dark' 
-            ? 'contrast(1.1) brightness(0.95)' 
-            : 'contrast(1.1) brightness(1.05) saturate(0.8)' 
+            ? 'contrast(1.08) brightness(0.98) saturate(0.96)' 
+            : 'contrast(1.08) brightness(1.03) saturate(0.84)' 
         }} 
       />
     </div>

@@ -1,6 +1,6 @@
 /**
  * @fileoverview Root application component.
- * Assembles the main layout: Cursor, Navbar, Scene (canvas), and content Sections.
+ * Assembles the main layout: PageLoader, Cursor, Navbar, Scene (canvas), and content Sections.
  * @author Ayush Bajaj
  */
 
@@ -8,6 +8,7 @@ import { Scene } from './components/canvas/Scene';
 import { Navbar } from './components/ui/Navbar';
 import { SectionGroup } from './components/ui/SectionGroup';
 import { Cursor } from './components/ui/Cursor';
+import { PageLoader } from './components/ui/PageLoader';
 
 /**
  * Main application component that orchestrates all major UI components.
@@ -16,6 +17,7 @@ import { Cursor } from './components/ui/Cursor';
 function App() {
   return (
     <>
+      <PageLoader />
       <Cursor />
       <Navbar />
       <Scene />

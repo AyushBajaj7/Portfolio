@@ -4,8 +4,9 @@
  * @author Ayush Bajaj
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Download, Menu, Moon, Sun, X } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 
 /**
@@ -27,8 +28,6 @@ const MagneticButton: React.FC<{ children: React.ReactNode; className?: string; 
     const centerY = rect.top + rect.height / 2;
     const distanceX = e.clientX - centerX;
     const distanceY = e.clientY - centerY;
-
-    // Magnetic pull strength (15% of distance)
     setPosition({ x: distanceX * 0.15, y: distanceY * 0.15 });
   };
 
@@ -52,76 +51,73 @@ const MagneticButton: React.FC<{ children: React.ReactNode; className?: string; 
 };
 
 /**
- * Navigation bar component with scroll effects and mobile responsive menu.
- * @returns {React.ReactElement} The navigation component
+ * Navigation bar component with top-edge reveal on desktop and stable mobile/tablet behavior.
  */
 export const Navbar: React.FC = () => {
-  /**
-   * scrolled: Tracks if user has scrolled past 40px threshold.
-   * When true, navbar shows glass-morphism background. When false, transparent.
-   */
   const [scrolled, setScrolled] = useState(false);
-  /**
-   * hidden: Tracks if navbar should be hidden (scroll down) or visible (scroll up).
-   * Implements hide-on-scroll-down, show-on-scroll-up behavior.
-   */
-  const [hidden, setHidden] = useState(false);
-  /**
-   * lastScrollY: Stores previous scroll position to determine scroll direction.
-   */
-  const [lastScrollY, setLastScrollY] = useState(0);
-  
-  /** mobileOpen: Controls mobile menu visibility with slide-down animation */
+  const [scrollTop, setScrollTop] = useState(0);
+  const [edgeReveal, setEdgeReveal] = useState(false);
+  const [navHovered, setNavHovered] = useState(false);
+  const [isDesktopNav, setIsDesktopNav] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  );
   const [mobileOpen, setMobileOpen] = useState(false);
-  
-  /** activeSection: Current visible section from Zustand store for nav highlighting */
   const activeSection = useStore((s) => s.activeSection);
+  const theme = useStore((s) => s.theme);
+  const toggleTheme = useStore((s) => s.toggleTheme);
+  const scrollProgress = useStore((s) => s.scrollProgress);
 
-  /**
-   * Detect scroll position and direction to toggle navbar background and visibility.
-   * - Background: Changes to glass-morphism after 40px scroll
-   * - Visibility: Hides when scrolling down, shows when scrolling up
-   */
   useEffect(() => {
     const scrollContainer = document.getElementById('scroll-container');
     if (!scrollContainer) return;
 
     const onScroll = () => {
-      const currentScrollY = scrollContainer.scrollTop;
-
-      // Background change threshold
-      setScrolled(currentScrollY > 40);
-
-      // Hide/show based on scroll direction (only after scrolling past 100px)
-      if (currentScrollY > 100) {
-        if (currentScrollY > lastScrollY) {
-          setHidden(true); // Scrolling down - hide
-        } else {
-          setHidden(false); // Scrolling up - show
-        }
-      } else {
-        setHidden(false); // Always show at top
-      }
-
-      setLastScrollY(currentScrollY);
+      const currentScrollY = window.innerWidth < 768 ? window.scrollY : scrollContainer.scrollTop;
+      setScrollTop(currentScrollY);
+      setScrolled(currentScrollY > 24);
     };
 
+    const onResize = () => {
+      const desktopNav = window.innerWidth >= 1024;
+      setIsDesktopNav(desktopNav);
+      if (!desktopNav) {
+        setEdgeReveal(false);
+        setNavHovered(false);
+      }
+    };
+
+    const onMouseMove = (event: MouseEvent) => {
+      if (window.innerWidth < 1024) return;
+      setEdgeReveal(event.clientY <= 72);
+    };
+
+    const onWindowLeave = () => {
+      setEdgeReveal(false);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+    window.addEventListener('mouseleave', onWindowLeave);
     scrollContainer.addEventListener('scroll', onScroll, { passive: true });
+    onResize();
+    onScroll();
 
-    return () => scrollContainer.removeEventListener('scroll', onScroll);
-  }, [lastScrollY]);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseleave', onWindowLeave);
+      scrollContainer.removeEventListener('scroll', onScroll);
+    };
+  }, []);
 
-  /**
-   * Smooth scroll to a section by ID and close mobile menu.
-   * @param {string} id - The target section ID
-   */
   const scrollTo = (id: string) => {
     const element = document.getElementById(id);
     if (element) element.scrollIntoView({ behavior: 'smooth' });
     setMobileOpen(false);
   };
 
-  /** Navigation links mapping section IDs to display labels */
   const links = [
     { id: 'hero', label: 'Home' },
     { id: 'projects', label: 'Projects' },
@@ -130,19 +126,18 @@ export const Navbar: React.FC = () => {
     { id: 'contact', label: 'Contact' },
   ];
 
+  const shouldHide = isDesktopNav && scrollTop > 96 && !edgeReveal && !navHovered && !mobileOpen;
+
   return (
     <nav
+      onMouseEnter={() => setNavHovered(true)}
+      onMouseLeave={() => setNavHovered(false)}
       className={`fixed top-0 w-full z-50 transition-all duration-500 ${
-        scrolled
-          ? 'glass-panel shadow-lg border-x-0 border-t-0 rounded-none'  // Glass effect after scroll
-          : 'bg-transparent'  // Fully transparent at top of page
-      } ${
-        hidden ? '-translate-y-full' : 'translate-y-0'  // Hide on scroll down, show on scroll up
-      }`}
+        scrolled ? 'glass-panel shadow-lg border-x-0 border-t-0 rounded-none' : 'bg-transparent'
+      } ${shouldHide ? '-translate-y-[120%]' : 'translate-y-0'}`}
     >
       <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
           <button
             className="text-lg font-display font-bold tracking-tight text-on-surface hover:text-primary-dim transition-colors duration-300"
             onClick={() => scrollTo('hero')}
@@ -150,7 +145,7 @@ export const Navbar: React.FC = () => {
             Ayush Bajaj<span className="text-primary-dim">.</span>
           </button>
 
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden lg:flex items-center gap-6">
             <div className="flex items-center gap-1">
               {links.map((link) => (
                 <MagneticButton
@@ -167,117 +162,114 @@ export const Navbar: React.FC = () => {
               ))}
             </div>
 
-            {/* Theme Toggle Switch */}
             <button
-              onClick={() => useStore.getState().toggleTheme()}
-              className="relative w-14 h-7 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center p-1 group transition-all duration-500 hover:border-primary/40"
+              onClick={toggleTheme}
+              className="relative flex h-8 w-14 items-center rounded-full border border-outline-variant bg-surface-container-high p-1 transition-all duration-300 hover:border-primary/40"
               aria-label="Toggle theme"
             >
-              <div className={`w-5 h-5 rounded-full shadow-lg transform transition-all duration-500 flex items-center justify-center ${
-                useStore((s) => s.theme) === 'light' 
-                  ? 'translate-x-7 bg-primary text-on-primary' 
-                  : 'translate-x-0 bg-surface-container-highest text-primary-dim'
-              }`}>
-                <span className="material-symbols-outlined text-[14px]">
-                  {useStore((s) => s.theme) === 'light' ? 'light_mode' : 'dark_mode'}
-                </span>
+              <div
+                className={`flex h-6 w-6 items-center justify-center rounded-full shadow-lg transition-all duration-300 ${
+                  theme === 'light'
+                    ? 'translate-x-6 bg-primary text-on-primary'
+                    : 'translate-x-0 bg-surface-container-highest text-primary-dim'
+                }`}
+              >
+                {theme === 'light' ? <Sun size={14} /> : <Moon size={14} />}
               </div>
             </button>
 
-            {/* Resume Button in Navbar */}
             <a
               href="resume.pdf"
               download
-              className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/8 border border-primary/20 text-primary-dim text-xs font-bold tracking-wider uppercase hover:bg-primary hover:text-on-primary transition-all duration-300"
+              className="hidden xl:flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/8 border border-primary/20 text-primary-dim text-xs font-bold tracking-wider uppercase hover:bg-primary hover:text-on-primary transition-all duration-300"
             >
-              <span className="material-symbols-outlined text-base">download</span>
+              <Download size={16} />
               Resume
             </a>
           </div>
 
-          {/* Mobile Hamburger with Morphing Animation */}
           <button
-            className="md:hidden relative w-10 h-10 flex items-center justify-center"
+            className="lg:hidden relative z-50 flex h-10 w-10 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high/70 text-on-surface"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle menu"
           >
-            <div className="relative w-5 h-4">
-              <motion.span
-                className="absolute left-0 w-5 h-[2px] bg-on-surface rounded origin-center"
-                initial={false}
-                animate={{
-                  top: mobileOpen ? '7px' : '0px',
-                  rotate: mobileOpen ? 45 : 0,
-                }}
-                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              />
-              <motion.span
-                className="absolute left-0 top-[7px] w-5 h-[2px] bg-on-surface rounded"
-                initial={false}
-                animate={{
-                  opacity: mobileOpen ? 0 : 1,
-                  scaleX: mobileOpen ? 0 : 1,
-                }}
-                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              />
-              <motion.span
-                className="absolute left-0 w-5 h-[2px] bg-on-surface rounded origin-center"
-                initial={false}
-                animate={{
-                  top: mobileOpen ? '7px' : '14px',
-                  rotate: mobileOpen ? -45 : 0,
-                }}
-                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              />
-            </div>
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
-        {/* Mobile Menu */}
-        <div className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out ${mobileOpen ? 'max-h-[500px] pb-8' : 'max-h-0'}`}>
-          <div className="flex flex-col gap-2 pt-4 border-t border-outline-variant/15">
-            {links.map((link) => (
-              <button
-                key={link.id}
-                onClick={() => scrollTo(link.id)}
-                className={`px-4 py-3 rounded-xl text-base font-body font-medium text-left transition-all duration-300 ${
-                  activeSection === link.id
-                    ? 'text-primary-dim bg-primary/10'
-                    : 'text-on-surface-variant hover:text-on-surface hover:bg-on-surface/5'
-                }`}
-              >
-                {link.label}
-              </button>
-            ))}
-            
-            <div className="flex items-center justify-between px-4 py-4 mt-2 bg-surface-container-high/50 rounded-2xl border border-outline-variant/10">
-              <span className="text-sm font-medium text-on-surface-variant">Theme Mode</span>
-              <button
-                onClick={() => useStore.getState().toggleTheme()}
-                className="relative w-12 h-6 rounded-full bg-surface-container-highest border border-outline-variant/30 flex items-center p-1"
-              >
-                <div className={`w-4 h-4 rounded-full shadow-lg transform transition-all duration-500 flex items-center justify-center ${
-                  useStore((s) => s.theme) === 'light' 
-                    ? 'translate-x-6 bg-primary text-on-primary' 
-                    : 'translate-x-0 bg-surface-container-highest text-primary-dim'
-                }`}>
-                  <span className="material-symbols-outlined text-[10px]">
-                    {useStore((s) => s.theme) === 'light' ? 'light_mode' : 'dark_mode'}
-                  </span>
-                </div>
-              </button>
-            </div>
+        <motion.div
+          className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-primary via-tertiary to-primary-dim"
+          style={{ width: `${Math.round(scrollProgress * 100)}%` }}
+        />
 
-            <a
-              href="resume.pdf"
-              download
-              className="flex items-center justify-center gap-3 w-full py-4 mt-2 rounded-2xl bg-primary text-on-primary font-bold text-sm tracking-widest uppercase shadow-lg shadow-primary/20"
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              className="fixed inset-0 z-40 flex items-center justify-center bg-surface/96 px-6 backdrop-blur-xl lg:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
             >
-              <span className="material-symbols-outlined text-lg">download</span>
-              Download Resume
-            </a>
-          </div>
-        </div>
+              <motion.div
+                className="flex flex-col items-center gap-8"
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 50, opacity: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+              >
+                {links.map((link, i) => (
+                  <motion.button
+                    key={link.id}
+                    onClick={() => scrollTo(link.id)}
+                    className={`text-3xl sm:text-4xl font-display font-bold transition-colors duration-300 ${
+                      activeSection === link.id ? 'text-primary' : 'text-on-surface'
+                    }`}
+                    initial={{ y: 30, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 30, opacity: 0 }}
+                    transition={{ duration: 0.3, delay: i * 0.1 }}
+                    whileHover={{ scale: 1.03, x: 12 }}
+                  >
+                    {link.label}
+                  </motion.button>
+                ))}
+              </motion.div>
+
+              <motion.div
+                className="absolute bottom-8 left-6 text-xs font-label uppercase tracking-[0.2em] text-on-surface/45"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+              >
+                AYUSH BAJAJ PORTFOLIO
+              </motion.div>
+
+              <motion.div
+                className="absolute bottom-6 right-6 flex items-center gap-3"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+              >
+                <button
+                  onClick={toggleTheme}
+                  className="flex h-11 w-11 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high text-on-surface transition hover:border-primary/45 hover:text-primary"
+                  aria-label="Toggle theme"
+                >
+                  {theme === 'light' ? <Moon size={24} /> : <Sun size={24} />}
+                </button>
+                <a
+                  href="resume.pdf"
+                  download
+                  className="flex h-11 w-11 items-center justify-center rounded-lg border border-primary/30 bg-primary text-on-primary"
+                  aria-label="Download resume"
+                >
+                  <Download size={20} />
+                </a>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </nav>
   );

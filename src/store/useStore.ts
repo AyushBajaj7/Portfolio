@@ -28,6 +28,14 @@ interface PortfolioState {
   scrollProgress: number;
   /** Update scroll progress */
   setScrollProgress: (p: number) => void;
+  /** Progress through the pinned horizontal projects segment */
+  horizontalProgress: number;
+  /** Update horizontal segment progress */
+  setHorizontalProgress: (p: number) => void;
+  /** Current scroll interaction mode */
+  scrollMode: 'vertical' | 'horizontal';
+  /** Update the current scroll interaction mode */
+  setScrollMode: (mode: 'vertical' | 'horizontal') => void;
   /** Current theme: 'dark' or 'light' */
   theme: 'dark' | 'light';
   /** Toggle between dark and light themes */
@@ -51,6 +59,10 @@ export const useStore = create<PortfolioState>((set) => ({
   setScrollY: (y) => set({ scrollY: y }),
   scrollProgress: 0,
   setScrollProgress: (p) => set({ scrollProgress: p }),
+  horizontalProgress: 0,
+  setHorizontalProgress: (p) => set({ horizontalProgress: p }),
+  scrollMode: 'vertical',
+  setScrollMode: (mode) => set({ scrollMode: mode }),
   theme: 'dark',
   toggleTheme: () => set((state) => {
     const newTheme = state.theme === 'dark' ? 'light' : 'dark';
