@@ -66,7 +66,6 @@
   ],
   "socials": [
     { "platform": "GitHub",   "url": "https://github.com/AyushBajaj7",   "icon": "github"   },
-    { "platform": "LinkedIn", "url": "https://linkedin.com", "icon": "linkedin" },
-    { "platform": "Twitter",  "url": "https://twitter.com",  "icon": "twitter"  }
+    { "platform": "LinkedIn", "url": "https://linkedin.com/in/ayushbajaj7", "icon": "linkedin" }
   ]
 }

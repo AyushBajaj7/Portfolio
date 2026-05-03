@@ -11,7 +11,8 @@
 /* Smooth scroll snap for sections */
 html {
   scroll-behavior: smooth;
-  font-size: 16px;
+  font-size: 14px;
+  text-rendering: optimizeLegibility;
 }
 
 /* Section snap points */
@@ -171,6 +172,8 @@ body {
   transition: background-color 0.5s ease, color 0.5s ease;
   min-height: 100vh;
   overflow: hidden;
+  /* GPU: promote body layer to prevent repaints bleeding into composited children */
+  transform: translateZ(0);
 }
 
 ::selection {
@@ -210,7 +213,7 @@ a {
 /* ─── Root Layout ────────────────────────────────────────────────── */
 #root {
   position: relative;
-  width: 100vw;
+  width: 100%;
   height: 100vh;
   overflow: hidden;
 }
@@ -221,11 +224,17 @@ a {
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  contain: strict;
+  /* GPU: own compositing layer — never repaints with UI overlay */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 .canvas-container canvas {
   pointer-events: none !important;
   backface-visibility: hidden;
+  /* GPU: force hardware raster for canvas element */
+  transform: translateZ(0);
 }
 
 /* ─── Scroll Overlay ─────────────────────────────────────────────── */
@@ -236,8 +245,10 @@ a {
   overflow-y: auto;
   overflow-x: hidden;
   scroll-behavior: smooth;
-  scroll-snap-type: y proximity;
   scrollbar-gutter: stable;
+  /* GPU: isolate the entire scroll layer for compositing */
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
 }
 
 .ui-overlay::-webkit-scrollbar {
@@ -260,16 +271,32 @@ a {
 .horizontal-drive {
   scroll-snap-align: start;
   scroll-snap-stop: normal;
+  /* GPU: contain layout reflow within horizontal segment */
+  contain: layout style;
 }
 
 .horizontal-track {
   transform: translate3d(var(--rail-x, 0px), 0, 0);
   will-change: transform;
+  backface-visibility: hidden;
+  /* GPU: the track MUST be its own layer — it translates every frame */
+  contain: layout paint;
 }
 
 .project-card {
   contain: layout paint;
   transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* ─── GPU: Section-level containment ─────────────────────────────── */
+section {
+  contain: layout style;
+}
+
+/* ─── Smooth transition curves (boy-coy inspired) ────────────────── */
+.transition-smooth {
+  transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 /* ─── Custom Cursor ──────────────────────────────────────────────── */
@@ -347,10 +374,28 @@ a {
     height: unset;
   }
 
+  body {
+    transform: none !important;
+  }
+
   .ui-overlay {
     position: static;
     overflow: visible;
     height: auto;
-    scroll-snap-type: none;
+  }
+
+  /* On mobile, canvas is fixed behind static content.
+     Remove contain:strict which can clip rendering in mobile browsers.
+     Force fixed viewport dimensions so it never scrolls with body. */
+  .canvas-container {
+    contain: layout paint;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    /* Use dvh for mobile to handle dynamic url bar */
+    height: 100dvh !important;
+    transform: none !important;
   }
 }

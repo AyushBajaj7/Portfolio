@@ -56,30 +56,30 @@ const getAvatarPose = ({
   if (scrollMode === 'horizontal') {
     if (tier === 'mobile') {
       return {
-        frameProgress: lerp(0.42, 0.58, horizontalProgress),
+        frameProgress: lerp(0.2, 0.4, horizontalProgress),
         x: lerp(18, 10, horizontalProgress),
         y: lerp(8, 12, horizontalProgress),
         scale: lerp(0.62, 0.68, horizontalProgress),
-        opacity: lerp(0.16, 0.22, horizontalProgress),
+        opacity: 0.88,
       };
     }
 
     if (tier === 'tablet') {
       return {
-        frameProgress: lerp(0.42, 0.66, horizontalProgress),
+        frameProgress: lerp(0.2, 0.42, horizontalProgress),
         x: lerp(26, 16, horizontalProgress),
         y: lerp(2, 6, horizontalProgress),
         scale: lerp(0.72, 0.8, horizontalProgress),
-        opacity: lerp(0.24, 0.34, horizontalProgress),
+        opacity: 0.88,
       };
     }
 
     return {
-      frameProgress: lerp(0.42, 0.7, horizontalProgress),
+      frameProgress: lerp(0.2, 0.45, horizontalProgress),
       x: lerp(34, 18, horizontalProgress),
       y: lerp(-4, 2, horizontalProgress),
       scale: lerp(0.76, 0.86, horizontalProgress),
-      opacity: lerp(0.26, 0.42, horizontalProgress),
+      opacity: 0.88,
     };
   }
 
@@ -89,26 +89,26 @@ const getAvatarPose = ({
 
       if (tier === 'mobile') {
         return {
-          frameProgress: lerp(0.03, 0.12, heroProgress),
+          frameProgress: lerp(0, 0.25, heroProgress),
           x: 0,
           y: lerp(10, 12, heroProgress),
           scale: lerp(0.68, 0.74, heroProgress),
-          opacity: 0.42,
+          opacity: 0.88,
         };
       }
 
       if (tier === 'tablet') {
         return {
-          frameProgress: lerp(0.03, 0.14, heroProgress),
+          frameProgress: lerp(0, 0.25, heroProgress),
           x: 16,
           y: lerp(2, 4, heroProgress),
           scale: lerp(0.82, 0.88, heroProgress),
-          opacity: 0.74,
+          opacity: 0.88,
         };
       }
 
       return {
-        frameProgress: lerp(0.03, 0.16, heroProgress),
+        frameProgress: lerp(0, 0.25, heroProgress),
         x: 12,
         y: lerp(-2, 1, heroProgress),
         scale: lerp(0.96, 1.02, heroProgress),
@@ -118,106 +118,106 @@ const getAvatarPose = ({
     case 'projects':
       if (tier === 'mobile') {
         return {
-          frameProgress: 0.34,
+          frameProgress: 0.4,
           x: 18,
           y: 12,
           scale: 0.64,
-          opacity: 0.16,
+          opacity: 0.88,
         };
       }
       if (tier === 'tablet') {
         return {
-          frameProgress: 0.38,
+          frameProgress: 0.42,
           x: 22,
           y: 7,
           scale: 0.76,
-          opacity: 0.3,
+          opacity: 0.88,
         };
       }
       return {
-        frameProgress: 0.36,
+        frameProgress: 0.4,
         x: 28,
         y: -1,
         scale: 0.82,
-        opacity: 0.34,
+        opacity: 0.88,
       };
     case 'about':
       if (tier === 'mobile') {
         return {
-          frameProgress: 0.56,
+          frameProgress: 0.6,
           x: 20,
           y: 18,
           scale: 0.58,
-          opacity: 0.1,
+          opacity: 0.88,
         };
       }
       if (tier === 'tablet') {
         return {
-          frameProgress: 0.58,
+          frameProgress: 0.62,
           x: 28,
           y: 14,
           scale: 0.66,
-          opacity: 0.18,
+          opacity: 0.88,
         };
       }
       return {
-        frameProgress: 0.56,
+        frameProgress: 0.6,
         x: 34,
         y: 7,
         scale: 0.76,
-        opacity: 0.28,
+        opacity: 0.88,
       };
     case 'skills':
       if (tier === 'mobile') {
         return {
-          frameProgress: 0.64,
+          frameProgress: 0.8,
           x: 20,
           y: 22,
           scale: 0.56,
-          opacity: 0.08,
+          opacity: 0.88,
         };
       }
       if (tier === 'tablet') {
         return {
-          frameProgress: 0.66,
+          frameProgress: 0.82,
           x: 30,
           y: 18,
           scale: 0.6,
-          opacity: 0.12,
+          opacity: 0.88,
         };
       }
       return {
-        frameProgress: 0.68,
+        frameProgress: 0.8,
         x: 36,
         y: 13,
         scale: 0.68,
-        opacity: 0.22,
+        opacity: 0.88,
       };
     case 'contact':
       if (tier === 'mobile') {
         return {
-          frameProgress: 0.74,
+          frameProgress: 1.0,
           x: 18,
           y: 24,
           scale: 0.52,
-          opacity: 0.06,
+          opacity: 0.88,
         };
       }
       if (tier === 'tablet') {
         return {
-          frameProgress: 0.74,
+          frameProgress: 1.0,
           x: 30,
           y: 20,
           scale: 0.58,
-          opacity: 0.1,
+          opacity: 0.88,
         };
       }
       return {
-        frameProgress: 0.78,
+        frameProgress: 1.0,
         x: 35,
         y: 16,
         scale: 0.62,
-        opacity: 0.18,
+        opacity: 0.88,
       };
     default:
       return {
@@ -341,7 +341,7 @@ export const Scene: React.FC = () => {
   }, [getFrame, preloadAround]);
 
   useEffect(() => {
-    for (let i = 0; i < Math.min(18, FRAME_COUNT); i++) {
+    for (let i = 0; i < Math.min(50, FRAME_COUNT); i++) {
       const img = new Image();
       img.decoding = 'async';
       img.src = getFrameSrc(i);
@@ -422,7 +422,9 @@ export const Scene: React.FC = () => {
 
     const animate = () => {
       const currentPose = poseRef.current ?? targetPose;
-      const smoothing = scrollMode === 'horizontal' ? 0.24 : 0.16;
+      // Higher smoothing = silkier transitions (boy-coy style exponential decay)
+      // Horizontal mode needs faster response; vertical gets buttery-smooth 0.16
+      const smoothing = scrollMode === 'horizontal' ? 0.22 : 0.16;
       const nextPose: AvatarPose = {
         frameProgress: lerp(currentPose.frameProgress, targetPose.frameProgress, smoothing),
         x: lerp(currentPose.x, targetPose.x, smoothing),
@@ -432,11 +434,11 @@ export const Scene: React.FC = () => {
       };
 
       const settled =
-        Math.abs(nextPose.frameProgress - targetPose.frameProgress) < 0.002 &&
-        Math.abs(nextPose.x - targetPose.x) < 0.04 &&
-        Math.abs(nextPose.y - targetPose.y) < 0.04 &&
-        Math.abs(nextPose.scale - targetPose.scale) < 0.002 &&
-        Math.abs(nextPose.opacity - targetPose.opacity) < 0.01;
+        Math.abs(nextPose.frameProgress - targetPose.frameProgress) < 0.004 &&
+        Math.abs(nextPose.x - targetPose.x) < 0.08 &&
+        Math.abs(nextPose.y - targetPose.y) < 0.08 &&
+        Math.abs(nextPose.scale - targetPose.scale) < 0.004 &&
+        Math.abs(nextPose.opacity - targetPose.opacity) < 0.02;
 
       const resolvedPose = settled ? targetPose : nextPose;
       poseRef.current = resolvedPose;
@@ -455,8 +457,6 @@ export const Scene: React.FC = () => {
       }
     };
   }, [activeSection, applyPose, horizontalProgress, scrollMode, scrollProgress]);
-
-  const theme = useStore((s) => s.theme);
 
   /**
    * GSAP ScrollTrigger parallax effect.
@@ -512,21 +512,19 @@ export const Scene: React.FC = () => {
         pointerEvents: 'none',
         backgroundColor: 'var(--bg)',
         opacity: 0,
+        contain: 'strict',
       }}
     >
       <canvas 
         ref={canvasRef} 
         style={{ 
-          width: '100%', 
-          height: '100%', 
+          width: '100%',
+          height: '100%',
           display: 'block',
           transform: 'translate3d(0, 0, 0) scale(1)',
           transformOrigin: 'center center',
           willChange: 'transform, opacity',
-          // Dark mode: natural avatar. Light mode: subtle correction.
-          filter: theme === 'dark' 
-            ? 'contrast(1.08) brightness(0.98) saturate(0.96)' 
-            : 'contrast(1.08) brightness(1.03) saturate(0.84)' 
+          filter: 'none'
         }} 
       />
     </div>
