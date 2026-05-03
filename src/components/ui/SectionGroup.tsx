@@ -195,7 +195,6 @@ const ProjectCard: React.FC<{ project: Project; index: number; rail?: boolean }>
   index,
   rail = false,
 }) => {
-  const accent = index % 2 === 0 ? 'from-primary/24' : 'from-tertiary/24';
   const previewLines = project.codePreview ? getCodePreviewLines(project.codePreview, rail ? 2 : 4) : [];
   const totalLines = project.codePreview ? getCodePreviewLineCount(project.codePreview) : 0;
 
@@ -203,7 +202,7 @@ const ProjectCard: React.FC<{ project: Project; index: number; rail?: boolean }>
     <motion.article
       {...reveal}
       className={`project-card group grid overflow-hidden rounded-xl border border-outline-variant transition-[border-color,box-shadow] duration-200 hover:border-primary/30 ${
-        rail ? 'h-full min-h-[26rem]' : 'min-h-[26rem]'
+        rail ? 'h-auto min-h-[20rem]' : 'min-h-[20rem]'
       }`}
     >
       <div className={`flex h-full flex-col p-5 lg:p-6`}>
@@ -878,7 +877,7 @@ export const SectionGroup: React.FC = () => {
                 </div>
 
                 <div ref={horizontalTrackRef} className="horizontal-track flex w-max items-stretch gap-6 pb-4">
-                  <div className="surface-panel flex h-full min-h-[26rem] w-[min(56vw,340px)] flex-none flex-col justify-between rounded-xl p-6">
+                  <div className="surface-panel flex h-auto min-h-[20rem] w-[min(56vw,340px)] flex-none flex-col justify-between rounded-xl p-6">
                     <div>
                       <p className="text-xs font-label uppercase tracking-[0.22em] text-primary-dim">
                         Overview
@@ -901,7 +900,7 @@ export const SectionGroup: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="surface-panel group flex h-[42vh] min-h-[22rem] max-h-[26rem] w-[min(56vw,340px)] flex-none flex-col justify-between rounded-xl p-6 text-left transition hover:border-primary/45"
+                    className="surface-panel group flex h-auto min-h-[18rem] max-h-[22rem] w-[min(56vw,340px)] flex-none flex-col justify-between rounded-xl p-6 text-left transition hover:border-primary/45"
                   >
                     <span className="text-xs font-label uppercase tracking-[0.22em] text-primary-dim">Next</span>
                     <span className="text-2xl font-display font-bold leading-tight text-on-surface">

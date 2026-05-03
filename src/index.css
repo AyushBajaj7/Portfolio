@@ -11,7 +11,7 @@
 /* Smooth scroll snap for sections */
 html {
   scroll-behavior: smooth;
-  font-size: 14px;
+  font-size: 16px;
   text-rendering: optimizeLegibility;
 }
 
