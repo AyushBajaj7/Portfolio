@@ -18,7 +18,8 @@ html {
 /* Section snap points */
 .section-snap {
   scroll-snap-align: start;
-  scroll-snap-stop: always;
+  scroll-snap-stop: normal;
+  scroll-margin-top: 72px;
 }
 
 /* Hide scrollbar but keep functionality */
@@ -64,6 +65,8 @@ html {
   --glow-opacity: 0.06;
   --surface-high: #14141e;
   --surface-highest: #1a1a24;
+  --surface-panel: rgba(12, 17, 25, 0.76);
+  --surface-panel-strong: rgba(10, 14, 21, 0.92);
   --title-gradient-from: #00F2FF;
   --title-gradient-via: #9cff93;
   --title-gradient-to: #00ec3b;
@@ -89,6 +92,8 @@ html {
   --glow-opacity: 0.05;
   --surface-high: #f1f5f9;
   --surface-highest: #e2e8f0;
+  --surface-panel: rgba(255, 255, 255, 0.82);
+  --surface-panel-strong: rgba(255, 255, 255, 0.94);
   --title-gradient-from: #00F2FF;
   --title-gradient-via: #14ec00;
   --title-gradient-to: #00ec3b;
@@ -101,7 +106,7 @@ html {
 }
 
 .light-theme .glass-panel {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(0, 0, 0, 0.1);
   box-shadow: 0 4px 32px rgba(0, 0, 0, 0.1);
 }
@@ -131,9 +136,21 @@ html {
 
 @layer utilities {
   .glass-panel {
-    background: rgba(14, 14, 24, 0.82);
+    background: rgba(14, 18, 26, 0.88);
     border: 1px solid var(--outline);
-    backdrop-filter: blur(18px);
+    backdrop-filter: none;
+  }
+
+  .surface-panel {
+    background: var(--surface-panel);
+    border: 1px solid var(--outline);
+    box-shadow: 0 20px 44px rgba(3, 7, 18, 0.18);
+  }
+
+  .surface-panel-subtle {
+    background: color-mix(in srgb, var(--surface-panel) 82%, transparent);
+    border: 1px solid var(--outline);
+    box-shadow: 0 18px 34px rgba(3, 7, 18, 0.14);
   }
 
   .glass-panel-solid {
@@ -245,6 +262,7 @@ a {
   overflow-y: auto;
   overflow-x: hidden;
   scroll-behavior: smooth;
+  scroll-padding-top: 72px;
   scrollbar-gutter: stable;
   /* GPU: isolate the entire scroll layer for compositing */
   transform: translateZ(0);
@@ -271,6 +289,7 @@ a {
 .horizontal-drive {
   scroll-snap-align: start;
   scroll-snap-stop: normal;
+  scroll-margin-top: 72px;
   /* GPU: contain layout reflow within horizontal segment */
   contain: layout style;
 }
@@ -284,9 +303,23 @@ a {
 }
 
 .project-card {
+  background: color-mix(in srgb, var(--surface-panel-strong) 86%, transparent);
+  box-shadow: 0 22px 40px rgba(3, 7, 18, 0.18);
   contain: layout paint;
   transform: translateZ(0);
   backface-visibility: hidden;
+}
+
+.project-description-rail {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.light-theme .project-card {
+  background: color-mix(in srgb, var(--surface-panel-strong) 90%, transparent);
 }
 
 /* ─── GPU: Section-level containment ─────────────────────────────── */

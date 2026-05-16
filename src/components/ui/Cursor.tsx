@@ -71,7 +71,7 @@ export const Cursor: React.FC = () => {
       if (isScrollingRef.current) return;
       
       const target = e.target as HTMLElement;
-      const isProjectCard = target.closest('.project-card') || target.closest('[data-cursor="view"]');
+      const isProjectCard = target.closest('[data-cursor="view"]');
       const isLink = target.tagName === 'A' || target.tagName === 'BUTTON' || target.closest('a') || target.closest('button');
       const isText = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
       

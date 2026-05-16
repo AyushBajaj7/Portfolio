@@ -2,9 +2,9 @@
   "personal": {
     "name": "Ayush Bajaj",
     "title": "Software Developer",
-    "tagline": "Building comprehensive systems and interactive applications.",
-    "bio": "I'm a Software Developer with experience in building full-stack platforms, machine learning models, and complex data pipelines. I focus on clean architecture, honest implementation, and solving real-world problems.",
-    "about": "My expertise spans web development, machine learning, and cloud infrastructure. I thrive on building tools and experiences that are functional, robust, and driven by real-world needs, from agricultural platforms to AI-powered video pipelines.",
+    "tagline": "Building full-stack systems, ML workflows, and interactive applications.",
+    "bio": "I build full-stack platforms, machine learning workflows, and data-intensive products with a focus on clean architecture, reliable delivery, and practical problem solving.",
+    "about": "I work across web development, machine learning, and cloud infrastructure, building tools that are functional, robust, and shaped by real-world problems, from agricultural platforms to AI-powered video pipelines.",
     "location": "India and Kathmandu, Nepal",
     "email": "ayushbajaj215@gmail.com"
   },
@@ -48,20 +48,24 @@
   ],
   "skills": [
     {
-      "category": "Frontend",
-      "items": ["React.js", "HTML", "CSS", "Basic Three.js"]
+      "category": "Frontend Engineering",
+      "items": ["React.js", "Responsive UI", "Semantic HTML", "CSS systems", "Component architecture"]
     },
     {
-      "category": "Backend & Tools",
-      "items": ["Node.js", "Express.js", "REST APIs", "MongoDB / MySQL", "GitHub", "FFmpeg"]
+      "category": "Backend Systems",
+      "items": ["Node.js", "Express.js", "REST APIs", "MongoDB / MySQL", "Version control"]
     },
     {
-      "category": "AI & ML",
-      "items": ["Python", "Scikit-learn", "Basic NLP", "Transformers (FLAN-T5)"]
+      "category": "Applied AI",
+      "items": ["Python", "Scikit-learn", "Transformers (FLAN-T5)", "Model evaluation", "Data preprocessing"]
     },
     {
-      "category": "Cloud",
-      "items": ["AWS EC2", "IAM", "Amazon Polly"]
+      "category": "Deployment & Media",
+      "items": ["AWS EC2", "IAM", "Amazon Polly", "FFmpeg", "3D asset workflows"]
+    },
+    {
+      "category": "Engineering Foundations",
+      "items": ["Data Structures & Algorithms", "Problem solving", "Critical thinking", "Debugging", "Adaptability"]
     }
   ],
   "socials": [

@@ -5,12 +5,7 @@
  */
 
 import React, { useCallback, useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useStore } from '../../store/useStore';
-
-// Register GSAP plugin
-gsap.registerPlugin(ScrollTrigger);
 
 /**
  * Total number of avatar animation frames.
@@ -53,33 +48,35 @@ const getAvatarPose = ({
   const overallProgress = clamp(scrollProgress);
   const tier = getViewportTier(viewportWidth);
 
+  const scrollFrameProgress = overallProgress >= 0.995 ? 1 : overallProgress;
+
   if (scrollMode === 'horizontal') {
     if (tier === 'mobile') {
       return {
-        frameProgress: lerp(0.2, 0.4, horizontalProgress),
+        frameProgress: scrollFrameProgress,
         x: lerp(18, 10, horizontalProgress),
         y: lerp(8, 12, horizontalProgress),
         scale: lerp(0.62, 0.68, horizontalProgress),
-        opacity: 0.88,
+        opacity: 0.92,
       };
     }
 
     if (tier === 'tablet') {
       return {
-        frameProgress: lerp(0.2, 0.42, horizontalProgress),
-        x: lerp(26, 16, horizontalProgress),
+        frameProgress: scrollFrameProgress,
+        x: lerp(24, 14, horizontalProgress),
         y: lerp(2, 6, horizontalProgress),
-        scale: lerp(0.72, 0.8, horizontalProgress),
-        opacity: 0.88,
+        scale: lerp(0.68, 0.74, horizontalProgress),
+        opacity: 0.9,
       };
     }
 
     return {
-      frameProgress: lerp(0.2, 0.45, horizontalProgress),
-      x: lerp(34, 18, horizontalProgress),
-      y: lerp(-4, 2, horizontalProgress),
-      scale: lerp(0.76, 0.86, horizontalProgress),
-      opacity: 0.88,
+      frameProgress: scrollFrameProgress,
+      x: lerp(28, 18, horizontalProgress),
+      y: lerp(0, 4, horizontalProgress),
+      scale: lerp(0.62, 0.68, horizontalProgress),
+      opacity: 0.84,
     };
   }
 
@@ -89,139 +86,139 @@ const getAvatarPose = ({
 
       if (tier === 'mobile') {
         return {
-          frameProgress: lerp(0, 0.25, heroProgress),
+          frameProgress: scrollFrameProgress,
           x: 0,
           y: lerp(10, 12, heroProgress),
           scale: lerp(0.68, 0.74, heroProgress),
-          opacity: 0.88,
+          opacity: 0.9,
         };
       }
 
       if (tier === 'tablet') {
         return {
-          frameProgress: lerp(0, 0.25, heroProgress),
-          x: 16,
+          frameProgress: scrollFrameProgress,
+          x: 14,
           y: lerp(2, 4, heroProgress),
-          scale: lerp(0.82, 0.88, heroProgress),
-          opacity: 0.88,
+          scale: lerp(0.74, 0.8, heroProgress),
+          opacity: 0.9,
         };
       }
 
       return {
-        frameProgress: lerp(0, 0.25, heroProgress),
-        x: 12,
-        y: lerp(-2, 1, heroProgress),
-        scale: lerp(0.96, 1.02, heroProgress),
-        opacity: 0.88,
+        frameProgress: scrollFrameProgress,
+        x: 16,
+        y: lerp(0, 2, heroProgress),
+        scale: lerp(0.7, 0.76, heroProgress),
+        opacity: 0.86,
       };
     }
     case 'projects':
       if (tier === 'mobile') {
         return {
-          frameProgress: 0.4,
+          frameProgress: scrollFrameProgress,
           x: 18,
           y: 12,
           scale: 0.64,
-          opacity: 0.88,
+          opacity: 0.9,
         };
       }
       if (tier === 'tablet') {
         return {
-          frameProgress: 0.42,
-          x: 22,
+          frameProgress: scrollFrameProgress,
+          x: 20,
           y: 7,
-          scale: 0.76,
+          scale: 0.7,
           opacity: 0.88,
         };
       }
       return {
-        frameProgress: 0.4,
+        frameProgress: scrollFrameProgress,
         x: 28,
-        y: -1,
-        scale: 0.82,
-        opacity: 0.88,
+        y: 5,
+        scale: 0.64,
+        opacity: 0.82,
       };
     case 'about':
       if (tier === 'mobile') {
         return {
-          frameProgress: 0.6,
+          frameProgress: scrollFrameProgress,
           x: 20,
           y: 18,
           scale: 0.58,
-          opacity: 0.88,
+          opacity: 0.9,
         };
       }
       if (tier === 'tablet') {
         return {
-          frameProgress: 0.62,
+          frameProgress: scrollFrameProgress,
           x: 28,
           y: 14,
           scale: 0.66,
-          opacity: 0.88,
+          opacity: 0.84,
         };
       }
       return {
-        frameProgress: 0.6,
-        x: 34,
-        y: 7,
-        scale: 0.76,
-        opacity: 0.88,
+        frameProgress: scrollFrameProgress,
+        x: 36,
+        y: 16,
+        scale: 0.58,
+        opacity: 0.8,
       };
     case 'skills':
       if (tier === 'mobile') {
         return {
-          frameProgress: 0.8,
+          frameProgress: scrollFrameProgress,
           x: 20,
           y: 22,
           scale: 0.56,
-          opacity: 0.88,
+          opacity: 0.9,
         };
       }
       if (tier === 'tablet') {
         return {
-          frameProgress: 0.82,
+          frameProgress: scrollFrameProgress,
           x: 30,
           y: 18,
           scale: 0.6,
-          opacity: 0.88,
+          opacity: 0.84,
         };
       }
       return {
-        frameProgress: 0.8,
-        x: 36,
-        y: 13,
-        scale: 0.68,
-        opacity: 0.88,
+        frameProgress: scrollFrameProgress,
+        x: 40,
+        y: 18,
+        scale: 0.52,
+        opacity: 0.78,
       };
     case 'contact':
       if (tier === 'mobile') {
         return {
-          frameProgress: 1.0,
+          frameProgress: scrollFrameProgress,
           x: 18,
           y: 24,
           scale: 0.52,
-          opacity: 0.88,
+          opacity: 0.9,
         };
       }
       if (tier === 'tablet') {
         return {
-          frameProgress: 1.0,
+          frameProgress: scrollFrameProgress,
           x: 30,
           y: 20,
           scale: 0.58,
-          opacity: 0.88,
+          opacity: 0.84,
         };
       }
       return {
-        frameProgress: 1.0,
-        x: 35,
-        y: 16,
-        scale: 0.62,
-        opacity: 0.88,
+        frameProgress: scrollFrameProgress,
+        x: 42,
+        y: 22,
+        scale: 0.48,
+        opacity: 0.78,
       };
     default:
       return {
-        frameProgress: overallProgress,
+        frameProgress: scrollFrameProgress,
         x: 0,
         y: 0,
         scale: 1,
@@ -247,11 +244,13 @@ function scaleImage(img: HTMLImageElement, ctx: CanvasRenderingContext2D) {
   const horizontalRatio = width / img.width;
   const verticalRatio = height / img.height;
   
-  // Large screens: cover mode - fill screen, some cropping OK
-  // Small screens (<768px): contain mode - fit full avatar within bounds
-  const scaleRatio = isLargeScreen 
-    ? Math.max(horizontalRatio, verticalRatio) 
-    : Math.min(horizontalRatio, verticalRatio);
+  // Keep the full figure visible. Additional pose scale happens on the canvas element,
+  // so drawing with a contain-biased ratio avoids oversized crops at 100% browser zoom.
+  const containRatio = Math.min(horizontalRatio, verticalRatio);
+  const coverRatio = Math.max(horizontalRatio, verticalRatio);
+  const scaleRatio = isLargeScreen
+    ? Math.min(coverRatio, containRatio * 1.18)
+    : containRatio * 0.96;
   
   const drawWidth = img.width * scaleRatio;
   const drawHeight = img.height * scaleRatio;
@@ -341,13 +340,8 @@ export const Scene: React.FC = () => {
   }, [getFrame, preloadAround]);
 
   useEffect(() => {
-    for (let i = 0; i < Math.min(50, FRAME_COUNT); i++) {
-      const img = new Image();
-      img.decoding = 'async';
-      img.src = getFrameSrc(i);
-      imageCache.current.set(i, img);
-    }
-  }, [getFrameSrc]);
+    [0, 1, 2, FRAME_COUNT - 1].forEach((index) => getFrame(index));
+  }, [getFrame]);
 
   const applyPose = useCallback((pose: AvatarPose) => {
     const container = containerRef.current;
@@ -422,9 +416,7 @@ export const Scene: React.FC = () => {
 
     const animate = () => {
       const currentPose = poseRef.current ?? targetPose;
-      // Higher smoothing = silkier transitions (boy-coy style exponential decay)
-      // Horizontal mode needs faster response; vertical gets buttery-smooth 0.16
-      const smoothing = scrollMode === 'horizontal' ? 0.22 : 0.16;
+      const smoothing = scrollMode === 'horizontal' ? 0.18 : 0.12;
       const nextPose: AvatarPose = {
         frameProgress: lerp(currentPose.frameProgress, targetPose.frameProgress, smoothing),
         x: lerp(currentPose.x, targetPose.x, smoothing),
@@ -434,7 +426,7 @@ export const Scene: React.FC = () => {
       };
 
       const settled =
-        Math.abs(nextPose.frameProgress - targetPose.frameProgress) < 0.004 &&
+        Math.abs(nextPose.frameProgress - targetPose.frameProgress) < 0.002 &&
         Math.abs(nextPose.x - targetPose.x) < 0.08 &&
         Math.abs(nextPose.y - targetPose.y) < 0.08 &&
         Math.abs(nextPose.scale - targetPose.scale) < 0.004 &&
@@ -457,46 +449,6 @@ export const Scene: React.FC = () => {
       }
     };
   }, [activeSection, applyPose, horizontalProgress, scrollMode, scrollProgress]);
-
-  /**
-   * GSAP ScrollTrigger parallax effect.
-   * Moves the avatar canvas at 50% speed of scroll for depth effect.
-   * Creates visual separation between foreground content and background avatar.
-   */
-  useEffect(() => {
-    const container = containerRef.current;
-    const scrollContainer = document.getElementById('scroll-container');
-    if (!container || !scrollContainer) return;
-
-    // Only apply parallax on larger layouts where the avatar has room to move.
-    const isDesktop = window.innerWidth >= 1024;
-    if (!isDesktop) return;
-
-    const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: scrollContainer,
-        scroller: scrollContainer,
-        start: 'top top',
-        end: 'bottom bottom',
-        scrub: 1,
-      },
-    });
-
-    // Parallax: move avatar slower than scroll (50% speed)
-    tl.to(container, {
-      y: '8%',
-      ease: 'none',
-    });
-
-    return () => {
-      tl.kill();
-      ScrollTrigger.getAll().forEach(st => {
-        if (st.vars.trigger === scrollContainer) {
-          st.kill();
-        }
-      });
-    };
-  }, []);
 
   return (
     <div

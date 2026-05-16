@@ -6,7 +6,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion, useInView, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion, useInView } from 'framer-motion';
 import {
   ArrowRight,
   Check,
@@ -25,6 +25,16 @@ import { useStore } from '../../store/useStore';
 
 type Project = (typeof portfolioData.projects)[number];
 type SkillGroup = (typeof portfolioData.skills)[number];
+type ResumeCueGeometry = {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  controlOneX: number;
+  controlOneY: number;
+  controlTwoX: number;
+  controlTwoY: number;
+};
 
 // Constants for scroll and animation thresholds
 const SECTION_VIEWPORT_THRESHOLD = 0.16;
@@ -105,6 +115,9 @@ const getCodePreviewLineCount = (preview: string) =>
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean).length;
+
+const getResumeCuePath = (geometry: ResumeCueGeometry) =>
+  `M ${geometry.startX} ${geometry.startY} C ${geometry.controlOneX} ${geometry.controlOneY}, ${geometry.controlTwoX} ${geometry.controlTwoY}, ${geometry.endX} ${geometry.endY}`;
 
 const getImplementationFocus = (project: Project) => {
   const searchable = `${project.title} ${project.subtitle} ${project.tech.join(' ')}`.toLowerCase();
@@ -195,36 +208,52 @@ const ProjectCard: React.FC<{ project: Project; index: number; rail?: boolean }>
   index,
   rail = false,
 }) => {
-  const previewLines = project.codePreview ? getCodePreviewLines(project.codePreview, rail ? 2 : 4) : [];
+  const previewLines = project.codePreview ? getCodePreviewLines(project.codePreview, rail ? 1 : 4) : [];
   const totalLines = project.codePreview ? getCodePreviewLineCount(project.codePreview) : 0;
 
   return (
     <motion.article
       {...reveal}
       className={`project-card group grid overflow-hidden rounded-xl border border-outline-variant transition-[border-color,box-shadow] duration-200 hover:border-primary/30 ${
-        rail ? 'h-auto min-h-[20rem]' : 'min-h-[20rem]'
+        rail ? 'h-[18.5rem]' : 'min-h-[20rem]'
       }`}
     >
-      <div className={`flex h-full flex-col p-5 lg:p-6`}>
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <span className="rounded-full border border-outline-variant bg-surface/64 px-3 py-1 text-xs font-label uppercase tracking-[0.18em] text-on-surface-variant">
-            {String(index + 1).padStart(2, '0')}
-          </span>
-          <span className="text-[11px] font-label uppercase tracking-[0.18em] text-on-surface-variant">
-            {getProjectCategory(project)}
-          </span>
+      <div className={`flex h-full flex-col ${rail ? 'p-4' : 'p-5 lg:p-6'}`}>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="rounded-full border border-outline-variant bg-surface/64 px-3 py-1 text-xs font-label uppercase tracking-[0.18em] text-on-surface-variant">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            <span className="text-[11px] font-label uppercase tracking-[0.18em] text-on-surface-variant">
+              {getProjectCategory(project)}
+            </span>
+          </div>
+          {rail && (
+            <a
+              href={project.link}
+              target="_blank"
+              rel="noreferrer"
+              data-cursor="view"
+              aria-label={`Open ${project.title} source`}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-outline-variant bg-surface/55 text-on-surface-variant transition hover:border-primary/45 hover:text-primary"
+            >
+              <ExternalLink size={15} />
+            </a>
+          )}
         </div>
-        <p className="text-xs font-label uppercase tracking-[0.18em] text-primary-dim">{project.subtitle}</p>
-        <h3 className="mt-3 text-xl font-display font-bold leading-tight text-on-surface">
+        <p className={`${rail ? 'text-[11px]' : 'text-xs'} font-label uppercase tracking-[0.18em] text-primary-dim`}>
+          {project.subtitle}
+        </p>
+        <h3 className={`${rail ? 'mt-2 text-[1.05rem]' : 'mt-3 text-xl'} font-display font-bold leading-tight text-on-surface`}>
           {project.title}
         </h3>
-        <p className="mt-4 flex-1 text-sm leading-6 text-on-surface-variant project-description-rail">
+        <p className={`${rail ? 'mt-3 text-[13px] leading-5 project-description-rail' : 'mt-4 text-sm leading-6'} flex-1 text-on-surface-variant`}>
           {project.description}
         </p>
 
         {previewLines.length > 0 && (
-          <div className="mt-4 overflow-hidden rounded-xl border border-outline-variant bg-surface/72">
-            <div className="flex items-start justify-between gap-4 border-b border-outline-variant px-4 py-3">
+          <div className={`${rail ? 'mt-3' : 'mt-4'} overflow-hidden rounded-xl border border-outline-variant bg-surface/72`}>
+            <div className={`flex items-start justify-between gap-4 ${rail ? 'px-3 py-2' : 'border-b border-outline-variant px-4 py-3'}`}>
               <div>
                 <p className="text-[10px] font-label uppercase tracking-[0.18em] text-on-surface-variant">
                   Technical note
@@ -238,49 +267,55 @@ const ProjectCard: React.FC<{ project: Project; index: number; rail?: boolean }>
               </span>
             </div>
 
-            <div className="pointer-events-none select-none px-4 py-3">
-              {previewLines.map((line, lineIndex) => (
-                <div
-                  key={`${project.id}-${lineIndex}`}
-                  className={`grid grid-cols-[28px_minmax(0,1fr)] gap-3 py-2 ${
-                    lineIndex === 0 ? '' : 'border-t border-outline-variant/60'
-                  }`}
-                >
-                  <span className="text-[10px] font-label uppercase tracking-[0.16em] text-on-surface-variant/70">
-                    {String(lineIndex + 1).padStart(2, '0')}
-                  </span>
-                  <code className="block overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-6 text-on-surface lg:text-[12px]">
-                    {line}
-                  </code>
-                </div>
-              ))}
-            </div>
+            {!rail && (
+              <div className="pointer-events-none select-none px-4 py-3">
+                {previewLines.map((line, lineIndex) => (
+                  <div
+                    key={`${project.id}-${lineIndex}`}
+                    className={`grid grid-cols-[28px_minmax(0,1fr)] gap-3 py-2 ${
+                      lineIndex === 0 ? '' : 'border-t border-outline-variant/60'
+                    }`}
+                  >
+                    <span className="text-[10px] font-label uppercase tracking-[0.16em] text-on-surface-variant/70">
+                      {String(lineIndex + 1).padStart(2, '0')}
+                    </span>
+                    <code className="block overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-6 text-on-surface lg:text-[12px]">
+                      {line}
+                    </code>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        <div className="mt-6 flex flex-wrap gap-2">
-          {project.tech.slice(0, 5).map((tech) => (
-            <span
-              key={tech}
-              className="rounded-full border border-outline-variant bg-surface-container-high/60 px-3 py-1 text-[11px] text-on-surface-variant"
-            >
-              {tech}
-            </span>
-          ))}
-        </div>
+        {!rail && (
+          <>
+            <div className="mt-6 flex flex-wrap gap-2">
+              {project.tech.slice(0, 5).map((tech) => (
+                <span
+                  key={tech}
+                  className="rounded-full border border-outline-variant bg-surface-container-high/60 px-3 py-1 text-[11px] text-on-surface-variant"
+                >
+                  {tech}
+                </span>
+              ))}
+            </div>
 
-        <div className="mt-6 flex items-center justify-end gap-4">
-          <a
-            href={project.link}
-            target="_blank"
-            rel="noreferrer"
-            data-cursor="view"
-            className="inline-flex items-center gap-2 rounded-lg border border-outline-variant bg-surface/70 px-4 py-2 text-sm font-semibold text-on-surface transition hover:border-primary/45 hover:text-primary"
-          >
-            View source
-            <ExternalLink size={16} />
-          </a>
-        </div>
+            <div className="mt-6 flex items-center justify-end gap-4">
+              <a
+                href={project.link}
+                target="_blank"
+                rel="noreferrer"
+                data-cursor="view"
+                className="inline-flex items-center gap-2 rounded-lg border border-outline-variant bg-surface/70 px-4 py-2 text-sm font-semibold text-on-surface transition hover:border-primary/45 hover:text-primary"
+              >
+                View source
+                <ExternalLink size={16} />
+              </a>
+            </div>
+          </>
+        )}
       </div>
     </motion.article>
   );
@@ -290,22 +325,22 @@ const SkillCard: React.FC<{ group: SkillGroup; index: number }> = ({ group, inde
   const Icon = skillIcons[index % skillIcons.length];
 
   return (
-    <motion.div {...reveal} className="surface-panel-subtle rounded-xl p-6">
-      <div className="mb-5 flex items-start gap-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/8 text-primary">
-          <Icon size={21} />
+    <motion.div {...reveal} className="surface-panel-subtle rounded-xl p-5">
+      <div className="mb-4 flex items-start gap-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/8 text-primary">
+          <Icon size={20} />
         </div>
         <div>
-          <h3 className="text-xl font-display font-bold text-on-surface">{group.category}</h3>
+          <h3 className="text-lg font-display font-bold text-on-surface">{group.category}</h3>
           <p className="mt-1 text-sm leading-6 text-on-surface-variant">
             {capabilitySummaries[group.category] ?? 'Tools and habits used repeatedly across the work.'}
           </p>
         </div>
       </div>
-      <div className="grid gap-3">
+      <div className="grid gap-2">
         {group.items.map((item) => (
-          <div key={item} className="flex items-center gap-3 text-[1.02rem] leading-7 text-on-surface-variant">
-            <Check size={16} className="text-primary-dim" />
+          <div key={item} className="flex items-center gap-3 text-sm leading-6 text-on-surface-variant">
+            <Check size={15} className="text-primary-dim" />
             <span>{item}</span>
           </div>
         ))}
@@ -357,6 +392,7 @@ export const SectionGroup: React.FC = () => {
   const horizontalSectionRef = useRef<HTMLElement>(null);
   const horizontalViewportRef = useRef<HTMLDivElement>(null);
   const horizontalTrackRef = useRef<HTMLDivElement>(null);
+  const resumeButtonRef = useRef<HTMLAnchorElement>(null);
   const horizontalTravelRef = useRef(0);
   const lastScrollProgressRef = useRef(0);
   const lastHorizontalProgressRef = useRef(0);
@@ -368,72 +404,51 @@ export const SectionGroup: React.FC = () => {
   const [projectFilter, setProjectFilter] = useState('All');
   const [horizontalProgress, setLocalRailProgress] = useState(0);
   const [showResumeCue, setShowResumeCue] = useState(false);
-  const cueDismissedRef = useRef(false);
+  const [resumeCueGeometry, setResumeCueGeometry] = useState<ResumeCueGeometry | null>(null);
 
-  // ENTRANCE: show resume cue after page settles
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      if (!cueDismissedRef.current) {
-        setShowResumeCue(true);
-      }
-    }, 100);
-    return () => window.clearTimeout(timer);
-  }, []);
+    const measureCue = () => {
+      const resumeButton = resumeButtonRef.current;
+      if (!resumeButton) return;
 
-    // DISMISS: auto-hide on interaction or timeout
-    // Using a ref to prevent StrictMode from overriding state immediately
-  useEffect(() => {
-    if (!showResumeCue) return;
+      const rect = resumeButton.getBoundingClientRect();
+      const startX = window.innerWidth / 2;
+      const startY = window.innerHeight / 2;
+      const endX = rect.left + rect.width / 2;
+      const endY = rect.top + rect.height / 2;
 
-    let dismissed = false;
-    const dismiss = () => {
-      if (dismissed) return;
-      dismissed = true;
-      cueDismissedRef.current = true;
-      setShowResumeCue(false);
+      setResumeCueGeometry({
+        startX,
+        startY,
+        endX,
+        endY,
+        controlOneX: startX + (endX - startX) * 0.22,
+        controlOneY: startY - Math.max(90, window.innerHeight * 0.13),
+        controlTwoX: startX + (endX - startX) * 0.74,
+        controlTwoY: endY + Math.min(120, window.innerHeight * 0.14),
+      });
     };
 
-    const autoHide = window.setTimeout(dismiss, 10000);
+    const showTimer = window.setTimeout(() => {
+      measureCue();
+      setShowResumeCue(true);
+    }, 700);
+    const hideTimer = window.setTimeout(() => setShowResumeCue(false), 6200);
+    const dismiss = () => setShowResumeCue(false);
+    const scrollContainer = document.getElementById('scroll-container');
 
-    // Track initial scroll position to distinguish real user scrolls from layout-induced ones
-    // Layout-induced scroll events fire during initial paint and would falsely trigger dismiss
-    let initialScrollY = -1;
-    const scrollDismiss = () => {
-      const container = document.getElementById('scroll-container');
-      const currentY = container ? container.scrollTop : window.scrollY;
-      if (initialScrollY < 0) {
-        initialScrollY = currentY;
-        return; // First scroll event — record baseline, don't dismiss
-      }
-      if (Math.abs(currentY - initialScrollY) > 30) {
-        dismiss();
-      }
-    };
-
-    // Delay attaching interaction listeners so we don't catch initial clicks/scrolls
-    const attachDelay = window.setTimeout(() => {
-      // NOTE: DO NOT use anonymous wrappers in addEventListener, or removeEventListener will fail
-      window.addEventListener('click', dismiss, { once: true });
-      window.addEventListener('touchstart', dismiss, { once: true, passive: true });
-      window.addEventListener('scroll', scrollDismiss, { passive: true });
-      const scrollContainer = document.getElementById('scroll-container');
-      if (scrollContainer) {
-        scrollContainer.addEventListener('scroll', scrollDismiss, { passive: true });
-      }
-    }, 500);
+    window.addEventListener('keydown', dismiss, { once: true });
+    window.addEventListener('resize', measureCue, { passive: true });
+    scrollContainer?.addEventListener('scroll', dismiss, { once: true, passive: true });
 
     return () => {
-      window.clearTimeout(autoHide);
-      window.clearTimeout(attachDelay);
-      window.removeEventListener('click', dismiss);
-      window.removeEventListener('touchstart', dismiss);
-      window.removeEventListener('scroll', scrollDismiss);
-      const scrollContainer = document.getElementById('scroll-container');
-      if (scrollContainer) {
-        scrollContainer.removeEventListener('scroll', scrollDismiss);
-      }
+      window.clearTimeout(showTimer);
+      window.clearTimeout(hideTimer);
+      window.removeEventListener('keydown', dismiss);
+      window.removeEventListener('resize', measureCue);
+      scrollContainer?.removeEventListener('scroll', dismiss);
     };
-  }, [showResumeCue]);
+  }, []);
 
   const allSkills = useMemo(() => skills.flatMap((group) => group.items), [skills]);
   const projectFilters = useMemo(
@@ -445,6 +460,20 @@ export const SectionGroup: React.FC = () => {
     [projectFilter, projects],
   );
 
+  const handleOverlayWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
+    const scrollContainer = overlayRef.current;
+    if (!scrollContainer || event.defaultPrevented) return;
+
+    const previousScrollTop = scrollContainer.scrollTop;
+    const wheelDelta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+
+    window.requestAnimationFrame(() => {
+      if (Math.abs(wheelDelta) > 0 && scrollContainer.scrollTop === previousScrollTop) {
+        scrollContainer.scrollTop += wheelDelta;
+      }
+    });
+  }, []);
+
   const handleHorizontalWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
     if (window.innerWidth < 1024) return;
 
@@ -454,22 +483,10 @@ export const SectionGroup: React.FC = () => {
     const inHorizontalSegment = rect.top <= HORIZONTAL_SEGMENT_THRESHOLD && rect.bottom >= window.innerHeight;
     if (!inHorizontalSegment) return;
 
-    // Allow scroll-through at boundaries: if the track is fully scrolled
-    // in the wheel direction, let the event pass to resume vertical scrolling
-    const progress = lastHorizontalProgressRef.current;
-    const scrollingDown = event.deltaY > 0;
-    const scrollingUp = event.deltaY < 0;
-
-    if ((scrollingDown && progress >= 0.98) || (scrollingUp && progress <= 0.02)) {
-      return; // Let native scroll handle it — don't trap the user
-    }
-
     event.preventDefault();
-    
-    const scrollContainer = overlayRef.current;
-    if (scrollContainer) {
-      scrollContainer.scrollTop += event.deltaY;
-    }
+
+    const wheelDelta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+    overlayRef.current.scrollTop += wheelDelta;
   }, []);
 
   /**
@@ -492,8 +509,12 @@ export const SectionGroup: React.FC = () => {
     }
 
     const currentProgress = useStore.getState().horizontalProgress;
-    const paddingOffset = 128; // Accounts for px-16 (64px) on both sides of the viewport
-    const travel = Math.max(0, track.scrollWidth - viewport.clientWidth + paddingOffset);
+    const viewportStyle = window.getComputedStyle(viewport);
+    const visibleWidth =
+      viewport.clientWidth -
+      Number.parseFloat(viewportStyle.paddingLeft || '0') -
+      Number.parseFloat(viewportStyle.paddingRight || '0');
+    const travel = Math.max(0, track.scrollWidth - Math.max(1, visibleWidth));
     const sectionHeight = Math.max(window.innerHeight, Math.ceil(window.innerHeight + travel));
 
     horizontalTravelRef.current = travel;
@@ -635,15 +656,112 @@ export const SectionGroup: React.FC = () => {
   }, [visibleProjects.length, updateHorizontalTravel, updateScrollState]);
 
   return (
-    <div ref={overlayRef} id="scroll-container" className="ui-overlay">
+    <div ref={overlayRef} id="scroll-container" className="ui-overlay" onWheelCapture={handleOverlayWheel}>
       <div className="fixed inset-0 z-0 pointer-events-none cyber-grid opacity-70" />
 
       <main className="relative z-10">
+        <AnimatePresence>
+          {showResumeCue && resumeCueGeometry && (
+            <motion.div
+              className="pointer-events-none fixed inset-0 z-40 overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.45, ease: 'easeOut' }}
+            >
+              <motion.div
+                className="absolute inset-0 bg-background/28 backdrop-blur-[2px]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 1, 1, 0] }}
+                transition={{ duration: 4.8, times: [0, 0.18, 0.74, 1], ease: 'easeInOut' }}
+              />
+
+              <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
+                <defs>
+                  <linearGradient id="resume-cue-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="var(--tertiary)" stopOpacity="0.05" />
+                    <stop offset="45%" stopColor="var(--tertiary)" stopOpacity="0.95" />
+                    <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.95" />
+                  </linearGradient>
+                  <filter id="resume-cue-glow" x="-30%" y="-30%" width="160%" height="160%">
+                    <feGaussianBlur stdDeviation="4" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+
+                <motion.path
+                  d={getResumeCuePath(resumeCueGeometry)}
+                  fill="none"
+                  stroke="url(#resume-cue-gradient)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  filter="url(#resume-cue-glow)"
+                  initial={{ pathLength: 0, opacity: 0, pathOffset: 0.16 }}
+                  animate={{ pathLength: [0, 1, 1], opacity: [0, 1, 0], pathOffset: [0.16, 0, 0] }}
+                  transition={{ duration: 4.6, times: [0, 0.72, 1], ease: 'easeInOut' }}
+                />
+
+                <motion.circle
+                  r="8"
+                  fill="var(--primary)"
+                  filter="url(#resume-cue-glow)"
+                  initial={{ cx: resumeCueGeometry.startX, cy: resumeCueGeometry.startY, opacity: 0, scale: 0.4 }}
+                  animate={{
+                    cx: [
+                      resumeCueGeometry.startX,
+                      resumeCueGeometry.controlOneX,
+                      resumeCueGeometry.controlTwoX,
+                      resumeCueGeometry.endX,
+                    ],
+                    cy: [
+                      resumeCueGeometry.startY,
+                      resumeCueGeometry.controlOneY,
+                      resumeCueGeometry.controlTwoY,
+                      resumeCueGeometry.endY,
+                    ],
+                    opacity: [0, 1, 1, 0],
+                    scale: [0.4, 1, 0.9, 0.45],
+                  }}
+                  transition={{ duration: 4.25, times: [0, 0.32, 0.76, 1], ease: 'easeInOut' }}
+                />
+
+                <motion.path
+                  d={`M ${resumeCueGeometry.endX - 10} ${resumeCueGeometry.endY - 6} L ${resumeCueGeometry.endX} ${resumeCueGeometry.endY} L ${resumeCueGeometry.endX - 10} ${resumeCueGeometry.endY + 6}`}
+                  fill="none"
+                  stroke="var(--primary)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  initial={{ opacity: 0, pathLength: 0 }}
+                  animate={{ opacity: [0, 1, 1, 0], pathLength: [0, 1, 1, 1] }}
+                  transition={{ duration: 1.5, delay: 2.7, times: [0, 0.35, 0.76, 1], ease: 'easeOut' }}
+                />
+              </svg>
+
+              <motion.div
+                className="absolute rounded-full border border-tertiary/25 bg-surface/76 px-3 py-1.5 text-[10px] font-label uppercase tracking-[0.18em] text-tertiary shadow-xl shadow-tertiary/10 backdrop-blur-sm"
+                style={{
+                  left: resumeCueGeometry.startX,
+                  top: resumeCueGeometry.startY,
+                  transform: 'translate(-50%, -50%)',
+                }}
+                initial={{ opacity: 0, y: 10, filter: 'blur(8px)' }}
+                animate={{ opacity: [0, 1, 1, 0], y: [10, 0, 0, -8], filter: ['blur(8px)', 'blur(0px)', 'blur(0px)', 'blur(8px)'] }}
+                transition={{ duration: 4.2, times: [0, 0.16, 0.72, 1], ease: 'easeOut' }}
+              >
+                Resume download
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
 
         <SectionShell
           id="hero"
-          className="flex flex-col justify-center min-h-screen overflow-hidden px-5 py-16 sm:px-8 sm:py-18 lg:px-16 lg:py-20"
+          className="flex min-h-[100svh] flex-col justify-center overflow-hidden px-5 pb-10 pt-24 sm:px-8 lg:px-12 xl:px-16"
         >
           <div className="pointer-events-none absolute inset-0">
             {heroDots.map((dot) => (
@@ -664,35 +782,22 @@ export const SectionGroup: React.FC = () => {
             <motion.div {...reveal} className="max-w-3xl relative z-10">
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/8 px-4 py-2 text-xs font-label font-semibold uppercase tracking-[0.18em] text-primary-dim">
                 <span className="h-2 w-2 rounded-full bg-primary" />
-                Software engineering portfolio
+                Full-stack / ML / interactive systems
               </div>
 
-              <h1 className="text-4xl font-display font-bold leading-[0.96] text-on-surface sm:text-5xl xl:text-[4.5rem]">
+              <h1 className="text-4xl font-display font-bold leading-[0.96] text-on-surface sm:text-5xl lg:text-6xl xl:text-[4.3rem]">
                 {personal.name}
                 <span className="mt-3 block bg-gradient-to-r from-tertiary via-primary to-primary-dim bg-clip-text text-transparent">
                   {personal.title}
                 </span>
               </h1>
 
-              <p className="mt-6 max-w-2xl text-base leading-8 text-on-surface-variant sm:text-lg">
-                {personal.tagline} {personal.bio}
+              <p className="mt-6 max-w-2xl text-base leading-7 text-on-surface-variant sm:text-lg sm:leading-8">
+                {personal.bio}
               </p>
             </motion.div>
 
-            {/* Global Blur Overlay placed BETWEEN text and buttons */}
-            <AnimatePresence>
-              {showResumeCue && (
-                <motion.div
-                  initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
-                  animate={{ opacity: 1, backdropFilter: "blur(6px)" }}
-                  exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
-                  transition={{ duration: 1.2, ease: "easeOut" }}
-                  className="fixed inset-0 z-40 bg-surface/40 pointer-events-none"
-                />
-              )}
-            </AnimatePresence>
-
-            <motion.div {...reveal} className={`mt-8 flex flex-col gap-3 sm:flex-row relative ${showResumeCue ? 'z-50' : 'z-10'}`}>
+            <motion.div {...reveal} className="relative z-10 mt-8 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
                 onClick={() => document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' })}
@@ -702,99 +807,26 @@ export const SectionGroup: React.FC = () => {
                 <ArrowRight size={18} />
               </button>
               <a
+                ref={resumeButtonRef}
                 href="/resume.pdf"
-                className={`relative inline-flex items-center justify-center gap-2 rounded-lg border border-outline-variant bg-surface-container-high/70 px-6 py-3.5 text-sm font-semibold text-on-surface transition hover:border-tertiary/45 hover:text-tertiary group ${
-                  showResumeCue ? 'shadow-2xl shadow-surface-highest/50 ring-1 ring-tertiary/30' : ''
+                className={`relative inline-flex items-center justify-center gap-2 rounded-lg border px-6 py-3.5 text-sm font-semibold transition ${
+                  showResumeCue
+                    ? 'z-50 border-tertiary/40 bg-surface-container-high text-tertiary shadow-2xl shadow-tertiary/10 ring-1 ring-tertiary/25'
+                    : 'border-outline-variant bg-surface-container-high/70 text-on-surface hover:border-tertiary/45 hover:text-tertiary'
                 }`}
               >
                 <Download size={18} />
                 Resume
-
-                {/* Animated Directional Cue */}
-                <AnimatePresence>
-                  {showResumeCue && (
-                    <>
-                      {/* ── Mobile / Tablet: downward arrow below the button ── */}
-                      <motion.div
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.4, ease: "easeOut" }}
-                        className="absolute top-[calc(100%+10px)] left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 pointer-events-none lg:hidden"
-                      >
-                        <motion.div
-                          className="text-[9px] font-label uppercase tracking-[0.2em] text-on-surface/70 font-bold whitespace-nowrap"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.5, duration: 0.5 }}
-                        >
-                          Download Resume
-                        </motion.div>
-                        <svg width="24" height="36" viewBox="0 0 24 36" fill="none" stroke="currentColor" className="text-on-surface/60" strokeWidth="1.5" strokeLinecap="round">
-                          <motion.line
-                            x1="12" y1="0" x2="12" y2="26"
-                            initial={{ pathLength: 0, opacity: 0 }}
-                            animate={{ pathLength: 1, opacity: 1 }}
-                            transition={{ duration: 0.8, delay: 0.8, ease: "easeOut" }}
-                          />
-                          <motion.path
-                            d="M 5 20 L 12 28 L 19 20"
-                            strokeLinejoin="round"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ duration: 0.3, delay: 1.6 }}
-                          />
-                        </svg>
-                      </motion.div>
-
-                      {/* ── Desktop: horizontal loop arrow to the right ── */}
-                      <motion.div
-                        initial={{ opacity: 1 }}
-                        exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
-                        transition={{ duration: 0.4, ease: "easeOut" }}
-                        className="absolute left-[calc(100%+24px)] top-1/2 -translate-y-1/2 hidden lg:block pointer-events-none w-[160px]"
-                      >
-                        <svg width="160" height="80" viewBox="0 0 160 80" fill="none" stroke="currentColor" className="text-on-surface/60 overflow-visible">
-                          <motion.path
-                            d="M 150 15 C 90 15, 90 75, 60 75 C 30 75, 30 25, 60 25 C 90 25, 48 49, 6 49"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            initial={{ pathLength: 0, opacity: 0 }}
-                            animate={{ pathLength: 1, opacity: 1 }}
-                            transition={{ duration: 1.5, delay: 0.8, ease: "easeInOut" }}
-                          />
-                          <motion.path
-                            d="M 14 43 L 6 49 L 14 55"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ duration: 0.3, delay: 2.3 }}
-                          />
-                        </svg>
-                        <motion.div
-                          className="absolute top-[0px] right-[5px] text-[10px] font-label uppercase tracking-[0.2em] text-on-surface/80 font-bold whitespace-nowrap"
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 2.5, duration: 0.5 }}
-                        >
-                          Download Resume
-                        </motion.div>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
               </a>
             </motion.div>
 
-            <motion.div {...reveal} className={`mt-10 grid max-w-2xl gap-3 sm:grid-cols-3 relative ${showResumeCue ? 'z-10' : 'z-10'}`}>
+            <motion.div {...reveal} className="relative z-10 mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">
               <Metric value={`${projects.length}+`} label="Projects" />
               <Metric value={`${allSkills.length}+`} label="Skills" />
               <Metric value="3" label="Domains" />
             </motion.div>
 
-            <motion.div {...reveal} className={`mt-7 flex max-w-2xl flex-wrap gap-2 text-xs font-label uppercase tracking-[0.16em] text-on-surface-variant relative ${showResumeCue ? 'z-10' : 'z-10'}`}>
+            <motion.div {...reveal} className="relative z-10 mt-6 flex max-w-2xl flex-wrap gap-2 text-xs font-label uppercase tracking-[0.16em] text-on-surface-variant">
               <span className="rounded-full border border-outline-variant bg-surface-container-high/60 px-3 py-2">
                 Practical AI
               </span>
@@ -811,12 +843,12 @@ export const SectionGroup: React.FC = () => {
         <section
           id="projects"
           ref={horizontalSectionRef}
-          className="horizontal-drive relative min-h-screen px-5 pb-16 pt-14 sm:px-8 lg:px-0 lg:pb-0 lg:pt-16"
+          className="horizontal-drive relative min-h-screen px-5 pb-16 pt-24 sm:px-8 lg:px-0 lg:pb-0 lg:pt-10"
         >
-          <div className="lg:sticky lg:top-16 lg:flex lg:flex-col lg:justify-center lg:h-[calc(100vh-4rem)] lg:overflow-hidden">
-            <div className="mx-auto w-full min-w-0 max-w-screen-2xl py-18 lg:max-w-none lg:py-0">
-              <div className="px-0 lg:px-16">
-                <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="lg:sticky lg:top-16 lg:flex lg:h-[calc(100vh-4rem)] lg:flex-col lg:justify-center lg:overflow-hidden">
+            <div className="mx-auto w-full min-w-0 max-w-screen-2xl py-12 lg:max-w-none lg:py-0">
+              <div className="px-0 lg:px-12 xl:px-16">
+                <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                   <SectionHeading
                     eyebrow={sectionCopy.projects.eyebrow}
                     title={sectionCopy.projects.title}
@@ -833,7 +865,7 @@ export const SectionGroup: React.FC = () => {
                   </a>
                 </div>
 
-                <div className="mb-7 flex flex-wrap gap-2">
+                <div className="mb-4 flex flex-wrap gap-2">
                   {projectFilters.map((filter) => (
                     <button
                       key={filter}
@@ -851,8 +883,8 @@ export const SectionGroup: React.FC = () => {
                 </div>
               </div>
 
-              <div ref={horizontalViewportRef} onWheel={handleHorizontalWheel} className="hidden overflow-hidden px-16 lg:block">
-                <div className="mb-5 flex items-center justify-between gap-6">
+              <div ref={horizontalViewportRef} onWheel={handleHorizontalWheel} className="hidden overflow-hidden px-12 xl:px-16 lg:block">
+                <div className="mb-3 flex items-center justify-between gap-6">
                   <div className="flex items-center gap-3 text-xs font-label uppercase tracking-[0.2em] text-on-surface-variant">
                     <span className="h-2 w-2 rounded-full bg-primary" />
                     Project rail
@@ -865,7 +897,7 @@ export const SectionGroup: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="mb-5 flex items-center justify-between gap-6 text-[11px] font-label uppercase tracking-[0.18em] text-on-surface-variant">
+                <div className="mb-3 flex items-center justify-between gap-6 text-[11px] font-label uppercase tracking-[0.18em] text-on-surface-variant">
                   <span>
                     {Math.min(
                       visibleProjects.length,
@@ -876,23 +908,23 @@ export const SectionGroup: React.FC = () => {
                   <span>{projectFilter === 'All' ? 'All categories' : projectFilter}</span>
                 </div>
 
-                <div ref={horizontalTrackRef} className="horizontal-track flex w-max items-stretch gap-6 pb-4">
-                  <div className="surface-panel flex h-auto min-h-[20rem] w-[min(56vw,340px)] flex-none flex-col justify-between rounded-xl p-6">
+                <div ref={horizontalTrackRef} className="horizontal-track flex w-max items-stretch gap-5 py-2">
+                  <div className="surface-panel flex h-[18.5rem] w-[20rem] flex-none flex-col justify-between rounded-xl p-5 xl:w-[21rem]">
                     <div>
                       <p className="text-xs font-label uppercase tracking-[0.22em] text-primary-dim">
                         Overview
                       </p>
-                      <h3 className="mt-4 text-2xl font-display font-bold leading-tight text-on-surface">
+                      <h3 className="mt-4 text-xl font-display font-bold leading-tight text-on-surface">
                         Real projects with technical context.
                       </h3>
                     </div>
-                    <p className="max-w-sm text-sm leading-7 text-on-surface-variant">
+                    <p className="max-w-sm text-sm leading-6 text-on-surface-variant">
                       Four projects with scope, stack, and implementation notes.
                     </p>
                   </div>
 
                   {visibleProjects.map((project, index) => (
-                    <div key={project.id} className="flex w-[min(56vw,340px)] flex-none flex-col">
+                    <div key={project.id} className="flex w-[20rem] flex-none flex-col xl:w-[21rem]">
                       <ProjectCard project={project} index={index} rail />
                     </div>
                   ))}
@@ -900,11 +932,11 @@ export const SectionGroup: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="surface-panel group flex h-auto min-h-[18rem] max-h-[22rem] w-[min(56vw,340px)] flex-none flex-col justify-between rounded-xl p-6 text-left transition hover:border-primary/45"
+                    className="surface-panel group flex h-[18.5rem] w-[20rem] flex-none flex-col justify-between rounded-xl p-5 text-left transition hover:border-primary/45 xl:w-[21rem]"
                   >
                     <span className="text-xs font-label uppercase tracking-[0.22em] text-primary-dim">Next</span>
-                    <span className="text-2xl font-display font-bold leading-tight text-on-surface">
-                      Continue to profile and skills.
+                    <span className="text-xl font-display font-bold leading-tight text-on-surface">
+                      Continue to profile.
                     </span>
                     <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-on-primary transition group-hover:translate-x-2">
                       <ArrowRight size={22} />
@@ -922,7 +954,7 @@ export const SectionGroup: React.FC = () => {
           </div>
         </section>
 
-        <SectionShell id="about" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-30">
+        <SectionShell id="about" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-24">
           <div className="mx-auto grid max-w-screen-2xl gap-10 lg:grid-cols-[0.5fr_0.5fr] lg:items-start">
             <SectionHeading
               eyebrow={sectionCopy.about.eyebrow}
@@ -965,7 +997,7 @@ export const SectionGroup: React.FC = () => {
           </div>
         </SectionShell>
 
-        <SectionShell id="skills" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-30">
+        <SectionShell id="skills" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-24">
           <div className="mx-auto max-w-screen-2xl">
             <SectionHeading
               eyebrow={sectionCopy.skills.eyebrow}
@@ -973,7 +1005,7 @@ export const SectionGroup: React.FC = () => {
               copy={sectionCopy.skills.copy}
             />
 
-            <div className="mt-12 grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
+            <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {skills.map((group, index) => (
                 <SkillCard key={group.category} group={group} index={index} />
               ))}
@@ -981,7 +1013,7 @@ export const SectionGroup: React.FC = () => {
           </div>
         </SectionShell>
 
-        <SectionShell id="contact" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-30">
+        <SectionShell id="contact" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-24">
           <div className="mx-auto grid max-w-screen-2xl gap-10 lg:grid-cols-[0.54fr_0.46fr] lg:items-center">
             <SectionHeading
               eyebrow={sectionCopy.contact.eyebrow}

@@ -16,22 +16,13 @@ export const PageLoader: React.FC = () => {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    let finishTimer: number | undefined;
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        const newProgress = prev + 10;
-        if (newProgress >= 100) {
-          clearInterval(interval);
-          finishTimer = window.setTimeout(() => setIsLoading(false), 300);
-          return 100;
-        }
-        return newProgress;
-      });
-    }, 100);
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const progressTimer = window.setTimeout(() => setProgress(100), prefersReducedMotion ? 0 : 120);
+    const finishTimer = window.setTimeout(() => setIsLoading(false), prefersReducedMotion ? 80 : 520);
 
     return () => {
-      clearInterval(interval);
-      if (finishTimer) window.clearTimeout(finishTimer);
+      window.clearTimeout(progressTimer);
+      window.clearTimeout(finishTimer);
     };
   }, []);
 
@@ -42,13 +33,13 @@ export const PageLoader: React.FC = () => {
           className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#0a0a0f]"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.5, ease: 'easeInOut' }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
         >
           <motion.div
             className="relative"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.3 }}
           >
             <h1 className="text-4xl sm:text-6xl font-display font-bold tracking-tight text-on-surface">
               Ayush<span className="text-primary">.</span>
@@ -58,7 +49,7 @@ export const PageLoader: React.FC = () => {
               className="mt-2 h-[2px] bg-gradient-to-r from-primary to-tertiary"
               initial={{ width: 0 }}
               animate={{ width: '100%' }}
-              transition={{ duration: 1, delay: 0.3 }}
+              transition={{ duration: 0.45, delay: 0.05 }}
             />
           </motion.div>
 
@@ -77,7 +68,7 @@ export const PageLoader: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
-            Loading Experience
+            Loading
           </motion.p>
         </motion.div>
       )}
