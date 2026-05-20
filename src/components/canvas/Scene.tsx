@@ -1,6 +1,6 @@
 /**
  * @fileoverview Scene component - Renders scroll-driven avatar animation using HTML5 Canvas.
- * Preloads 300 PNG frames and displays them based on scroll progress for a 3D parallax effect.
+ * Loads the current avatar PNG frame plus nearby frames based on scroll progress.
  * @author Ayush Bajaj
  */
 
@@ -274,7 +274,7 @@ function scaleImage(img: HTMLImageElement, ctx: CanvasRenderingContext2D) {
 
 /**
  * Scene component - Renders scroll-driven avatar animation using HTML5 Canvas.
- * Preloads 300 PNG frames and displays them based on scroll progress for a 3D parallax effect.
+ * Frames are cached on demand instead of eager-loading the full sequence.
  */
 export const Scene: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);

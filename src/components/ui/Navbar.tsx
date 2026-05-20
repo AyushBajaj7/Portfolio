@@ -179,7 +179,7 @@ export const Navbar: React.FC = () => {
             </button>
 
             <a
-              href="resume.pdf"
+              href={`${import.meta.env.BASE_URL}resume.pdf`}
               download
               className="hidden xl:flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/8 border border-primary/20 text-primary-dim text-xs font-bold tracking-wider uppercase hover:bg-primary hover:text-on-primary transition-all duration-300"
             >
@@ -205,7 +205,7 @@ export const Navbar: React.FC = () => {
         <AnimatePresence>
           {mobileOpen && (
             <motion.div
-              className="fixed inset-0 z-40 flex items-center justify-center bg-surface/96 px-6 backdrop-blur-xl lg:hidden"
+              className="fixed inset-0 z-40 flex items-center justify-center bg-surface/98 px-6 lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -259,7 +259,7 @@ export const Navbar: React.FC = () => {
                   {theme === 'light' ? <Moon size={24} /> : <Sun size={24} />}
                 </button>
                 <a
-                  href="resume.pdf"
+                  href={`${import.meta.env.BASE_URL}resume.pdf`}
                   download
                   className="flex h-11 w-11 items-center justify-center rounded-lg border border-primary/30 bg-primary text-on-primary"
                   aria-label="Download resume"

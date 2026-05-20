@@ -1055,7 +1055,7 @@ export const SectionGroup: React.FC = () => {
               </button>
               <a
                 ref={resumeButtonRef}
-                href="/resume.pdf"
+                href={`${import.meta.env.BASE_URL}resume.pdf`}
                 className={`relative inline-flex items-center justify-center gap-2 rounded-lg border px-6 py-3.5 text-sm font-semibold transition ${
                   showResumeCue
                     ? 'z-50 border-tertiary/40 bg-surface-container-high text-tertiary shadow-2xl shadow-tertiary/10 ring-1 ring-tertiary/25'
