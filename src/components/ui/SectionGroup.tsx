@@ -626,17 +626,18 @@ export const SectionGroup: React.FC = () => {
       const startX = window.innerWidth / 2;
       const startY = window.innerHeight / 2;
       const endX = rect.left + rect.width / 2;
-      const endY = rect.top + rect.height / 2;
+      const endY = rect.top + Math.max(8, rect.height * 0.18);
+      const approachY = Math.max(72, endY - Math.min(110, window.innerHeight * 0.16));
 
       setResumeCueGeometry({
         startX,
         startY,
         endX,
         endY,
-        controlOneX: startX + (endX - startX) * 0.22,
-        controlOneY: startY - Math.max(90, window.innerHeight * 0.13),
-        controlTwoX: startX + (endX - startX) * 0.74,
-        controlTwoY: endY + Math.min(120, window.innerHeight * 0.14),
+        controlOneX: startX + (endX - startX) * 0.2,
+        controlOneY: startY - Math.max(54, window.innerHeight * 0.09),
+        controlTwoX: endX,
+        controlTwoY: approachY,
       });
     };
 
@@ -947,6 +948,24 @@ export const SectionGroup: React.FC = () => {
                       <feMergeNode in="SourceGraphic" />
                     </feMerge>
                   </filter>
+                  <marker
+                    id="resume-cue-arrowhead"
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="8"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <path
+                      d="M 1 1 L 8 5 L 1 9"
+                      fill="none"
+                      stroke="var(--primary)"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </marker>
                 </defs>
 
                 <motion.path
@@ -956,6 +975,7 @@ export const SectionGroup: React.FC = () => {
                   strokeWidth="2"
                   strokeLinecap="round"
                   filter="url(#resume-cue-glow)"
+                  markerEnd="url(#resume-cue-arrowhead)"
                   initial={{ pathLength: 0, opacity: 0, pathOffset: 0.16 }}
                   animate={{ pathLength: [0, 1, 1], opacity: [0, 1, 0], pathOffset: [0.16, 0, 0] }}
                   transition={{ duration: 4.6, times: [0, 0.72, 1], ease: 'easeInOut' }}
@@ -983,18 +1003,6 @@ export const SectionGroup: React.FC = () => {
                     scale: [0.4, 1, 0.9, 0.45],
                   }}
                   transition={{ duration: 4.25, times: [0, 0.32, 0.76, 1], ease: 'easeInOut' }}
-                />
-
-                <motion.path
-                  d={`M ${resumeCueGeometry.endX - 10} ${resumeCueGeometry.endY - 6} L ${resumeCueGeometry.endX} ${resumeCueGeometry.endY} L ${resumeCueGeometry.endX - 10} ${resumeCueGeometry.endY + 6}`}
-                  fill="none"
-                  stroke="var(--primary)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  initial={{ opacity: 0, pathLength: 0 }}
-                  animate={{ opacity: [0, 1, 1, 0], pathLength: [0, 1, 1, 1] }}
-                  transition={{ duration: 1.5, delay: 2.7, times: [0, 0.35, 0.76, 1], ease: 'easeOut' }}
                 />
               </svg>
 
