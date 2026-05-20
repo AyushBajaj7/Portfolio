@@ -241,10 +241,10 @@ const ProjectCard: React.FC<{
     <motion.article
       {...reveal}
       className={`project-card group grid overflow-hidden rounded-xl border border-outline-variant transition-[border-color,box-shadow] duration-200 hover:border-primary/30 ${
-        rail ? 'h-[18.5rem]' : 'min-h-[20rem]'
+        rail ? 'h-full min-h-0' : 'min-h-[20rem]'
       }`}
     >
-      <div className={`flex h-full flex-col ${rail ? 'p-4' : 'p-5 lg:p-6'}`}>
+      <div className={`flex h-full flex-col ${rail ? 'p-3.5' : 'p-5 lg:p-6'}`}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="rounded-full border border-outline-variant bg-surface/64 px-3 py-1 text-xs font-label uppercase tracking-[0.18em] text-on-surface-variant">
@@ -286,15 +286,15 @@ const ProjectCard: React.FC<{
         <p className={`${rail ? 'text-[11px]' : 'text-xs'} font-label uppercase tracking-[0.18em] text-primary-dim`}>
           {project.subtitle}
         </p>
-        <h3 className={`${rail ? 'mt-2 text-[1.05rem]' : 'mt-3 text-xl'} font-display font-bold leading-tight text-on-surface`}>
+        <h3 className={`${rail ? 'mt-2 text-base' : 'mt-3 text-xl'} font-display font-bold leading-tight text-on-surface`}>
           {project.title}
         </h3>
-        <p className={`${rail ? 'mt-3 text-[13px] leading-5 project-description-rail' : 'mt-4 text-sm leading-6'} flex-1 text-on-surface-variant`}>
+        <p className={`${rail ? 'mt-2 text-[12px] leading-5 project-description-rail' : 'mt-4 text-sm leading-6'} flex-1 text-on-surface-variant`}>
           {project.description}
         </p>
 
         {previewLines.length > 0 && (
-          <div className={`${rail ? 'mt-3' : 'mt-4'} overflow-hidden rounded-xl border border-outline-variant bg-surface/72`}>
+          <div className={`${rail ? 'mt-2' : 'mt-4'} overflow-hidden rounded-xl border border-outline-variant bg-surface/72`}>
             <div className={`flex items-start justify-between gap-4 ${rail ? 'px-3 py-2' : 'border-b border-outline-variant px-4 py-3'}`}>
               <div>
                 <p className="text-[10px] font-label uppercase tracking-[0.18em] text-on-surface-variant">
@@ -716,21 +716,6 @@ export const SectionGroup: React.FC = () => {
     });
   }, []);
 
-  const handleHorizontalWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
-    if (window.innerWidth < 1024) return;
-
-    const rect = horizontalSectionRef.current?.getBoundingClientRect();
-    if (!rect || !overlayRef.current) return;
-    
-    const inHorizontalSegment = rect.top <= HORIZONTAL_SEGMENT_THRESHOLD && rect.bottom >= window.innerHeight;
-    if (!inHorizontalSegment) return;
-
-    event.preventDefault();
-
-    const wheelDelta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
-    overlayRef.current.scrollTop += wheelDelta;
-  }, []);
-
   /**
    * Calculates and sets the total scrollable distance for the horizontal project rail.
    * Adjusts the vertical height of the section to map 1:1 with horizontal travel distance,
@@ -896,6 +881,31 @@ export const SectionGroup: React.FC = () => {
 
     return () => observer.disconnect();
   }, [visibleProjects.length, updateHorizontalTravel, updateScrollState]);
+
+  useEffect(() => {
+    const viewport = horizontalViewportRef.current;
+    const section = horizontalSectionRef.current;
+    const scrollContainer = overlayRef.current;
+    if (!viewport || !section || !scrollContainer) return;
+
+    const handleWheel = (event: WheelEvent) => {
+      if (window.innerWidth < 1024) return;
+
+      const rect = section.getBoundingClientRect();
+      const inHorizontalSegment = rect.top <= HORIZONTAL_SEGMENT_THRESHOLD && rect.bottom >= window.innerHeight;
+      if (!inHorizontalSegment) return;
+
+      event.preventDefault();
+      const wheelDelta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+      scrollContainer.scrollTop += wheelDelta;
+    };
+
+    viewport.addEventListener('wheel', handleWheel, { capture: true, passive: false });
+
+    return () => {
+      viewport.removeEventListener('wheel', handleWheel, { capture: true });
+    };
+  }, []);
 
   return (
     <div ref={overlayRef} id="scroll-container" className="ui-overlay" onWheelCapture={handleOverlayWheel}>
@@ -1092,8 +1102,8 @@ export const SectionGroup: React.FC = () => {
           ref={horizontalSectionRef}
           className="horizontal-drive relative min-h-screen px-5 pb-16 pt-24 sm:px-8 lg:px-0 lg:pb-0 lg:pt-10"
         >
-          <div className="lg:sticky lg:top-16 lg:flex lg:h-[calc(100vh-4rem)] lg:flex-col lg:justify-center lg:overflow-hidden">
-            <div className="mx-auto w-full min-w-0 max-w-screen-2xl py-12 lg:max-w-none lg:py-0">
+          <div className="lg:sticky lg:top-16 lg:flex lg:h-[calc(100svh-4rem)] lg:flex-col lg:justify-start lg:overflow-hidden">
+            <div className="mx-auto w-full min-w-0 max-w-screen-2xl py-12 lg:max-w-none lg:py-6">
               <div className="px-0 lg:px-12 xl:px-16">
                 <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                   <SectionHeading
@@ -1130,7 +1140,7 @@ export const SectionGroup: React.FC = () => {
                 </div>
               </div>
 
-              <div ref={horizontalViewportRef} onWheel={handleHorizontalWheel} className="hidden overflow-hidden px-12 xl:px-16 lg:block">
+              <div ref={horizontalViewportRef} className="hidden overflow-hidden px-12 xl:px-16 lg:block">
                 <div className="mb-3 flex items-center justify-between gap-6">
                   <div className="flex items-center gap-3 text-xs font-label uppercase tracking-[0.2em] text-on-surface-variant">
                     <span className="h-2 w-2 rounded-full bg-primary" />
@@ -1157,7 +1167,7 @@ export const SectionGroup: React.FC = () => {
 
                 <div ref={horizontalTrackRef} className="horizontal-track flex w-max items-stretch gap-5 py-2">
                   <div className="hidden w-[10vw] min-w-12 flex-none xl:block" aria-hidden="true" />
-                  <div className="surface-panel flex h-[18.5rem] w-[20rem] flex-none flex-col justify-between rounded-xl p-5 xl:w-[21rem]">
+                  <div className="surface-panel flex h-[var(--project-rail-card-height)] w-[20rem] flex-none flex-col justify-between rounded-xl p-5 xl:w-[21rem]">
                     <div>
                       <p className="text-xs font-label uppercase tracking-[0.22em] text-primary-dim">
                         Overview
@@ -1172,7 +1182,7 @@ export const SectionGroup: React.FC = () => {
                   </div>
 
                   {visibleProjects.map((project, index) => (
-                    <div key={project.id} className="flex w-[20rem] flex-none flex-col xl:w-[21rem]">
+                    <div key={project.id} className="flex h-[var(--project-rail-card-height)] w-[20rem] flex-none flex-col xl:w-[21rem]">
                       <ProjectCard project={project} index={index} rail onOpenCaseStudy={openCaseStudy} />
                     </div>
                   ))}
@@ -1180,7 +1190,7 @@ export const SectionGroup: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="surface-panel group flex h-[18.5rem] w-[20rem] flex-none flex-col justify-between rounded-xl p-5 text-left transition hover:border-primary/45 xl:w-[21rem]"
+                    className="surface-panel group flex h-[var(--project-rail-card-height)] w-[20rem] flex-none flex-col justify-between rounded-xl p-5 text-left transition hover:border-primary/45 xl:w-[21rem]"
                   >
                     <span className="text-xs font-label uppercase tracking-[0.22em] text-primary-dim">Next</span>
                     <span className="text-xl font-display font-bold leading-tight text-on-surface">
