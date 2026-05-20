@@ -13,10 +13,12 @@ import {
   Code2,
   Copy,
   Download,
+  FileText,
   ExternalLink,
   Layers3,
   Mail,
   MapPin,
+  X,
   Server,
   Sparkles,
 } from 'lucide-react';
@@ -119,6 +121,12 @@ const getCodePreviewLineCount = (preview: string) =>
 const getResumeCuePath = (geometry: ResumeCueGeometry) =>
   `M ${geometry.startX} ${geometry.startY} C ${geometry.controlOneX} ${geometry.controlOneY}, ${geometry.controlTwoX} ${geometry.controlTwoY}, ${geometry.endX} ${geometry.endY}`;
 
+const getProjectSlug = (project: Project) =>
+  project.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+
 const getImplementationFocus = (project: Project) => {
   const searchable = `${project.title} ${project.subtitle} ${project.tech.join(' ')}`.toLowerCase();
 
@@ -136,6 +144,17 @@ const getImplementationFocus = (project: Project) => {
   }
 
   return 'Implementation snapshot';
+};
+
+const getProjectScopeNotes = (project: Project) => {
+  const category = getProjectCategory(project);
+  const tech = project.tech.slice(0, 4).join(', ');
+
+  return [
+    { label: 'Scope', value: project.subtitle },
+    { label: 'Category', value: category },
+    { label: 'Stack', value: tech },
+  ];
 };
 
 const GithubMark: React.FC<{ size?: number }> = ({ size = 17 }) => (
@@ -203,13 +222,20 @@ const Metric: React.FC<{ value: string; label: string }> = ({ value, label }) =>
   </div>
 );
 
-const ProjectCard: React.FC<{ project: Project; index: number; rail?: boolean }> = ({
+const ProjectCard: React.FC<{
+  project: Project;
+  index: number;
+  rail?: boolean;
+  onOpenCaseStudy?: (project: Project) => void;
+}> = ({
   project,
   index,
   rail = false,
+  onOpenCaseStudy,
 }) => {
   const previewLines = project.codePreview ? getCodePreviewLines(project.codePreview, rail ? 1 : 4) : [];
   const totalLines = project.codePreview ? getCodePreviewLineCount(project.codePreview) : 0;
+  const slug = getProjectSlug(project);
 
   return (
     <motion.article
@@ -228,18 +254,34 @@ const ProjectCard: React.FC<{ project: Project; index: number; rail?: boolean }>
               {getProjectCategory(project)}
             </span>
           </div>
-          {rail && (
-            <a
-              href={project.link}
-              target="_blank"
-              rel="noreferrer"
-              data-cursor="view"
-              aria-label={`Open ${project.title} source`}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-outline-variant bg-surface/55 text-on-surface-variant transition hover:border-primary/45 hover:text-primary"
-            >
-              <ExternalLink size={15} />
-            </a>
-          )}
+          <div className="flex items-center gap-2">
+            {rail && (
+              <a
+                href={`#project-${slug}`}
+                onClick={(event) => {
+                  event.preventDefault();
+                  onOpenCaseStudy?.(project);
+                }}
+                data-cursor="view"
+                aria-label={`Open ${project.title} case study`}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-outline-variant bg-surface/55 text-on-surface-variant transition hover:border-primary/45 hover:text-primary"
+              >
+                <FileText size={15} />
+              </a>
+            )}
+            {rail && (
+              <a
+                href={project.link}
+                target="_blank"
+                rel="noreferrer"
+                data-cursor="view"
+                aria-label={`Open ${project.title} source`}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-outline-variant bg-surface/55 text-on-surface-variant transition hover:border-primary/45 hover:text-primary"
+              >
+                <ExternalLink size={15} />
+              </a>
+            )}
+          </div>
         </div>
         <p className={`${rail ? 'text-[11px]' : 'text-xs'} font-label uppercase tracking-[0.18em] text-primary-dim`}>
           {project.subtitle}
@@ -303,6 +345,18 @@ const ProjectCard: React.FC<{ project: Project; index: number; rail?: boolean }>
             </div>
 
             <div className="mt-6 flex items-center justify-end gap-4">
+              <a
+                href={`#project-${slug}`}
+                onClick={(event) => {
+                  event.preventDefault();
+                  onOpenCaseStudy?.(project);
+                }}
+                data-cursor="view"
+                className="inline-flex items-center gap-2 rounded-lg border border-outline-variant bg-surface/70 px-4 py-2 text-sm font-semibold text-on-surface transition hover:border-primary/45 hover:text-primary"
+              >
+                Case study
+                <FileText size={16} />
+              </a>
               <a
                 href={project.link}
                 target="_blank"
@@ -386,6 +440,149 @@ const ContactActions: React.FC<{ email: string }> = ({ email }) => {
   );
 };
 
+const ProjectCaseStudy: React.FC<{
+  project: Project;
+  onClose: () => void;
+}> = ({ project, onClose }) => {
+  const lines = project.codePreview ? getCodePreviewLines(project.codePreview, 8) : [];
+  const notes = getProjectScopeNotes(project);
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-background/72 px-4 pb-4 pt-16 sm:items-center sm:p-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${project.title} case study`}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <motion.article
+        className="surface-panel max-h-[86vh] w-full max-w-5xl overflow-y-auto rounded-xl"
+        initial={{ opacity: 0, y: 18, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 12, scale: 0.99 }}
+        transition={{ duration: 0.22, ease: 'easeOut' }}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-outline-variant p-5 sm:p-7">
+          <div className="min-w-0">
+            <p className="text-xs font-label uppercase tracking-[0.22em] text-primary-dim">
+              Case study
+            </p>
+            <h2 className="mt-3 text-2xl font-display font-bold leading-tight text-on-surface sm:text-3xl">
+              {project.title}
+            </h2>
+            <p className="mt-3 text-sm font-label uppercase tracking-[0.16em] text-on-surface-variant">
+              {project.subtitle}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onClose();
+            }}
+            aria-label="Close case study"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high/70 text-on-surface-variant transition hover:border-primary/45 hover:text-primary"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="space-y-5">
+            <p className="text-base leading-8 text-on-surface-variant">
+              {project.description}
+            </p>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {notes.map((note) => (
+                <div key={note.label} className="rounded-lg border border-outline-variant bg-surface/52 p-4">
+                  <p className="text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant">
+                    {note.label}
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-on-surface">{note.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <p className="mb-3 text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant">
+                Tools used
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {project.tech.map((tech) => (
+                  <span
+                    key={tech}
+                    className="rounded-full border border-outline-variant bg-surface-container-high/60 px-3 py-1.5 text-xs text-on-surface-variant"
+                  >
+                    {tech}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-outline-variant bg-surface/74">
+            <div className="flex items-start justify-between gap-4 border-b border-outline-variant px-4 py-3">
+              <div>
+                <p className="text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant">
+                  Technical note
+                </p>
+                <p className="mt-1 text-xs font-label uppercase tracking-[0.16em] text-primary-dim">
+                  {getImplementationFocus(project)}
+                </p>
+              </div>
+              <span className="rounded-full border border-outline-variant bg-surface/70 px-3 py-1 text-[10px] font-label uppercase tracking-[0.16em] text-on-surface-variant">
+                {getCodePreviewLineCount(project.codePreview)} lines
+              </span>
+            </div>
+
+            <div className="px-4 py-3">
+              {lines.map((line, index) => (
+                <div
+                  key={`${project.id}-detail-${index}`}
+                  className={`grid grid-cols-[2rem_minmax(0,1fr)] gap-3 py-2 ${
+                    index === 0 ? '' : 'border-t border-outline-variant/60'
+                  }`}
+                >
+                  <span className="text-[10px] font-label uppercase tracking-[0.16em] text-on-surface-variant/70">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <code className="block overflow-hidden text-ellipsis whitespace-nowrap text-xs leading-6 text-on-surface">
+                    {line}
+                  </code>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-col gap-3 border-t border-outline-variant p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm leading-6 text-on-surface-variant">
+                Source link opens the repository for the full implementation.
+              </p>
+              <a
+                href={project.link}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-outline-variant bg-surface-container-high/70 px-4 py-2 text-sm font-semibold text-on-surface transition hover:border-primary/45 hover:text-primary"
+              >
+                View source
+                <ExternalLink size={16} />
+              </a>
+            </div>
+          </div>
+        </div>
+      </motion.article>
+    </motion.div>
+  );
+};
+
 export const SectionGroup: React.FC = () => {
   const { personal, projects, skills, socials } = portfolioData;
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -405,6 +602,20 @@ export const SectionGroup: React.FC = () => {
   const [horizontalProgress, setLocalRailProgress] = useState(0);
   const [showResumeCue, setShowResumeCue] = useState(false);
   const [resumeCueGeometry, setResumeCueGeometry] = useState<ResumeCueGeometry | null>(null);
+  const [activeProjectSlug, setActiveProjectSlug] = useState<string | null>(null);
+
+  const openCaseStudy = useCallback((project: Project) => {
+    const slug = getProjectSlug(project);
+    setActiveProjectSlug(slug);
+    window.history.replaceState(null, '', `#project-${slug}`);
+  }, []);
+
+  const closeCaseStudy = useCallback(() => {
+    setActiveProjectSlug(null);
+    if (window.location.hash.startsWith('#project-')) {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    }
+  }, []);
 
   useEffect(() => {
     const measureCue = () => {
@@ -459,6 +670,37 @@ export const SectionGroup: React.FC = () => {
     () => projects.filter((project) => projectFilter === 'All' || getProjectCategory(project) === projectFilter),
     [projectFilter, projects],
   );
+  const activeProject = useMemo(
+    () => projects.find((project) => getProjectSlug(project) === activeProjectSlug) ?? null,
+    [activeProjectSlug, projects],
+  );
+
+  useEffect(() => {
+    const syncProjectFromHash = () => {
+      const slug = window.location.hash.replace('#project-', '');
+      if (!slug || slug === window.location.hash) {
+        setActiveProjectSlug(null);
+        return;
+      }
+
+      setActiveProjectSlug(projects.some((project) => getProjectSlug(project) === slug) ? slug : null);
+    };
+
+    syncProjectFromHash();
+    window.addEventListener('hashchange', syncProjectFromHash);
+    return () => window.removeEventListener('hashchange', syncProjectFromHash);
+  }, [projects]);
+
+  useEffect(() => {
+    if (!activeProject) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeCaseStudy();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeProject, closeCaseStudy]);
 
   const handleOverlayWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
     const scrollContainer = overlayRef.current;
@@ -661,8 +903,13 @@ export const SectionGroup: React.FC = () => {
 
       <main className="relative z-10">
         <AnimatePresence>
+          {activeProject && (
+            <ProjectCaseStudy key={`case-study-${activeProject.id}`} project={activeProject} onClose={closeCaseStudy} />
+          )}
+
           {showResumeCue && resumeCueGeometry && (
             <motion.div
+              key="resume-cue"
               className="pointer-events-none fixed inset-0 z-40 overflow-hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -909,6 +1156,7 @@ export const SectionGroup: React.FC = () => {
                 </div>
 
                 <div ref={horizontalTrackRef} className="horizontal-track flex w-max items-stretch gap-5 py-2">
+                  <div className="hidden w-[10vw] min-w-12 flex-none xl:block" aria-hidden="true" />
                   <div className="surface-panel flex h-[18.5rem] w-[20rem] flex-none flex-col justify-between rounded-xl p-5 xl:w-[21rem]">
                     <div>
                       <p className="text-xs font-label uppercase tracking-[0.22em] text-primary-dim">
@@ -925,7 +1173,7 @@ export const SectionGroup: React.FC = () => {
 
                   {visibleProjects.map((project, index) => (
                     <div key={project.id} className="flex w-[20rem] flex-none flex-col xl:w-[21rem]">
-                      <ProjectCard project={project} index={index} rail />
+                      <ProjectCard project={project} index={index} rail onOpenCaseStudy={openCaseStudy} />
                     </div>
                   ))}
 
@@ -942,12 +1190,13 @@ export const SectionGroup: React.FC = () => {
                       <ArrowRight size={22} />
                     </span>
                   </button>
+                  <div className="hidden w-[18vw] min-w-24 flex-none xl:block" aria-hidden="true" />
                 </div>
               </div>
 
               <div className="grid gap-5 md:grid-cols-2 lg:hidden">
                 {visibleProjects.map((project, index) => (
-                  <ProjectCard key={project.id} project={project} index={index} />
+                  <ProjectCard key={project.id} project={project} index={index} onOpenCaseStudy={openCaseStudy} />
                 ))}
               </div>
             </div>
