@@ -15,6 +15,7 @@
       "subtitle": "Full-stack Agricultural Platform",
       "tech": ["React.js", "Node.js", "Express.js", "MongoDB"],
       "link": "https://github.com/AyushBajaj7/AgriConnect",
+      "demo": "https://agri-connect-gamma-one.vercel.app/",
       "description": "Full-stack platform designed to centralize agricultural data and schemes. Built to improve usability and access to critical information for farmers using a robust React-based frontend and MongoDB backend.",
       "codePreview": "const connectDB = async () => {\n  try {\n    await mongoose.connect(process.env.MONGO_URI);\n    console.log('MongoDB Connected');\n  } catch (error) {\n    console.error('Error:', error);\n  }\n};"
     },
@@ -30,11 +31,12 @@
     {
       "id": 3,
       "title": "AI Disease Prediction Model",
-      "subtitle": "Classification-Based ML System",
-      "tech": ["Python", "Scikit-learn", "KNN", "Decision Tree", "Naive Bayes"],
+      "subtitle": "Gene Expression Classification",
+      "tech": ["Python", "Scikit-learn", "FastAPI", "Next.js", "ExtraTrees"],
       "link": "https://github.com/RahulNatesan/AI-Disease-Prediction",
-      "description": "A classification-based machine learning model for predicting diseases. Involved comprehensive feature engineering and comparative evaluation of algorithms, including KNN, Decision Tree, Naive Bayes, and Extra Trees, to identify the most effective predictive approach.",
-      "codePreview": "from sklearn.ensemble import RandomForestClassifier\n\nmodel = RandomForestClassifier(\n  n_estimators=100,\n  max_depth=10\n)\nmodel.fit(X_train, y_train)\naccuracy = model.score(X_test, y_test)"
+      "demo": "https://ai-disease-prediction-olive.vercel.app/",
+      "description": "A gene-expression microarray classifier that compares multiple machine-learning models across selected top-N gene subsets. The deployed interface accepts a test CSV, runs evaluation against bundled training data, and returns disease-class predictions with model metrics.",
+      "codePreview": "pipeline = Pipeline([\n  (\"scaler\", StandardScaler()),\n  (\"classifier\", ExtraTreesClassifier(random_state=42))\n])\n\nscores = cross_validate(\n  pipeline, x_trainN, train_class,\n  cv=StratifiedKFold(n_splits=5)\n)"
     },
     {
       "id": 4,

@@ -41,8 +41,8 @@ type ResumeCueGeometry = {
 // Constants for scroll and animation thresholds
 const SECTION_VIEWPORT_THRESHOLD = 0.16;
 const SECTION_VIEWPORT_THRESHOLD_LARGE = 0.34;
-const HORIZONTAL_SEGMENT_THRESHOLD = 72;
-const PROGRESS_UPDATE_THRESHOLD = 0.002;
+const PROGRESS_UPDATE_THRESHOLD = 0.006;
+const RAIL_UI_UPDATE_THRESHOLD = 0.018;
 
 const reveal = {
   initial: { opacity: 0, y: 24 },
@@ -126,6 +126,26 @@ const getProjectSlug = (project: Project) =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
+
+const getProjectDemo = (project: Project) => {
+  if ('demo' in project && typeof project.demo === 'string') {
+    return project.demo;
+  }
+
+  return null;
+};
+
+const getResumeCueArrowPath = (geometry: ResumeCueGeometry) => {
+  const angle = Math.atan2(geometry.endY - geometry.controlTwoY, geometry.endX - geometry.controlTwoX);
+  const wingLength = 13;
+  const wingSpread = 0.58;
+  const leftX = geometry.endX - Math.cos(angle - wingSpread) * wingLength;
+  const leftY = geometry.endY - Math.sin(angle - wingSpread) * wingLength;
+  const rightX = geometry.endX - Math.cos(angle + wingSpread) * wingLength;
+  const rightY = geometry.endY - Math.sin(angle + wingSpread) * wingLength;
+
+  return `M ${leftX} ${leftY} L ${geometry.endX} ${geometry.endY} L ${rightX} ${rightY}`;
+};
 
 const getImplementationFocus = (project: Project) => {
   const searchable = `${project.title} ${project.subtitle} ${project.tech.join(' ')}`.toLowerCase();
@@ -236,11 +256,27 @@ const ProjectCard: React.FC<{
   const previewLines = project.codePreview ? getCodePreviewLines(project.codePreview, rail ? 1 : 4) : [];
   const totalLines = project.codePreview ? getCodePreviewLineCount(project.codePreview) : 0;
   const slug = getProjectSlug(project);
+  const demo = getProjectDemo(project);
+  const openFromCard = (event: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('a, button')) return;
+
+    event.preventDefault();
+    onOpenCaseStudy?.(project);
+  };
 
   return (
     <motion.article
       {...reveal}
-      className={`project-card group grid overflow-hidden rounded-xl border border-outline-variant transition-[border-color,box-shadow] duration-200 hover:border-primary/30 ${
+      tabIndex={0}
+      role="button"
+      aria-label={`Open ${project.title} case study`}
+      data-cursor="view"
+      onClick={openFromCard}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') openFromCard(event);
+      }}
+      className={`project-card group grid cursor-pointer overflow-hidden rounded-xl border border-outline-variant transition-[border-color,box-shadow] duration-200 hover:border-primary/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
         rail ? 'h-full min-h-0' : 'min-h-[20rem]'
       }`}
     >
@@ -279,6 +315,18 @@ const ProjectCard: React.FC<{
                 className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-outline-variant bg-surface/55 text-on-surface-variant transition hover:border-primary/45 hover:text-primary"
               >
                 <ExternalLink size={15} />
+              </a>
+            )}
+            {rail && demo && (
+              <a
+                href={demo}
+                target="_blank"
+                rel="noreferrer"
+                data-cursor="view"
+                aria-label={`Open ${project.title} live demo`}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary transition hover:border-primary/55 hover:bg-primary/16"
+              >
+                <ArrowRight size={15} />
               </a>
             )}
           </div>
@@ -345,6 +393,18 @@ const ProjectCard: React.FC<{
             </div>
 
             <div className="mt-6 flex items-center justify-end gap-4">
+              {demo && (
+                <a
+                  href={demo}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-cursor="view"
+                  className="inline-flex items-center gap-2 rounded-lg border border-primary/35 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/16"
+                >
+                  Live demo
+                  <ArrowRight size={16} />
+                </a>
+              )}
               <a
                 href={`#project-${slug}`}
                 onClick={(event) => {
@@ -446,10 +506,11 @@ const ProjectCaseStudy: React.FC<{
 }> = ({ project, onClose }) => {
   const lines = project.codePreview ? getCodePreviewLines(project.codePreview, 8) : [];
   const notes = getProjectScopeNotes(project);
+  const demo = getProjectDemo(project);
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-background/72 px-4 pb-4 pt-16 sm:items-center sm:p-6"
+      className="case-study-backdrop fixed inset-0 z-50 flex items-center justify-center bg-background/72 p-4 sm:p-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -462,8 +523,8 @@ const ProjectCaseStudy: React.FC<{
       }}
     >
       <motion.article
-        className="surface-panel max-h-[86vh] w-full max-w-5xl overflow-y-auto rounded-xl"
-        initial={{ opacity: 0, y: 18, scale: 0.985 }}
+        className="surface-panel max-h-[min(88dvh,780px)] w-full max-w-5xl overflow-y-auto rounded-xl"
+        initial={{ opacity: 0, y: 14, scale: 0.985 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12, scale: 0.99 }}
         transition={{ duration: 0.22, ease: 'easeOut' }}
@@ -564,17 +625,30 @@ const ProjectCaseStudy: React.FC<{
 
             <div className="flex flex-col gap-3 border-t border-outline-variant p-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm leading-6 text-on-surface-variant">
-                Source link opens the repository for the full implementation.
+                Open the live build where available, or review the source for implementation details.
               </p>
-              <a
-                href={project.link}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-outline-variant bg-surface-container-high/70 px-4 py-2 text-sm font-semibold text-on-surface transition hover:border-primary/45 hover:text-primary"
-              >
-                View source
-                <ExternalLink size={16} />
-              </a>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {demo && (
+                  <a
+                    href={demo}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary/35 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/16"
+                  >
+                    Live demo
+                    <ArrowRight size={16} />
+                  </a>
+                )}
+                <a
+                  href={project.link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-outline-variant bg-surface-container-high/70 px-4 py-2 text-sm font-semibold text-on-surface transition hover:border-primary/45 hover:text-primary"
+                >
+                  View source
+                  <ExternalLink size={16} />
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -623,19 +697,24 @@ export const SectionGroup: React.FC = () => {
       if (!resumeButton) return;
 
       const rect = resumeButton.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      const isSmallScreen = window.innerWidth < 640;
       const startX = window.innerWidth / 2;
-      const startY = window.innerHeight / 2;
+      const startY = isSmallScreen
+        ? Math.max(160, Math.min(window.innerHeight * 0.42, rect.top - 42))
+        : window.innerHeight / 2;
       const endX = rect.left + rect.width / 2;
       const endY = rect.top + Math.max(8, rect.height * 0.18);
-      const approachY = Math.max(72, endY - Math.min(110, window.innerHeight * 0.16));
+      const approachY = Math.max(72, endY - Math.min(isSmallScreen ? 64 : 110, window.innerHeight * 0.16));
 
       setResumeCueGeometry({
         startX,
         startY,
         endX,
         endY,
-        controlOneX: startX + (endX - startX) * 0.2,
-        controlOneY: startY - Math.max(54, window.innerHeight * 0.09),
+        controlOneX: startX + (endX - startX) * (isSmallScreen ? 0.12 : 0.2),
+        controlOneY: startY - Math.max(isSmallScreen ? 26 : 54, window.innerHeight * (isSmallScreen ? 0.035 : 0.09)),
         controlTwoX: endX,
         controlTwoY: approachY,
       });
@@ -643,8 +722,10 @@ export const SectionGroup: React.FC = () => {
 
     const showTimer = window.setTimeout(() => {
       measureCue();
-      setShowResumeCue(true);
-    }, 700);
+      if (resumeButtonRef.current?.getBoundingClientRect().width) {
+        setShowResumeCue(true);
+      }
+    }, 900);
     const hideTimer = window.setTimeout(() => setShowResumeCue(false), 6200);
     const dismiss = () => setShowResumeCue(false);
     const scrollContainer = document.getElementById('scroll-container');
@@ -702,20 +783,6 @@ export const SectionGroup: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeProject, closeCaseStudy]);
-
-  const handleOverlayWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
-    const scrollContainer = overlayRef.current;
-    if (!scrollContainer || event.defaultPrevented) return;
-
-    const previousScrollTop = scrollContainer.scrollTop;
-    const wheelDelta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
-
-    window.requestAnimationFrame(() => {
-      if (Math.abs(wheelDelta) > 0 && scrollContainer.scrollTop === previousScrollTop) {
-        scrollContainer.scrollTop += wheelDelta;
-      }
-    });
-  }, []);
 
   /**
    * Calculates and sets the total scrollable distance for the horizontal project rail.
@@ -784,10 +851,16 @@ export const SectionGroup: React.FC = () => {
       const inSegment = hasTravel && rect.top <= 0 && rect.bottom >= window.innerHeight;
 
       // Throttled horizontal progress updates
-      if (Math.abs(segmentProgress - lastHorizontalProgressRef.current) > PROGRESS_UPDATE_THRESHOLD) {
+      if (
+        Math.abs(segmentProgress - lastHorizontalProgressRef.current) > PROGRESS_UPDATE_THRESHOLD ||
+        (segmentProgress === 0 && lastHorizontalProgressRef.current !== 0) ||
+        (segmentProgress === 1 && lastHorizontalProgressRef.current !== 1)
+      ) {
         lastHorizontalProgressRef.current = segmentProgress;
         setHorizontalProgress(segmentProgress);
-        setLocalRailProgress(segmentProgress);
+        setLocalRailProgress((currentProgress) =>
+          Math.abs(segmentProgress - currentProgress) > RAIL_UI_UPDATE_THRESHOLD ? segmentProgress : currentProgress,
+        );
       }
 
       const nextScrollMode = inSegment ? 'horizontal' : 'vertical';
@@ -883,33 +956,8 @@ export const SectionGroup: React.FC = () => {
     return () => observer.disconnect();
   }, [visibleProjects.length, updateHorizontalTravel, updateScrollState]);
 
-  useEffect(() => {
-    const viewport = horizontalViewportRef.current;
-    const section = horizontalSectionRef.current;
-    const scrollContainer = overlayRef.current;
-    if (!viewport || !section || !scrollContainer) return;
-
-    const handleWheel = (event: WheelEvent) => {
-      if (window.innerWidth < 1024) return;
-
-      const rect = section.getBoundingClientRect();
-      const inHorizontalSegment = rect.top <= HORIZONTAL_SEGMENT_THRESHOLD && rect.bottom >= window.innerHeight;
-      if (!inHorizontalSegment) return;
-
-      event.preventDefault();
-      const wheelDelta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
-      scrollContainer.scrollTop += wheelDelta;
-    };
-
-    viewport.addEventListener('wheel', handleWheel, { capture: true, passive: false });
-
-    return () => {
-      viewport.removeEventListener('wheel', handleWheel, { capture: true });
-    };
-  }, []);
-
   return (
-    <div ref={overlayRef} id="scroll-container" className="ui-overlay" onWheelCapture={handleOverlayWheel}>
+    <div ref={overlayRef} id="scroll-container" className="ui-overlay">
       <div className="fixed inset-0 z-0 pointer-events-none cyber-grid opacity-70" />
 
       <main className="relative z-10">
@@ -921,6 +969,7 @@ export const SectionGroup: React.FC = () => {
           {showResumeCue && resumeCueGeometry && (
             <motion.div
               key="resume-cue"
+              data-resume-cue
               className="pointer-events-none fixed inset-0 z-40 overflow-hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -928,7 +977,7 @@ export const SectionGroup: React.FC = () => {
               transition={{ duration: 0.45, ease: 'easeOut' }}
             >
               <motion.div
-                className="absolute inset-0 bg-background/28 backdrop-blur-[2px]"
+                className="resume-cue-veil absolute inset-0 bg-background/20"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: [0, 1, 1, 0] }}
                 transition={{ duration: 4.8, times: [0, 0.18, 0.74, 1], ease: 'easeInOut' }}
@@ -948,24 +997,6 @@ export const SectionGroup: React.FC = () => {
                       <feMergeNode in="SourceGraphic" />
                     </feMerge>
                   </filter>
-                  <marker
-                    id="resume-cue-arrowhead"
-                    markerWidth="10"
-                    markerHeight="10"
-                    refX="8"
-                    refY="5"
-                    orient="auto"
-                    markerUnits="strokeWidth"
-                  >
-                    <path
-                      d="M 1 1 L 8 5 L 1 9"
-                      fill="none"
-                      stroke="var(--primary)"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </marker>
                 </defs>
 
                 <motion.path
@@ -975,7 +1006,6 @@ export const SectionGroup: React.FC = () => {
                   strokeWidth="2"
                   strokeLinecap="round"
                   filter="url(#resume-cue-glow)"
-                  markerEnd="url(#resume-cue-arrowhead)"
                   initial={{ pathLength: 0, opacity: 0, pathOffset: 0.16 }}
                   animate={{ pathLength: [0, 1, 1], opacity: [0, 1, 0], pathOffset: [0.16, 0, 0] }}
                   transition={{ duration: 4.6, times: [0, 0.72, 1], ease: 'easeInOut' }}
@@ -1003,6 +1033,19 @@ export const SectionGroup: React.FC = () => {
                     scale: [0.4, 1, 0.9, 0.45],
                   }}
                   transition={{ duration: 4.25, times: [0, 0.32, 0.76, 1], ease: 'easeInOut' }}
+                />
+
+                <motion.path
+                  d={getResumeCueArrowPath(resumeCueGeometry)}
+                  fill="none"
+                  stroke="var(--primary)"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  filter="url(#resume-cue-glow)"
+                  initial={{ opacity: 0, pathLength: 0 }}
+                  animate={{ opacity: [0, 0, 1, 0], pathLength: [0, 0, 1, 1] }}
+                  transition={{ duration: 4.4, times: [0, 0.58, 0.74, 1], ease: 'easeInOut' }}
                 />
               </svg>
 

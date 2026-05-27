@@ -22,6 +22,7 @@ export const Cursor: React.FC = () => {
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<number>(0);
   const setCursorPosition = useStore((state) => state.setCursorPosition);
+  const theme = useStore((state) => state.theme);
 
   const cursorX = useMotionValue(-100);
   const cursorY = useMotionValue(-100);
@@ -153,7 +154,9 @@ export const Cursor: React.FC = () => {
       {/* Main cursor dot with magnetic spring */}
       <motion.div
         ref={dotRef}
-        className="fixed top-0 left-0 pointer-events-none z-[9999] mix-blend-difference"
+        className={`fixed top-0 left-0 pointer-events-none z-[9999] ${
+          theme === 'dark' ? 'mix-blend-difference' : ''
+        }`}
         style={{
           x: cursorXSpring,
           y: cursorYSpring,
@@ -165,7 +168,9 @@ export const Cursor: React.FC = () => {
         animate={{
           width: size,
           height: size,
-          backgroundColor: cursorState === 'text' ? 'white' : getCursorColor(),
+          backgroundColor: cursorState === 'text'
+            ? theme === 'dark' ? 'white' : 'var(--on-surface)'
+            : getCursorColor(),
           borderRadius: cursorState === 'text' ? '0%' : '50%',
         }}
         transition={{ type: 'spring', mass: 0.5, stiffness: 500, damping: 28 }}

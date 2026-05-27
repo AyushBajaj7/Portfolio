@@ -7,6 +7,23 @@
 import { create } from 'zustand';
 
 /** Global state interface for the portfolio application */
+const getInitialTheme = (): 'dark' | 'light' => {
+  if (typeof window === 'undefined') return 'dark';
+
+  const storedTheme = window.localStorage.getItem('portfolio-theme');
+  if (storedTheme === 'dark' || storedTheme === 'light') return storedTheme;
+
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+};
+
+const applyThemeClass = (theme: 'dark' | 'light') => {
+  if (typeof document === 'undefined') return;
+  document.documentElement.classList.toggle('light-theme', theme === 'light');
+};
+
+const initialTheme = getInitialTheme();
+applyThemeClass(initialTheme);
+
 interface PortfolioState {
   /** Currently active/visible section ID */
   activeSection: string;
@@ -63,14 +80,11 @@ export const useStore = create<PortfolioState>((set) => ({
   setHorizontalProgress: (p) => set({ horizontalProgress: p }),
   scrollMode: 'vertical',
   setScrollMode: (mode) => set({ scrollMode: mode }),
-  theme: 'dark',
+  theme: initialTheme,
   toggleTheme: () => set((state) => {
     const newTheme = state.theme === 'dark' ? 'light' : 'dark';
-    if (newTheme === 'light') {
-      document.documentElement.classList.add('light-theme');
-    } else {
-      document.documentElement.classList.remove('light-theme');
-    }
+    applyThemeClass(newTheme);
+    window.localStorage.setItem('portfolio-theme', newTheme);
     return { theme: newTheme };
   }),
 }));

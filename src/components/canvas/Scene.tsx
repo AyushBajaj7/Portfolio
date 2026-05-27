@@ -11,6 +11,7 @@ import { useStore } from '../../store/useStore';
  * Total number of avatar animation frames.
  */
 const FRAME_COUNT = 300;
+const MAX_CACHED_FRAMES = 48;
 
 const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
 
@@ -280,13 +281,16 @@ export const Scene: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageCache = useRef(new Map<number, HTMLImageElement>());
+  const pendingFramesRef = useRef(new Set<number>());
   const poseRef = useRef<AvatarPose | null>(null);
   const poseAnimationRef = useRef<number | null>(null);
   const frameIndexRef = useRef(-1);
+  const desiredFrameIndexRef = useRef(-1);
   const scrollProgress = useStore((s) => s.scrollProgress);
   const horizontalProgress = useStore((s) => s.horizontalProgress);
   const scrollMode = useStore((s) => s.scrollMode);
   const activeSection = useStore((s) => s.activeSection);
+  const theme = useStore((s) => s.theme);
 
   const getFrameSrc = useCallback((index: number) => {
     const baseUrl = import.meta.env.BASE_URL || '/';
@@ -297,17 +301,34 @@ export const Scene: React.FC = () => {
   const getFrame = useCallback((index: number) => {
     const safeIndex = Math.min(FRAME_COUNT - 1, Math.max(0, index));
     const cached = imageCache.current.get(safeIndex);
-    if (cached) return cached;
+    if (cached) {
+      imageCache.current.delete(safeIndex);
+      imageCache.current.set(safeIndex, cached);
+      return cached;
+    }
 
     const img = new Image();
     img.decoding = 'async';
     img.src = getFrameSrc(safeIndex);
     imageCache.current.set(safeIndex, img);
+
+    while (imageCache.current.size > MAX_CACHED_FRAMES) {
+      const oldestIndex = imageCache.current.keys().next().value as number | undefined;
+      if (oldestIndex === undefined) break;
+      if (oldestIndex === safeIndex || oldestIndex === desiredFrameIndexRef.current) {
+        const oldestImage = imageCache.current.get(oldestIndex);
+        imageCache.current.delete(oldestIndex);
+        if (oldestImage) imageCache.current.set(oldestIndex, oldestImage);
+        continue;
+      }
+      imageCache.current.delete(oldestIndex);
+    }
+
     return img;
   }, [getFrameSrc]);
 
   const preloadAround = useCallback((index: number) => {
-    const offsets = [-3, -2, -1, 1, 2, 3, 6, 12];
+    const offsets = window.innerWidth < 768 ? [-2, -1, 1, 2] : [-3, -2, -1, 1, 2, 3];
     offsets.forEach((offset) => {
       const nextIndex = index + offset;
       if (nextIndex >= 0 && nextIndex < FRAME_COUNT) {
@@ -322,18 +343,26 @@ export const Scene: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const frame = getFrame(index);
+    const safeIndex = Math.min(FRAME_COUNT - 1, Math.max(0, index));
+    desiredFrameIndexRef.current = safeIndex;
+    const frame = getFrame(safeIndex);
     if (frame.complete && frame.naturalWidth > 0) {
       scaleImage(frame, ctx);
-      preloadAround(index);
+      preloadAround(safeIndex);
       return;
     }
+
+    if (pendingFramesRef.current.has(safeIndex)) return;
+    pendingFramesRef.current.add(safeIndex);
 
     frame.addEventListener(
       'load',
       () => {
-        scaleImage(frame, ctx);
-        preloadAround(index);
+        pendingFramesRef.current.delete(safeIndex);
+        if (desiredFrameIndexRef.current === safeIndex) {
+          scaleImage(frame, ctx);
+          preloadAround(safeIndex);
+        }
       },
       { once: true }
     );
@@ -358,9 +387,11 @@ export const Scene: React.FC = () => {
       drawFrame(frameIndex);
     }
 
-    container.style.opacity = pose.opacity.toFixed(3);
+    const visibleOpacity = theme === 'light' ? Math.min(0.98, pose.opacity + 0.16) : pose.opacity;
+    container.style.opacity = visibleOpacity.toFixed(3);
     canvas.style.transform = `translate3d(${pose.x.toFixed(2)}vw, ${pose.y.toFixed(2)}vh, 0) scale(${pose.scale.toFixed(3)})`;
-  }, [drawFrame]);
+    canvas.style.filter = 'none';
+  }, [drawFrame, theme]);
 
   useEffect(() => {
     const syncCanvasSize = () => {
@@ -369,7 +400,7 @@ export const Scene: React.FC = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 768 ? 1 : 1.35);
       canvas.width = Math.floor(window.innerWidth * dpr);
       canvas.height = Math.floor(window.innerHeight * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
