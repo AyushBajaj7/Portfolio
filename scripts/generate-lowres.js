@@ -12,14 +12,15 @@ const OUTPUT_DIR = path.join(rootDir, 'public', 'frames-lowres');
 
 async function processFrames() {
   try {
-    // Ensure output directory exists
+    // Clear and recreate output directory to remove stale .jpg files
+    await fs.rm(OUTPUT_DIR, { recursive: true, force: true });
     await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
     // Read all files from input directory
     const files = await fs.readdir(INPUT_DIR);
     const pngFiles = files.filter(file => file.endsWith('.png'));
 
-    console.log(`Found ${pngFiles.length} PNG frames. Generating low-res JPEGs...`);
+    console.log(`Found ${pngFiles.length} PNG frames. Generating low-res WebPs with transparency...`);
 
     let processed = 0;
     const total = pngFiles.length;
@@ -32,17 +33,17 @@ async function processFrames() {
       
       await Promise.all(batch.map(async (file) => {
         const inputPath = path.join(INPUT_DIR, file);
-        // Replace .png with .jpg
-        const outputFilename = file.replace('.png', '.jpg');
+        // Use .webp extension - supports transparency unlike JPEG
+        const outputFilename = file.replace('.png', '.webp');
         const outputPath = path.join(OUTPUT_DIR, outputFilename);
 
-        // Resize to 50% and convert to JPEG
+        // Resize to 50% and convert to WebP (supports alpha channel = no black background)
         const metadata = await sharp(inputPath).metadata();
         const width = Math.round((metadata.width || 1920) * 0.5);
 
         await sharp(inputPath)
           .resize({ width })
-          .jpeg({ quality: 60, mozjpeg: true })
+          .webp({ quality: 50, effort: 4, alphaQuality: 80 })
           .toFile(outputPath);
 
         processed++;
@@ -52,7 +53,7 @@ async function processFrames() {
       }));
     }
 
-    console.log('Finished generating low-res frames!');
+    console.log('Finished generating low-res WebP frames!');
   } catch (err) {
     console.error('Error generating low-res frames:', err);
     process.exit(1);

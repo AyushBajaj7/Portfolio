@@ -289,7 +289,6 @@ export const Scene: React.FC = () => {
   // Track pending network requests
   const lowResLoadedCount = useRef(0);
   const allLowResLoadedRef = useRef(false);
-  const highResFetchController = useRef<AbortController | null>(null);
 
   const poseRef = useRef<AvatarPose | null>(null);
   const poseAnimationRef = useRef<number | null>(null);
@@ -305,7 +304,7 @@ export const Scene: React.FC = () => {
   const getLowResSrc = useCallback((index: number) => {
     const baseUrl = import.meta.env.BASE_URL || '/';
     const frameNumber = String(index + 1).padStart(4, '0');
-    return `${baseUrl}frames-lowres/male${frameNumber}.jpg`;
+    return `${baseUrl}frames-lowres/male${frameNumber}.webp`;
   }, []);
 
   const getHighResSrc = useCallback((index: number) => {
@@ -324,56 +323,53 @@ export const Scene: React.FC = () => {
     return low ?? null;
   }, []);
 
-  // Fetch high-res PNG for a single frame only after all low-res frames are loaded
-  const fetchHighRes = useCallback((index: number) => {
-    if (!allLowResLoadedRef.current) return; // Phase 1 must finish first
-    const safeIndex = Math.min(FRAME_COUNT - 1, Math.max(0, index));
-    if (highResCache.current.has(safeIndex)) {
-      // Already cached, just redraw
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext('2d');
-      const img = highResCache.current.get(safeIndex)!;
-      if (canvas && ctx && img.complete && img.naturalWidth > 0) {
-        scaleImage(img, ctx);
+  // After all low-res are loaded, pre-download ALL high-res frames in the background.
+  // Uses a small concurrency limit so it doesn't flood the network.
+  const startHighResPreload = useCallback(() => {
+    const CONCURRENCY = 4; // max parallel high-res downloads at a time
+    let nextIndex = 0;
+
+    const downloadNext = () => {
+      if (nextIndex >= FRAME_COUNT) return;
+      const index = nextIndex++;
+
+      if (highResCache.current.has(index)) {
+        downloadNext(); // already cached, skip
+        return;
       }
-      return;
-    }
 
-    // Cancel any previous high-res fetch in flight
-    if (highResFetchController.current) {
-      highResFetchController.current.abort();
-    }
-    const controller = new AbortController();
-    highResFetchController.current = controller;
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = getHighResSrc(index);
 
-    const img = new Image();
-    img.decoding = 'async';
-
-    fetch(getHighResSrc(safeIndex), { signal: controller.signal })
-      .then((res) => {
-        if (!res.ok) throw new Error('Network response was not ok');
-        return res.blob();
-      })
-      .then((blob) => {
-        const url = URL.createObjectURL(blob);
-        img.src = url;
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') {
-          console.error('Error loading high-res frame:', safeIndex, err);
+      img.addEventListener('load', () => {
+        highResCache.current.set(index, img);
+        // If this frame happens to be the one currently displayed, repaint it
+        if (desiredFrameIndexRef.current === index) {
+          const canvas = canvasRef.current;
+          const ctx = canvas?.getContext('2d');
+          if (canvas && ctx) scaleImage(img, ctx);
         }
-      });
+        downloadNext(); // fetch next once this one finishes
+      }, { once: true });
 
-    img.addEventListener('load', () => {
-      highResCache.current.set(safeIndex, img);
-      // Only paint if this is still the desired frame
-      if (desiredFrameIndexRef.current === safeIndex) {
-        const canvas = canvasRef.current;
-        const ctx = canvas?.getContext('2d');
-        if (canvas && ctx) scaleImage(img, ctx);
-      }
-    }, { once: true });
+      img.addEventListener('error', () => {
+        downloadNext(); // skip failed frames, continue
+      }, { once: true });
+    };
+
+    // Start N parallel download chains
+    for (let i = 0; i < CONCURRENCY; i++) {
+      downloadNext();
+    }
   }, [getHighResSrc]);
+
+  // fetchHighRes is now just a no-op shim kept for the animate settled hook.
+  // Since all high-res frames are pre-loaded, getBestFrame will already return
+  // high-res automatically once the cache is populated.
+  const fetchHighRes = useCallback((_index: number) => {
+    // High-res is pre-loaded by startHighResPreload — nothing to do here.
+  }, []);
 
   // Phase 1: Eagerly load ALL low-res frames on mount
   useEffect(() => {
@@ -390,15 +386,15 @@ export const Scene: React.FC = () => {
         lowResLoadedCount.current = loaded;
         if (loaded === total) {
           allLowResLoadedRef.current = true;
-          // Once all low-res are done, immediately fetch high-res for current frame
-          fetchHighRes(desiredFrameIndexRef.current >= 0 ? desiredFrameIndexRef.current : 0);
+          // Phase 2: Once all low-res frames are done, start downloading ALL high-res in background
+          startHighResPreload();
         }
       }, { once: true });
 
       img.src = getLowResSrc(index);
       lowResCache.current.set(index, img);
     }
-  }, [getLowResSrc, fetchHighRes]);
+  }, [getLowResSrc, startHighResPreload]);
 
   const drawFrame = useCallback((index: number) => {
     const canvas = canvasRef.current;
