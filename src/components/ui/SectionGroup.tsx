@@ -1015,20 +1015,12 @@ export const SectionGroup: React.FC = () => {
                   r="8"
                   fill="var(--primary)"
                   filter="url(#resume-cue-glow)"
-                  initial={{ cx: resumeCueGeometry.startX, cy: resumeCueGeometry.startY, opacity: 0, scale: 0.4 }}
+                  style={{
+                    offsetPath: `path('${getResumeCuePath(resumeCueGeometry)}')`,
+                  }}
+                  initial={{ offsetDistance: "0%", opacity: 0, scale: 0.4 }}
                   animate={{
-                    cx: [
-                      resumeCueGeometry.startX,
-                      resumeCueGeometry.controlOneX,
-                      resumeCueGeometry.controlTwoX,
-                      resumeCueGeometry.endX,
-                    ],
-                    cy: [
-                      resumeCueGeometry.startY,
-                      resumeCueGeometry.controlOneY,
-                      resumeCueGeometry.controlTwoY,
-                      resumeCueGeometry.endY,
-                    ],
+                    offsetDistance: ["0%", "100%"],
                     opacity: [0, 1, 1, 0],
                     scale: [0.4, 1, 0.9, 0.45],
                   }}
