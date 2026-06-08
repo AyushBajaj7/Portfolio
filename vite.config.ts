@@ -13,8 +13,8 @@ import tailwindcss from '@tailwindcss/vite';
  * Base URL set to '/Portfolio/' for GitHub Pages deployment.
  */
 export default defineConfig(({ command }) => ({
-  /** Base URL for GitHub Pages - must match repository name */
-  base: '/Portfolio/',
+  /** Base URL: '/' for Vercel, '/Portfolio/' for GitHub Pages */
+  base: process.env.VERCEL ? '/' : '/Portfolio/',
   /** Copy public assets in the post-build script; Vite's build copier hangs on the large frame set on Windows. */
   publicDir: command === 'build' ? false : 'public',
   plugins: [
