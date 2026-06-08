@@ -432,7 +432,9 @@ export const Scene: React.FC = () => {
       Math.max(0, Math.floor(pose.frameProgress * (FRAME_COUNT - 1)))
     );
 
-    if (frameIndex !== frameIndexRef.current) {
+    // Always redraw on mobile (frameIndexRef may stale after scroll events)
+    const isMobile = window.innerWidth < 768;
+    if (frameIndex !== frameIndexRef.current || isMobile) {
       frameIndexRef.current = frameIndex;
       drawFrame(frameIndex);
     }
@@ -452,8 +454,13 @@ export const Scene: React.FC = () => {
 
       const dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 768 ? 1 : 1.35);
       canvas.width = Math.floor(window.innerWidth * dpr);
-      canvas.height = Math.floor(window.innerHeight * dpr);
+      // Use dvh on mobile so canvas matches visual viewport (excludes browser chrome)
+      const vh = window.innerWidth < 768 ? window.visualViewport?.height ?? window.innerHeight : window.innerHeight;
+      canvas.height = Math.floor(vh * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // Reset frameIndexRef so the next applyPose call always redraws
+      frameIndexRef.current = -1;
 
       const state = useStore.getState();
       const nextPose = getAvatarPose({
@@ -469,10 +476,12 @@ export const Scene: React.FC = () => {
     };
 
     window.addEventListener('resize', syncCanvasSize);
+    window.visualViewport?.addEventListener('resize', syncCanvasSize);
     syncCanvasSize();
 
     return () => {
       window.removeEventListener('resize', syncCanvasSize);
+      window.visualViewport?.removeEventListener('resize', syncCanvasSize);
     };
   }, [applyPose]);
 
@@ -485,7 +494,10 @@ export const Scene: React.FC = () => {
       viewportWidth: window.innerWidth,
     });
 
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || poseRef.current === null) {
+    const isMobile = window.innerWidth < 768;
+
+    // On mobile: skip lerp animation entirely — apply pose instantly to avoid frame skipping
+    if (isMobile || window.matchMedia('(prefers-reduced-motion: reduce)').matches || poseRef.current === null) {
       poseRef.current = targetPose;
       applyPose(targetPose);
       return;
@@ -544,7 +556,7 @@ export const Scene: React.FC = () => {
         left: 0,
         width: '100vw',
         height: '100vh',
-        zIndex: 0,
+        zIndex: 1,
         pointerEvents: 'none',
         backgroundColor: 'var(--bg)',
         opacity: 0,

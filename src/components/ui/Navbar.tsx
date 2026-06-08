@@ -132,9 +132,10 @@ export const Navbar: React.FC = () => {
     <nav
       onMouseEnter={() => setNavHovered(true)}
       onMouseLeave={() => setNavHovered(false)}
-      className={`fixed top-0 w-full z-50 transition-all duration-500 ${
+      className={`fixed top-0 w-full transition-all duration-500 ${
         scrolled ? 'glass-panel shadow-lg border-x-0 border-t-0 rounded-none' : 'bg-transparent'
       } ${shouldHide ? '-translate-y-[120%]' : 'translate-y-0'}`}
+      style={{ zIndex: 50 }}
     >
       <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">
         <div className="flex justify-between items-center h-16">
@@ -145,6 +146,7 @@ export const Navbar: React.FC = () => {
             Ayush Bajaj<span className="text-primary-dim">.</span>
           </button>
 
+          {/* Desktop nav links */}
           <div className="hidden lg:flex items-center gap-6">
             <div className="flex items-center gap-1">
               {links.map((link) => (
@@ -188,89 +190,95 @@ export const Navbar: React.FC = () => {
             </a>
           </div>
 
-          <button
-            className="lg:hidden relative z-50 flex h-10 w-10 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high/70 text-on-surface"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          {/* Mobile: theme toggle + hamburger always visible */}
+          <div className="lg:hidden flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high/80 text-on-surface"
+              aria-label="Toggle theme"
+            >
+              {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+            </button>
+            <button
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high/80 text-on-surface"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
 
+        {/* Scroll progress bar */}
         <motion.div
           className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-primary via-tertiary to-primary-dim"
           style={{ width: `${Math.round(scrollProgress * 100)}%` }}
         />
+      </div>
 
-        <AnimatePresence>
-          {mobileOpen && (
+      {/* Mobile full-screen menu overlay — placed outside the inner div so it fills the viewport */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            className="fixed inset-0 flex flex-col items-center justify-center bg-surface/98 px-6 lg:hidden"
+            style={{ zIndex: 49 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
             <motion.div
-              className="fixed inset-0 z-40 flex items-center justify-center bg-surface/98 px-6 lg:hidden"
+              className="flex flex-col items-center gap-8"
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={{ duration: 0.35, delay: 0.05 }}
+            >
+              {links.map((link, i) => (
+                <motion.button
+                  key={link.id}
+                  onClick={() => scrollTo(link.id)}
+                  className={`text-3xl sm:text-4xl font-display font-bold transition-colors duration-300 ${
+                    activeSection === link.id ? 'text-primary' : 'text-on-surface'
+                  }`}
+                  initial={{ y: 30, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 30, opacity: 0 }}
+                  transition={{ duration: 0.3, delay: i * 0.07 }}
+                  whileHover={{ scale: 1.03, x: 12 }}
+                >
+                  {link.label}
+                </motion.button>
+              ))}
+            </motion.div>
+
+            <motion.div
+              className="absolute bottom-8 left-6 text-xs font-label uppercase tracking-[0.2em] text-on-surface/45"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              transition={{ delay: 0.4 }}
             >
-              <motion.div
-                className="flex flex-col items-center gap-8"
-                initial={{ y: 50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 50, opacity: 0 }}
-                transition={{ duration: 0.4, delay: 0.1 }}
-              >
-                {links.map((link, i) => (
-                  <motion.button
-                    key={link.id}
-                    onClick={() => scrollTo(link.id)}
-                    className={`text-3xl sm:text-4xl font-display font-bold transition-colors duration-300 ${
-                      activeSection === link.id ? 'text-primary' : 'text-on-surface'
-                    }`}
-                    initial={{ y: 30, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: 30, opacity: 0 }}
-                    transition={{ duration: 0.3, delay: i * 0.1 }}
-                    whileHover={{ scale: 1.03, x: 12 }}
-                  >
-                    {link.label}
-                  </motion.button>
-                ))}
-              </motion.div>
-
-              <motion.div
-                className="absolute bottom-8 left-6 text-xs font-label uppercase tracking-[0.2em] text-on-surface/45"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-              >
-                AYUSH BAJAJ PORTFOLIO
-              </motion.div>
-
-              <motion.div
-                className="absolute bottom-6 right-6 flex items-center gap-3"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-              >
-                <button
-                  onClick={toggleTheme}
-                  className="flex h-11 w-11 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high text-on-surface transition hover:border-primary/45 hover:text-primary"
-                  aria-label="Toggle theme"
-                >
-                  {theme === 'light' ? <Moon size={24} /> : <Sun size={24} />}
-                </button>
-                <a
-                  href={`${import.meta.env.BASE_URL}resume.pdf`}
-                  download
-                  className="flex h-11 w-11 items-center justify-center rounded-lg border border-primary/30 bg-primary text-on-primary"
-                  aria-label="Download resume"
-                >
-                  <Download size={20} />
-                </a>
-              </motion.div>
+              AYUSH BAJAJ PORTFOLIO
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+
+            <motion.div
+              className="absolute bottom-6 right-6 flex items-center gap-3"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+            >
+              <a
+                href={`${import.meta.env.BASE_URL}resume.pdf`}
+                download
+                className="flex h-11 w-11 items-center justify-center rounded-lg border border-primary/30 bg-primary text-on-primary"
+                aria-label="Download resume"
+              >
+                <Download size={20} />
+              </a>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   );
 };
