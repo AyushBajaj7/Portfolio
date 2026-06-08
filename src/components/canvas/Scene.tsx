@@ -11,7 +11,6 @@ import { useStore } from '../../store/useStore';
  * Total number of avatar animation frames.
  */
 const FRAME_COUNT = 300;
-const MAX_CACHED_FRAMES = 48;
 
 const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
 
@@ -275,67 +274,131 @@ function scaleImage(img: HTMLImageElement, ctx: CanvasRenderingContext2D) {
 
 /**
  * Scene component - Renders scroll-driven avatar animation using HTML5 Canvas.
- * Frames are cached on demand instead of eager-loading the full sequence.
+ * Progressive loading strategy:
+ *   Phase 1: Load all 300 low-res JPEGs (tiny, ~15KB each) for instant scroll response.
+ *   Phase 2: After ALL low-res frames are loaded, fetch high-res PNG on demand when scroll settles.
  */
 export const Scene: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const imageCache = useRef(new Map<number, HTMLImageElement>());
-  const pendingFramesRef = useRef(new Set<number>());
+
+  // Separate caches for low-res (JPEG) and high-res (PNG)
+  const lowResCache = useRef(new Map<number, HTMLImageElement>());
+  const highResCache = useRef(new Map<number, HTMLImageElement>());
+
+  // Track pending network requests
+  const lowResLoadedCount = useRef(0);
+  const allLowResLoadedRef = useRef(false);
+  const highResFetchController = useRef<AbortController | null>(null);
+
   const poseRef = useRef<AvatarPose | null>(null);
   const poseAnimationRef = useRef<number | null>(null);
   const frameIndexRef = useRef(-1);
   const desiredFrameIndexRef = useRef(-1);
+
   const scrollProgress = useStore((s) => s.scrollProgress);
   const horizontalProgress = useStore((s) => s.horizontalProgress);
   const scrollMode = useStore((s) => s.scrollMode);
   const activeSection = useStore((s) => s.activeSection);
   const theme = useStore((s) => s.theme);
 
-  const getFrameSrc = useCallback((index: number) => {
+  const getLowResSrc = useCallback((index: number) => {
+    const baseUrl = import.meta.env.BASE_URL || '/';
+    const frameNumber = String(index + 1).padStart(4, '0');
+    return `${baseUrl}frames-lowres/male${frameNumber}.jpg`;
+  }, []);
+
+  const getHighResSrc = useCallback((index: number) => {
     const baseUrl = import.meta.env.BASE_URL || '/';
     const frameNumber = String(index + 1).padStart(4, '0');
     return `${baseUrl}frames/male${frameNumber}.png`;
   }, []);
 
-  const getFrame = useCallback((index: number) => {
+  // Get the best available image for a frame index (prefer high-res if cached)
+  const getBestFrame = useCallback((index: number): HTMLImageElement | null => {
     const safeIndex = Math.min(FRAME_COUNT - 1, Math.max(0, index));
-    const cached = imageCache.current.get(safeIndex);
-    if (cached) {
-      imageCache.current.delete(safeIndex);
-      imageCache.current.set(safeIndex, cached);
-      return cached;
+    const high = highResCache.current.get(safeIndex);
+    if (high && high.complete && high.naturalWidth > 0) return high;
+    const low = lowResCache.current.get(safeIndex);
+    if (low && low.complete && low.naturalWidth > 0) return low;
+    return low ?? null;
+  }, []);
+
+  // Fetch high-res PNG for a single frame only after all low-res frames are loaded
+  const fetchHighRes = useCallback((index: number) => {
+    if (!allLowResLoadedRef.current) return; // Phase 1 must finish first
+    const safeIndex = Math.min(FRAME_COUNT - 1, Math.max(0, index));
+    if (highResCache.current.has(safeIndex)) {
+      // Already cached, just redraw
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext('2d');
+      const img = highResCache.current.get(safeIndex)!;
+      if (canvas && ctx && img.complete && img.naturalWidth > 0) {
+        scaleImage(img, ctx);
+      }
+      return;
     }
+
+    // Cancel any previous high-res fetch in flight
+    if (highResFetchController.current) {
+      highResFetchController.current.abort();
+    }
+    const controller = new AbortController();
+    highResFetchController.current = controller;
 
     const img = new Image();
     img.decoding = 'async';
-    img.src = getFrameSrc(safeIndex);
-    imageCache.current.set(safeIndex, img);
 
-    while (imageCache.current.size > MAX_CACHED_FRAMES) {
-      const oldestIndex = imageCache.current.keys().next().value as number | undefined;
-      if (oldestIndex === undefined) break;
-      if (oldestIndex === safeIndex || oldestIndex === desiredFrameIndexRef.current) {
-        const oldestImage = imageCache.current.get(oldestIndex);
-        imageCache.current.delete(oldestIndex);
-        if (oldestImage) imageCache.current.set(oldestIndex, oldestImage);
-        continue;
+    fetch(getHighResSrc(safeIndex), { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error('Network response was not ok');
+        return res.blob();
+      })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        img.src = url;
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          console.error('Error loading high-res frame:', safeIndex, err);
+        }
+      });
+
+    img.addEventListener('load', () => {
+      highResCache.current.set(safeIndex, img);
+      // Only paint if this is still the desired frame
+      if (desiredFrameIndexRef.current === safeIndex) {
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext('2d');
+        if (canvas && ctx) scaleImage(img, ctx);
       }
-      imageCache.current.delete(oldestIndex);
+    }, { once: true });
+  }, [getHighResSrc]);
+
+  // Phase 1: Eagerly load ALL low-res frames on mount
+  useEffect(() => {
+    let loaded = 0;
+    const total = FRAME_COUNT;
+
+    for (let i = 0; i < total; i++) {
+      const index = i;
+      const img = new Image();
+      img.decoding = 'async';
+
+      img.addEventListener('load', () => {
+        loaded++;
+        lowResLoadedCount.current = loaded;
+        if (loaded === total) {
+          allLowResLoadedRef.current = true;
+          // Once all low-res are done, immediately fetch high-res for current frame
+          fetchHighRes(desiredFrameIndexRef.current >= 0 ? desiredFrameIndexRef.current : 0);
+        }
+      }, { once: true });
+
+      img.src = getLowResSrc(index);
+      lowResCache.current.set(index, img);
     }
-
-    return img;
-  }, [getFrameSrc]);
-
-  const preloadAround = useCallback((index: number) => {
-    const offsets = window.innerWidth < 768 ? [-2, -1, 1, 2] : [-3, -2, -1, 1, 2, 3];
-    offsets.forEach((offset) => {
-      const nextIndex = index + offset;
-      if (nextIndex >= 0 && nextIndex < FRAME_COUNT) {
-        getFrame(nextIndex);
-      }
-    });
-  }, [getFrame]);
+  }, [getLowResSrc, fetchHighRes]);
 
   const drawFrame = useCallback((index: number) => {
     const canvas = canvasRef.current;
@@ -345,32 +408,23 @@ export const Scene: React.FC = () => {
 
     const safeIndex = Math.min(FRAME_COUNT - 1, Math.max(0, index));
     desiredFrameIndexRef.current = safeIndex;
-    const frame = getFrame(safeIndex);
-    if (frame.complete && frame.naturalWidth > 0) {
+
+    const frame = getBestFrame(safeIndex);
+    if (frame && frame.complete && frame.naturalWidth > 0) {
       scaleImage(frame, ctx);
-      preloadAround(safeIndex);
       return;
     }
 
-    if (pendingFramesRef.current.has(safeIndex)) return;
-    pendingFramesRef.current.add(safeIndex);
-
-    frame.addEventListener(
-      'load',
-      () => {
-        pendingFramesRef.current.delete(safeIndex);
+    // Frame not ready yet - wait for low-res to load
+    const lowFrame = lowResCache.current.get(safeIndex);
+    if (lowFrame && !lowFrame.complete) {
+      lowFrame.addEventListener('load', () => {
         if (desiredFrameIndexRef.current === safeIndex) {
-          scaleImage(frame, ctx);
-          preloadAround(safeIndex);
+          scaleImage(lowFrame, ctx);
         }
-      },
-      { once: true }
-    );
-  }, [getFrame, preloadAround]);
-
-  useEffect(() => {
-    [0, 1, 2, FRAME_COUNT - 1].forEach((index) => getFrame(index));
-  }, [getFrame]);
+      }, { once: true });
+    }
+  }, [getBestFrame]);
 
   const applyPose = useCallback((pose: AvatarPose) => {
     const container = containerRef.current;
@@ -469,6 +523,9 @@ export const Scene: React.FC = () => {
 
       if (!settled) {
         poseAnimationRef.current = window.requestAnimationFrame(animate);
+      } else {
+        // Phase 2: fetch high-res only once animation settles AND all low-res are loaded
+        fetchHighRes(frameIndexRef.current);
       }
     };
 
@@ -479,7 +536,7 @@ export const Scene: React.FC = () => {
         window.cancelAnimationFrame(poseAnimationRef.current);
       }
     };
-  }, [activeSection, applyPose, horizontalProgress, scrollMode, scrollProgress]);
+  }, [activeSection, applyPose, horizontalProgress, scrollMode, scrollProgress, fetchHighRes]);
 
   return (
     <div
