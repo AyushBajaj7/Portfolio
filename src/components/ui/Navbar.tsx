@@ -73,7 +73,8 @@ export const Navbar: React.FC = () => {
     const onScroll = () => {
       const scrollContainer = document.getElementById('scroll-container');
       if (!scrollContainer) return;
-      const currentScrollY = scrollContainer.scrollTop;
+      const useWindowScroll = window.innerWidth < 768;
+      const currentScrollY = useWindowScroll ? window.scrollY : scrollContainer.scrollTop;
       
       if (currentScrollY > 24) {
         const newDir = currentScrollY > lastScrollY.current ? 'down' : 'up';
@@ -112,6 +113,7 @@ export const Navbar: React.FC = () => {
       const sc = document.getElementById('scroll-container');
       if (sc && !attached) {
         sc.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('scroll', onScroll, { passive: true });
         attached = true;
         onScroll();
         return true;
@@ -134,6 +136,7 @@ export const Navbar: React.FC = () => {
       clearInterval(pollTimer);
       const sc = document.getElementById('scroll-container');
       if (sc) sc.removeEventListener('scroll', onScroll);
+      window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onResize);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseleave', onWindowLeave);
