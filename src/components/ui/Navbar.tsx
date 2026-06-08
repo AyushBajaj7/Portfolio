@@ -56,11 +56,10 @@ const MagneticButton: React.FC<{ children: React.ReactNode; className?: string; 
 export const Navbar: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
   const [scrollTop, setScrollTop] = useState(0);
+  const [scrollDirection, setScrollDirection] = useState<'up' | 'down'>('up');
+  const lastScrollY = useRef(0);
   const [edgeReveal, setEdgeReveal] = useState(false);
   const [navHovered, setNavHovered] = useState(false);
-  const [isDesktopNav, setIsDesktopNav] = useState(
-    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
-  );
   const [mobileOpen, setMobileOpen] = useState(false);
   const activeSection = useStore((s) => s.activeSection);
   const theme = useStore((s) => s.theme);
@@ -72,15 +71,26 @@ export const Navbar: React.FC = () => {
     if (!scrollContainer) return;
 
     const onScroll = () => {
-      const currentScrollY = window.innerWidth < 768 ? window.scrollY : scrollContainer.scrollTop;
-      setScrollTop(currentScrollY);
-      setScrolled(currentScrollY > 24);
+      const scrollContainer = document.getElementById('scroll-container');
+      if (!scrollContainer) return;
+      const currentScrollY = scrollContainer.scrollTop;
+      
+      if (currentScrollY > 24) {
+        const newDir = currentScrollY > lastScrollY.current ? 'down' : 'up';
+        setScrollDirection(prev => prev !== newDir ? newDir : prev);
+      }
+      lastScrollY.current = currentScrollY;
+      
+      setScrollTop(prev => {
+        if ((prev > 96 && currentScrollY <= 96) || (prev <= 96 && currentScrollY > 96)) return currentScrollY;
+        if (Math.abs(prev - currentScrollY) > 50) return currentScrollY;
+        return prev;
+      });
+      setScrolled(prev => (currentScrollY > 24) !== prev ? (currentScrollY > 24) : prev);
     };
 
     const onResize = () => {
-      const desktopNav = window.innerWidth >= 1024;
-      setIsDesktopNav(desktopNav);
-      if (!desktopNav) {
+      if (window.innerWidth < 1024) {
         setEdgeReveal(false);
         setNavHovered(false);
       }
@@ -95,20 +105,38 @@ export const Navbar: React.FC = () => {
       setEdgeReveal(false);
     };
 
-    window.addEventListener('scroll', onScroll, { passive: true });
+    let attached = false;
+    let pollTimer: number;
+
+    const attachScroll = () => {
+      const sc = document.getElementById('scroll-container');
+      if (sc && !attached) {
+        sc.addEventListener('scroll', onScroll, { passive: true });
+        attached = true;
+        onScroll();
+        return true;
+      }
+      return false;
+    };
+
+    if (!attachScroll()) {
+      pollTimer = window.setInterval(() => {
+        if (attachScroll()) clearInterval(pollTimer);
+      }, 100);
+    }
+
     window.addEventListener('resize', onResize);
     window.addEventListener('mousemove', onMouseMove, { passive: true });
     window.addEventListener('mouseleave', onWindowLeave);
-    scrollContainer.addEventListener('scroll', onScroll, { passive: true });
     onResize();
-    onScroll();
 
     return () => {
-      window.removeEventListener('scroll', onScroll);
+      clearInterval(pollTimer);
+      const sc = document.getElementById('scroll-container');
+      if (sc) sc.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onResize);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseleave', onWindowLeave);
-      scrollContainer.removeEventListener('scroll', onScroll);
     };
   }, []);
 
@@ -126,18 +154,18 @@ export const Navbar: React.FC = () => {
     { id: 'contact', label: 'Contact' },
   ];
 
-  const shouldHide = isDesktopNav && scrollTop > 96 && !edgeReveal && !navHovered && !mobileOpen;
+  const shouldHide = scrollTop > 96 && scrollDirection === 'down' && !edgeReveal && (!navHovered || window.innerWidth < 1024) && !mobileOpen;
 
   return (
     <nav
       onMouseEnter={() => setNavHovered(true)}
       onMouseLeave={() => setNavHovered(false)}
       className={`fixed top-0 w-full transition-all duration-500 ${
-        scrolled ? 'glass-panel shadow-lg border-x-0 border-t-0 rounded-none' : 'bg-transparent'
+        scrolled || mobileOpen ? 'glass-panel shadow-lg border-x-0 border-t-0 rounded-none' : 'bg-transparent'
       } ${shouldHide ? '-translate-y-[120%]' : 'translate-y-0'}`}
-      style={{ zIndex: 50 }}
+      style={{ zIndex: 60 }}
     >
-      <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">
+      <div className="relative z-[65] max-w-screen-2xl mx-auto px-6 lg:px-12 bg-surface/98 backdrop-blur-md lg:bg-transparent lg:backdrop-blur-none">
         <div className="flex justify-between items-center h-16">
           <button
             className="text-lg font-display font-bold tracking-tight text-on-surface hover:text-primary-dim transition-colors duration-300"
@@ -216,66 +244,46 @@ export const Navbar: React.FC = () => {
         />
       </div>
 
-      {/* Mobile full-screen menu overlay — placed outside the inner div so it fills the viewport */}
+      {/* Mobile Menu Dropdown */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
-            className="fixed inset-0 flex flex-col items-center justify-center bg-surface/98 px-6 lg:hidden"
-            style={{ zIndex: 49 }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            className="absolute top-[63px] left-0 w-full flex flex-col bg-surface/98 backdrop-blur-md border-b border-outline-variant/30 lg:hidden shadow-xl"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            style={{ overflow: 'hidden', zIndex: 64 }}
           >
-            <motion.div
-              className="flex flex-col items-center gap-8"
-              initial={{ y: 40, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 40, opacity: 0 }}
-              transition={{ duration: 0.35, delay: 0.05 }}
-            >
+            <div className="flex flex-col items-start px-6 py-4 gap-4 w-full">
               {links.map((link, i) => (
                 <motion.button
                   key={link.id}
                   onClick={() => scrollTo(link.id)}
-                  className={`text-3xl sm:text-4xl font-display font-bold transition-colors duration-300 ${
-                    activeSection === link.id ? 'text-primary' : 'text-on-surface'
+                  className={`text-2xl font-display font-semibold transition-colors duration-300 w-full text-left py-2 ${
+                    activeSection === link.id ? 'text-primary' : 'text-on-surface hover:text-primary-dim'
                   }`}
-                  initial={{ y: 30, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: 30, opacity: 0 }}
-                  transition={{ duration: 0.3, delay: i * 0.07 }}
-                  whileHover={{ scale: 1.03, x: 12 }}
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ duration: 0.3, delay: i * 0.05 }}
                 >
                   {link.label}
                 </motion.button>
               ))}
-            </motion.div>
 
-            <motion.div
-              className="absolute bottom-8 left-6 text-xs font-label uppercase tracking-[0.2em] text-on-surface/45"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-            >
-              AYUSH BAJAJ PORTFOLIO
-            </motion.div>
+              <div className="w-full h-[1px] bg-outline-variant/30 my-2" />
 
-            <motion.div
-              className="absolute bottom-6 right-6 flex items-center gap-3"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-            >
               <a
                 href={`${import.meta.env.BASE_URL}resume.pdf`}
                 download
-                className="flex h-11 w-11 items-center justify-center rounded-lg border border-primary/30 bg-primary text-on-primary"
+                style={{ color: '#000000' }}
+                className="flex items-center gap-2 h-12 px-4 rounded-lg bg-primary border border-primary/20 font-extrabold text-sm w-full justify-center hover:bg-primary-dim transition-all duration-300 mb-4"
                 aria-label="Download resume"
               >
-                <Download size={20} />
+                <Download size={18} />
+                Download Resume
               </a>
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

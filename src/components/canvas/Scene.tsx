@@ -49,6 +49,7 @@ const getAvatarPose = ({
   const tier = getViewportTier(viewportWidth);
 
   const scrollFrameProgress = overallProgress >= 0.995 ? 1 : overallProgress;
+  const mobileScale = tier === 'mobile' ? clamp(viewportWidth / 390, 1.6, 2.5) : 1;
 
   if (scrollMode === 'horizontal') {
     if (tier === 'mobile') {
@@ -56,7 +57,7 @@ const getAvatarPose = ({
         frameProgress: scrollFrameProgress,
         x: lerp(18, 10, horizontalProgress),
         y: lerp(8, 12, horizontalProgress),
-        scale: lerp(0.62, 0.68, horizontalProgress),
+        scale: lerp(0.85, 0.92, horizontalProgress) * mobileScale,
         opacity: 0.92,
       };
     }
@@ -88,8 +89,8 @@ const getAvatarPose = ({
         return {
           frameProgress: scrollFrameProgress,
           x: 0,
-          y: lerp(10, 12, heroProgress),
-          scale: lerp(0.68, 0.74, heroProgress),
+          y: lerp(8, 10, heroProgress),
+          scale: lerp(0.88, 0.96, heroProgress) * mobileScale,
           opacity: 0.9,
         };
       }
@@ -106,9 +107,9 @@ const getAvatarPose = ({
 
       return {
         frameProgress: scrollFrameProgress,
-        x: 16,
-        y: lerp(0, 2, heroProgress),
-        scale: lerp(0.7, 0.76, heroProgress),
+        x: 18,
+        y: 4,
+        scale: 0.82,
         opacity: 0.86,
       };
     }
@@ -116,9 +117,9 @@ const getAvatarPose = ({
       if (tier === 'mobile') {
         return {
           frameProgress: scrollFrameProgress,
-          x: 18,
-          y: 12,
-          scale: 0.64,
+          x: 0,
+          y: 8,
+          scale: 0.85 * mobileScale,
           opacity: 0.9,
         };
       }
@@ -133,25 +134,25 @@ const getAvatarPose = ({
       }
       return {
         frameProgress: scrollFrameProgress,
-        x: 28,
-        y: 5,
-        scale: 0.64,
+        x: 24,
+        y: 8,
+        scale: 0.72,
         opacity: 0.82,
       };
     case 'about':
       if (tier === 'mobile') {
         return {
           frameProgress: scrollFrameProgress,
-          x: 20,
-          y: 18,
-          scale: 0.58,
+          x: 0,
+          y: 12,
+          scale: 0.82 * mobileScale,
           opacity: 0.9,
         };
       }
       if (tier === 'tablet') {
         return {
           frameProgress: scrollFrameProgress,
-          x: 28,
+          x: 16,
           y: 14,
           scale: 0.66,
           opacity: 0.84,
@@ -159,25 +160,25 @@ const getAvatarPose = ({
       }
       return {
         frameProgress: scrollFrameProgress,
-        x: 36,
-        y: 16,
-        scale: 0.58,
+        x: 22,
+        y: 12,
+        scale: 0.75,
         opacity: 0.8,
       };
     case 'skills':
       if (tier === 'mobile') {
         return {
           frameProgress: scrollFrameProgress,
-          x: 20,
-          y: 22,
-          scale: 0.56,
+          x: 0,
+          y: 14,
+          scale: 0.82 * mobileScale,
           opacity: 0.9,
         };
       }
       if (tier === 'tablet') {
         return {
           frameProgress: scrollFrameProgress,
-          x: 30,
+          x: 20,
           y: 18,
           scale: 0.6,
           opacity: 0.84,
@@ -185,25 +186,25 @@ const getAvatarPose = ({
       }
       return {
         frameProgress: scrollFrameProgress,
-        x: 40,
-        y: 18,
-        scale: 0.52,
+        x: 22,
+        y: 14,
+        scale: 0.75,
         opacity: 0.78,
       };
     case 'contact':
       if (tier === 'mobile') {
         return {
           frameProgress: scrollFrameProgress,
-          x: 18,
-          y: 24,
-          scale: 0.52,
+          x: 0,
+          y: 16,
+          scale: 0.85 * mobileScale,
           opacity: 0.9,
         };
       }
       if (tier === 'tablet') {
         return {
           frameProgress: scrollFrameProgress,
-          x: 30,
+          x: 24,
           y: 20,
           scale: 0.58,
           opacity: 0.84,
@@ -211,10 +212,10 @@ const getAvatarPose = ({
       }
       return {
         frameProgress: scrollFrameProgress,
-        x: 42,
-        y: 22,
-        scale: 0.48,
-        opacity: 0.78,
+        x: 20,
+        y: 16,
+        scale: 0.8,
+        opacity: 0.82,
       };
     default:
       return {
@@ -346,9 +347,7 @@ export const Scene: React.FC = () => {
         highResCache.current.set(index, img);
         // If this frame happens to be the one currently displayed, repaint it
         if (desiredFrameIndexRef.current === index) {
-          const canvas = canvasRef.current;
-          const ctx = canvas?.getContext('2d');
-          if (canvas && ctx) scaleImage(img, ctx);
+          drawFrame(index);
         }
         downloadNext(); // fetch next once this one finishes
       }, { once: true });
@@ -381,15 +380,17 @@ export const Scene: React.FC = () => {
       const img = new Image();
       img.decoding = 'async';
 
-      img.addEventListener('load', () => {
+      const onLoadOrError = () => {
         loaded++;
         lowResLoadedCount.current = loaded;
         if (loaded === total) {
           allLowResLoadedRef.current = true;
-          // Phase 2: Once all low-res frames are done, start downloading ALL high-res in background
           startHighResPreload();
         }
-      }, { once: true });
+      };
+
+      img.addEventListener('load', onLoadOrError, { once: true });
+      img.addEventListener('error', onLoadOrError, { once: true });
 
       img.src = getLowResSrc(index);
       lowResCache.current.set(index, img);
@@ -432,9 +433,7 @@ export const Scene: React.FC = () => {
       Math.max(0, Math.floor(pose.frameProgress * (FRAME_COUNT - 1)))
     );
 
-    // Always redraw on mobile (frameIndexRef may stale after scroll events)
-    const isMobile = window.innerWidth < 768;
-    if (frameIndex !== frameIndexRef.current || isMobile) {
+    if (frameIndex !== frameIndexRef.current) {
       frameIndexRef.current = frameIndex;
       drawFrame(frameIndex);
     }
@@ -452,7 +451,8 @@ export const Scene: React.FC = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      const dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 768 ? 1 : 1.35);
+      // Allow up to 2.5 dpr on mobile to compensate for the high CSS scale factor, ensuring it stays crisp
+      const dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 768 ? 2.5 : 1.5);
       canvas.width = Math.floor(window.innerWidth * dpr);
       // Use dvh on mobile so canvas matches visual viewport (excludes browser chrome)
       const vh = window.innerWidth < 768 ? window.visualViewport?.height ?? window.innerHeight : window.innerHeight;
@@ -496,8 +496,7 @@ export const Scene: React.FC = () => {
 
     const isMobile = window.innerWidth < 768;
 
-    // On mobile: skip lerp animation entirely — apply pose instantly to avoid frame skipping
-    if (isMobile || window.matchMedia('(prefers-reduced-motion: reduce)').matches || poseRef.current === null) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || poseRef.current === null) {
       poseRef.current = targetPose;
       applyPose(targetPose);
       return;
@@ -511,7 +510,7 @@ export const Scene: React.FC = () => {
       const currentPose = poseRef.current ?? targetPose;
       const smoothing = scrollMode === 'horizontal' ? 0.18 : 0.12;
       const nextPose: AvatarPose = {
-        frameProgress: lerp(currentPose.frameProgress, targetPose.frameProgress, smoothing),
+        frameProgress: isMobile ? targetPose.frameProgress : lerp(currentPose.frameProgress, targetPose.frameProgress, smoothing),
         x: lerp(currentPose.x, targetPose.x, smoothing),
         y: lerp(currentPose.y, targetPose.y, smoothing),
         scale: lerp(currentPose.scale, targetPose.scale, smoothing),

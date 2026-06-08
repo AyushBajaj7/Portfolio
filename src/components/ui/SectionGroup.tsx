@@ -1257,7 +1257,7 @@ export const SectionGroup: React.FC = () => {
         </section>
 
         <SectionShell id="about" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-24">
-          <div className="mx-auto grid max-w-screen-2xl gap-10 lg:grid-cols-[0.5fr_0.5fr] lg:items-start">
+          <div className="mr-auto max-w-4xl grid gap-10 lg:grid-cols-2 lg:items-start">
             <SectionHeading
               eyebrow={sectionCopy.about.eyebrow}
               title={sectionCopy.about.title}
@@ -1300,14 +1300,14 @@ export const SectionGroup: React.FC = () => {
         </SectionShell>
 
         <SectionShell id="skills" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-24">
-          <div className="mx-auto max-w-screen-2xl">
+          <div className="mr-auto max-w-screen-2xl">
             <SectionHeading
               eyebrow={sectionCopy.skills.eyebrow}
               title={sectionCopy.skills.title}
               copy={sectionCopy.skills.copy}
             />
 
-            <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-10 grid max-w-4xl gap-5 md:grid-cols-2">
               {skills.map((group, index) => (
                 <SkillCard key={group.category} group={group} index={index} />
               ))}
@@ -1316,7 +1316,7 @@ export const SectionGroup: React.FC = () => {
         </SectionShell>
 
         <SectionShell id="contact" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-24">
-          <div className="mx-auto grid max-w-screen-2xl gap-10 lg:grid-cols-[0.54fr_0.46fr] lg:items-center">
+          <div className="mr-auto max-w-2xl grid gap-10">
             <SectionHeading
               eyebrow={sectionCopy.contact.eyebrow}
               title={sectionCopy.contact.title}
