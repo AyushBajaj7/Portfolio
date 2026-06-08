@@ -5,7 +5,6 @@
  * @author Ayush Bajaj
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;600;700;800&display=swap');
 @import "tailwindcss";
 
 /* Smooth scroll snap for sections */
@@ -46,10 +45,47 @@ html {
   animation: text-glow 2s ease-in-out infinite;
 }
 
+/* Shimmer sweep on hover */
+@keyframes shimmer-sweep {
+  0%   { transform: translateX(-100%) skewX(-12deg); }
+  100% { transform: translateX(220%) skewX(-12deg); }
+}
+
+.shimmer-card {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255,255,255,0.04) 50%,
+    transparent 60%
+  );
+  transform: translateX(-100%) skewX(-12deg);
+  pointer-events: none;
+  transition: none;
+}
+.shimmer-card:hover::after {
+  animation: shimmer-sweep 0.7s ease forwards;
+}
+
+/* Status pulse */
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.55; transform: scale(1.25); }
+}
+.status-dot {
+  animation: status-pulse 2.2s ease-in-out infinite;
+}
+
 :root {
-  --bg: #0a0a0f;
-  --surface: #0a0a0f;
-  --on-surface: #e8e8ec;
+  --bg: #07070d;
+  --surface: #07070d;
+  --on-surface: #eaeaee;
   --on-surface-variant: #9ca3af;
   --primary: #9cff93;
   --primary-dim: #00ec3b;
@@ -57,34 +93,39 @@ html {
   --on-primary: #061108;
   --tertiary: #8af2ff;
   --tertiary-dim: #00dbec;
-  --outline: rgba(255, 255, 255, 0.04);
+  --outline: rgba(255, 255, 255, 0.055);
+  --outline-strong: rgba(255, 255, 255, 0.10);
   --glass-bg: rgba(10, 10, 15, 0.15);
   --glow-1: #00F2FF;
   --glow-2: #9cff93;
   --glow-3: #a855f7;
   --glow-opacity: 0.06;
-  --surface-high: #14141e;
-  --surface-highest: #1a1a24;
-  --surface-panel: rgba(12, 17, 25, 0.25);
-  --surface-panel-strong: rgba(10, 14, 21, 0.40);
+  --surface-high: #0f0f1a;
+  --surface-highest: #161620;
+  --surface-panel: rgba(14, 18, 28, 0.72);
+  --surface-panel-strong: rgba(10, 14, 22, 0.82);
   --title-gradient-from: #00F2FF;
   --title-gradient-via: #9cff93;
   --title-gradient-to: #00ec3b;
   --glow-secondary: rgba(0, 242, 255, 0.15);
+  --card-glow: rgba(156, 255, 147, 0.06);
+  --skill-pill-bg: rgba(156, 255, 147, 0.07);
+  --skill-pill-border: rgba(156, 255, 147, 0.14);
 }
 
 .light-theme {
-  --bg: #ffffff;
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --on-surface: #000000;
-  --on-surface-variant: #1e293b;
+  --on-surface: #0f172a;
+  --on-surface-variant: #475569;
   --primary: #059669;
   --primary-dim: #047857;
   --primary-container: #d1fae5;
   --on-primary: #ffffff;
   --tertiary: #0891b2;
   --tertiary-dim: #0e7490;
-  --outline: rgba(0, 0, 0, 0.06);
+  --outline: rgba(0, 0, 0, 0.07);
+  --outline-strong: rgba(0, 0, 0, 0.12);
   --glass-bg: rgba(255, 255, 255, 0.35);
   --glow-1: #a7f3d0;
   --glow-2: #10b981;
@@ -92,72 +133,71 @@ html {
   --glow-opacity: 0.05;
   --surface-high: #f1f5f9;
   --surface-highest: #e2e8f0;
-  --surface-panel: rgba(255, 255, 255, 0.25);
-  --surface-panel-strong: rgba(255, 255, 255, 0.40);
-  --title-gradient-from: #00F2FF;
-  --title-gradient-via: #14ec00;
-  --title-gradient-to: #00ec3b;
+  --surface-panel: rgba(255, 255, 255, 0.82);
+  --surface-panel-strong: rgba(255, 255, 255, 0.92);
+  --title-gradient-from: #0891b2;
+  --title-gradient-via: #059669;
+  --title-gradient-to: #047857;
   --glow-secondary: rgba(16, 185, 129, 0.1);
+  --card-glow: rgba(5, 150, 105, 0.04);
+  --skill-pill-bg: rgba(5, 150, 105, 0.07);
+  --skill-pill-border: rgba(5, 150, 105, 0.18);
 }
 
-/* Theme specific overrides */
+/* ─── Theme overrides ─────────────────────────────────────────────── */
 .light-theme .font-display {
   font-weight: 700;
 }
 
 .light-theme .glass-panel {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.78)),
-    color-mix(in srgb, var(--tertiary) 4%, transparent);
-  border: 1px solid rgba(5, 150, 105, 0.16);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.82)),
+    color-mix(in srgb, var(--tertiary) 3%, transparent);
+  border: 1px solid rgba(5, 150, 105, 0.14);
   box-shadow:
-    0 10px 34px rgba(15, 23, 42, 0.1),
-    0 0 28px rgba(5, 150, 105, 0.1);
+    0 8px 32px rgba(15, 23, 42, 0.08),
+    0 0 24px rgba(5, 150, 105, 0.08);
 }
 
 .light-theme .surface-panel,
 .light-theme .surface-panel-subtle,
 .light-theme .project-card {
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.66)),
-    color-mix(in srgb, var(--primary) 4%, transparent);
-  border-color: rgba(5, 150, 105, 0.22);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.90), rgba(248, 250, 252, 0.80)),
+    color-mix(in srgb, var(--primary) 3%, transparent);
+  border-color: rgba(5, 150, 105, 0.18);
   box-shadow:
-    0 10px 24px rgba(15, 23, 42, 0.08),
-    0 0 0 1px rgba(8, 145, 178, 0.08);
+    0 8px 24px rgba(15, 23, 42, 0.06),
+    0 0 0 1px rgba(5, 150, 105, 0.06);
 }
 
 .light-theme .surface-panel:hover,
 .light-theme .surface-panel-subtle:hover,
 .light-theme .project-card:hover,
 .light-theme .project-card:focus-visible {
-  border-color: rgba(5, 150, 105, 0.42);
+  border-color: rgba(5, 150, 105, 0.38);
   box-shadow:
-    0 12px 28px rgba(15, 23, 42, 0.1),
-    0 0 0 1px rgba(8, 145, 178, 0.16),
-    0 0 18px rgba(5, 150, 105, 0.12);
+    0 12px 32px rgba(15, 23, 42, 0.10),
+    0 0 0 1px rgba(5, 150, 105, 0.14),
+    0 0 20px rgba(5, 150, 105, 0.08);
 }
 
 .light-theme .project-card :is([class*="bg-surface"], [class*="bg-surface-container"]) {
-  background-color: rgba(255, 255, 255, 0.62);
-}
-
-.light-theme .project-card :is([class*="border-primary"], [class*="hover\\:border-primary"]) {
-  box-shadow: 0 0 0 1px rgba(5, 150, 105, 0.08);
+  background-color: rgba(255, 255, 255, 0.70);
 }
 
 .light-theme .canvas-container {
   filter: none;
 }
 
-.light-theme :is(button, a):where([class*="border-primary"], [class*="bg-primary/"], [class*="hover\\:border-primary"]) {
-  box-shadow: 0 0 0 1px rgba(5, 150, 105, 0.08);
+.light-theme .shimmer-card::after {
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255,255,255,0.18) 50%,
+    transparent 60%
+  );
 }
-
-.light-theme :is(button, a):where([class*="bg-primary "], [class*="bg-primary/"]) {
-  border-color: rgba(5, 150, 105, 0.36);
-}
-
 
 @theme {
   --color-background: var(--bg);
@@ -183,7 +223,7 @@ html {
 
 @layer utilities {
   .glass-panel {
-    background: rgba(14, 18, 26, 0.88);
+    background: rgba(12, 15, 24, 0.90);
     border: 1px solid var(--outline);
     backdrop-filter: none;
   }
@@ -192,14 +232,14 @@ html {
     background: var(--surface-panel);
     backdrop-filter: none;
     border: 1px solid var(--outline);
-    box-shadow: 0 20px 44px rgba(3, 7, 18, 0.18);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22), 0 0 0 1px var(--card-glow);
   }
 
   .surface-panel-subtle {
-    background: color-mix(in srgb, var(--surface-panel) 82%, transparent);
+    background: color-mix(in srgb, var(--surface-panel) 76%, transparent);
     backdrop-filter: none;
     border: 1px solid var(--outline);
-    box-shadow: 0 18px 34px rgba(3, 7, 18, 0.14);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
   }
 
   .glass-panel-solid {
@@ -208,8 +248,10 @@ html {
   }
 
   .cyber-grid {
-    background-image: linear-gradient(rgba(0, 242, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 242, 255, 0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
+    background-image:
+      linear-gradient(rgba(0, 242, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 242, 255, 0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
   }
 
   .glow-cyan {
@@ -218,6 +260,42 @@ html {
 
   .glow-green {
     text-shadow: 0 0 20px var(--glow-2), 0 0 40px rgba(16, 185, 129, 0.15);
+  }
+
+  /* Accent top-border on cards */
+  .card-accent-top {
+    position: relative;
+  }
+  .card-accent-top::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 16px;
+    right: 16px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--primary-dim), transparent);
+    opacity: 0.35;
+  }
+
+  /* Skill pill */
+  .skill-pill {
+    background: var(--skill-pill-bg);
+    border: 1px solid var(--skill-pill-border);
+    color: var(--on-surface-variant);
+    font-size: 0.72rem;
+    font-family: var(--font-label);
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+  }
+  .skill-pill:hover {
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
+    border-color: var(--primary-dim);
+    color: var(--primary-dim);
   }
 }
 
@@ -238,8 +316,6 @@ body {
   transition: background-color 0.5s ease, color 0.5s ease;
   min-height: 100vh;
   overflow: hidden;
-  /* GPU: promote body layer to prevent repaints bleeding into composited children */
-  transform: translateZ(0);
 }
 
 ::selection {
@@ -291,7 +367,6 @@ a {
   z-index: 1;
   pointer-events: none;
   contain: strict;
-  /* GPU: own compositing layer — never repaints with UI overlay */
   will-change: transform, opacity;
   backface-visibility: hidden;
 }
@@ -299,7 +374,6 @@ a {
 .canvas-container canvas {
   pointer-events: none !important;
   backface-visibility: hidden;
-  /* GPU: force hardware raster for canvas element */
   transform: translateZ(0);
 }
 
@@ -317,7 +391,7 @@ a {
 }
 
 .ui-overlay::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 
 .ui-overlay::-webkit-scrollbar-track {
@@ -325,24 +399,24 @@ a {
 }
 
 .ui-overlay::-webkit-scrollbar-thumb {
-  background: rgba(156, 255, 147, 0.3);
+  background: rgba(156, 255, 147, 0.25);
   border-radius: 4px;
 }
 
 .ui-overlay::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 255, 147, 0.5);
+  background: rgba(156, 255, 147, 0.45);
 }
 
 .light-theme .ui-overlay {
-  scrollbar-color: rgba(4, 120, 87, 0.62) rgba(241, 245, 249, 0.9);
+  scrollbar-color: rgba(4, 120, 87, 0.5) transparent;
 }
 
 .light-theme .ui-overlay::-webkit-scrollbar-thumb {
-  background: rgba(4, 120, 87, 0.62);
+  background: rgba(4, 120, 87, 0.5);
 }
 
 .light-theme .ui-overlay::-webkit-scrollbar-thumb:hover {
-  background: rgba(4, 120, 87, 0.82);
+  background: rgba(4, 120, 87, 0.72);
 }
 
 .horizontal-drive {
@@ -350,7 +424,6 @@ a {
   scroll-snap-stop: normal;
   scroll-margin-top: 72px;
   --project-rail-card-height: clamp(14rem, 36svh, 18.5rem);
-  /* GPU: contain layout reflow within horizontal segment */
   contain: layout style;
 }
 
@@ -358,16 +431,32 @@ a {
   transform: translate3d(var(--rail-x, 0px), 0, 0);
   will-change: transform;
   backface-visibility: hidden;
-  /* GPU: the track MUST be its own layer — it translates every frame */
   contain: layout paint;
 }
 
 .project-card {
-  background: color-mix(in srgb, var(--surface-panel-strong) 78%, transparent);
-  box-shadow: 0 18px 34px rgba(3, 7, 18, 0.16);
+  background: var(--surface-panel);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.20), 0 0 0 1px var(--card-glow);
   contain: layout;
   transform: translateZ(0);
   backface-visibility: hidden;
+}
+
+/* Project card accent line at top */
+.project-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--primary-dim) 50%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.project-card:hover::before,
+.project-card:focus-visible::before {
+  opacity: 0.5;
 }
 
 .resume-cue-veil {
@@ -399,55 +488,37 @@ section {
   contain: layout style;
 }
 
-/* ─── Smooth transition curves (boy-coy inspired) ────────────────── */
+/* Below-fold sections defer paint cost until they approach the viewport */
+.section-snap:not(#hero) {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 600px;
+}
+
+/* ─── Smooth transition curves ────────────────────────────────────── */
 .transition-smooth {
   transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
 }
 
-/* ─── Custom Cursor ──────────────────────────────────────────────── */
 /* ─── Animations ──────────────────────────────────────────────────── */
 @keyframes float {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-8px);
-  }
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
 }
 
 @keyframes pulse-glow {
-
-  0%,
-  100% {
-    opacity: 0.6;
-  }
-
-  50% {
-    opacity: 1;
-  }
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
 }
 
 @keyframes scan-line {
-  0% {
-    transform: translateY(-100%);
-  }
-
-  100% {
-    transform: translateY(100vh);
-  }
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
 }
 
 /* ─── INFINITE MARQUEE ANIMATION ──────────────────────────────────── */
 @keyframes marquee {
-  0% {
-    transform: translateX(0%);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
+  0%   { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
 }
 
 .animate-marquee {
@@ -458,7 +529,16 @@ section {
   animation-play-state: paused;
 }
 
-/* Mobile */
+/* Navbar active pill */
+.nav-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  z-index: -1;
+}
+
+/* ─── Reduced motion ──────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -470,8 +550,8 @@ section {
   }
 }
 
+/* ─── Mobile ──────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-
   html,
   body,
   #root {
@@ -489,13 +569,14 @@ section {
     height: auto;
   }
 
+  .section-snap:not(#hero) {
+    content-visibility: visible;
+  }
+
   .resume-cue-veil {
     background: color-mix(in srgb, var(--bg) 24%, transparent);
   }
 
-  /* On mobile, canvas is fixed behind static content.
-     Remove contain:strict which can clip rendering in mobile browsers.
-     Force fixed viewport dimensions so it never scrolls with body. */
   .canvas-container {
     contain: layout paint;
     position: fixed !important;
@@ -507,7 +588,6 @@ section {
     z-index: 1 !important;
   }
 
-  /* Navbar always floats above canvas on mobile */
   nav {
     z-index: 50 !important;
   }

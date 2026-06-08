@@ -296,11 +296,13 @@ export const Scene: React.FC = () => {
   const frameIndexRef = useRef(-1);
   const desiredFrameIndexRef = useRef(-1);
 
-  const scrollProgress = useStore((s) => s.scrollProgress);
-  const horizontalProgress = useStore((s) => s.horizontalProgress);
-  const scrollMode = useStore((s) => s.scrollMode);
-  const activeSection = useStore((s) => s.activeSection);
+  // Only subscribe to theme reactively — it only changes on user action, not during scroll.
+  // scrollProgress / horizontalProgress / scrollMode / activeSection are read imperatively
+  // inside useStore.subscribe() below so Scene never re-renders during scroll.
   const theme = useStore((s) => s.theme);
+  // Keep a ref so applyPose can read the current theme without being recreated on every theme change.
+  const themeRef = useRef(theme);
+  useEffect(() => { themeRef.current = theme; }, [theme]);
 
   const getLowResSrc = useCallback((index: number) => {
     const baseUrl = import.meta.env.BASE_URL || '/';
@@ -438,11 +440,11 @@ export const Scene: React.FC = () => {
       drawFrame(frameIndex);
     }
 
-    const visibleOpacity = theme === 'light' ? Math.min(0.98, pose.opacity + 0.16) : pose.opacity;
+    const visibleOpacity = themeRef.current === 'light' ? Math.min(0.98, pose.opacity + 0.16) : pose.opacity;
     container.style.opacity = visibleOpacity.toFixed(3);
     canvas.style.transform = `translate3d(${pose.x.toFixed(2)}vw, ${pose.y.toFixed(2)}vh, 0) scale(${pose.scale.toFixed(3)})`;
     canvas.style.filter = 'none';
-  }, [drawFrame, theme]);
+  }, [drawFrame]);
 
   useEffect(() => {
     const syncCanvasSize = () => {
@@ -485,65 +487,70 @@ export const Scene: React.FC = () => {
     };
   }, [applyPose]);
 
+  // Subscribe imperatively to scroll-driven store values so Scene never re-renders
+  // during scroll. All animation runs inside rAF loops driven by the store subscription.
   useEffect(() => {
-    const targetPose = getAvatarPose({
-      activeSection,
-      horizontalProgress,
-      scrollMode,
-      scrollProgress,
-      viewportWidth: window.innerWidth,
-    });
+    const unsubscribe = useStore.subscribe((state) => {
+      const targetPose = getAvatarPose({
+        activeSection: state.activeSection,
+        horizontalProgress: state.horizontalProgress,
+        scrollMode: state.scrollMode,
+        scrollProgress: state.scrollProgress,
+        viewportWidth: window.innerWidth,
+      });
 
-    const isMobile = window.innerWidth < 768;
+      const isMobile = window.innerWidth < 768;
 
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || poseRef.current === null) {
-      poseRef.current = targetPose;
-      applyPose(targetPose);
-      return;
-    }
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || poseRef.current === null) {
+        poseRef.current = targetPose;
+        applyPose(targetPose);
+        return;
+      }
 
-    if (poseAnimationRef.current !== null) {
-      window.cancelAnimationFrame(poseAnimationRef.current);
-    }
+      if (poseAnimationRef.current !== null) {
+        window.cancelAnimationFrame(poseAnimationRef.current);
+      }
 
-    const animate = () => {
-      const currentPose = poseRef.current ?? targetPose;
-      const smoothing = scrollMode === 'horizontal' ? 0.18 : 0.12;
-      const nextPose: AvatarPose = {
-        frameProgress: isMobile ? targetPose.frameProgress : lerp(currentPose.frameProgress, targetPose.frameProgress, smoothing),
-        x: lerp(currentPose.x, targetPose.x, smoothing),
-        y: lerp(currentPose.y, targetPose.y, smoothing),
-        scale: lerp(currentPose.scale, targetPose.scale, smoothing),
-        opacity: lerp(currentPose.opacity, targetPose.opacity, smoothing),
+      const animate = () => {
+        const currentScrollMode = useStore.getState().scrollMode;
+        const currentPose = poseRef.current ?? targetPose;
+        const smoothing = currentScrollMode === 'horizontal' ? 0.18 : 0.12;
+        const nextPose: AvatarPose = {
+          frameProgress: isMobile ? targetPose.frameProgress : lerp(currentPose.frameProgress, targetPose.frameProgress, smoothing),
+          x: lerp(currentPose.x, targetPose.x, smoothing),
+          y: lerp(currentPose.y, targetPose.y, smoothing),
+          scale: lerp(currentPose.scale, targetPose.scale, smoothing),
+          opacity: lerp(currentPose.opacity, targetPose.opacity, smoothing),
+        };
+
+        const settled =
+          Math.abs(nextPose.frameProgress - targetPose.frameProgress) < 0.002 &&
+          Math.abs(nextPose.x - targetPose.x) < 0.08 &&
+          Math.abs(nextPose.y - targetPose.y) < 0.08 &&
+          Math.abs(nextPose.scale - targetPose.scale) < 0.004 &&
+          Math.abs(nextPose.opacity - targetPose.opacity) < 0.02;
+
+        const resolvedPose = settled ? targetPose : nextPose;
+        poseRef.current = resolvedPose;
+        applyPose(resolvedPose);
+
+        if (!settled) {
+          poseAnimationRef.current = window.requestAnimationFrame(animate);
+        } else {
+          fetchHighRes(frameIndexRef.current);
+        }
       };
 
-      const settled =
-        Math.abs(nextPose.frameProgress - targetPose.frameProgress) < 0.002 &&
-        Math.abs(nextPose.x - targetPose.x) < 0.08 &&
-        Math.abs(nextPose.y - targetPose.y) < 0.08 &&
-        Math.abs(nextPose.scale - targetPose.scale) < 0.004 &&
-        Math.abs(nextPose.opacity - targetPose.opacity) < 0.02;
-
-      const resolvedPose = settled ? targetPose : nextPose;
-      poseRef.current = resolvedPose;
-      applyPose(resolvedPose);
-
-      if (!settled) {
-        poseAnimationRef.current = window.requestAnimationFrame(animate);
-      } else {
-        // Phase 2: fetch high-res only once animation settles AND all low-res are loaded
-        fetchHighRes(frameIndexRef.current);
-      }
-    };
-
-    poseAnimationRef.current = window.requestAnimationFrame(animate);
+      poseAnimationRef.current = window.requestAnimationFrame(animate);
+    });
 
     return () => {
+      unsubscribe();
       if (poseAnimationRef.current !== null) {
         window.cancelAnimationFrame(poseAnimationRef.current);
       }
     };
-  }, [activeSection, applyPose, horizontalProgress, scrollMode, scrollProgress, fetchHighRes]);
+  }, [applyPose, fetchHighRes]);
 
   return (
     <div

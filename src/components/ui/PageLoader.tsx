@@ -7,66 +7,76 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-/**
- * PageLoader component - Displays branded loading screen with progress animation.
- * @returns {React.ReactElement | null} The loader or null when complete
- */
 export const PageLoader: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const progressTimer = window.setTimeout(() => setProgress(100), prefersReducedMotion ? 0 : 120);
-    const finishTimer = window.setTimeout(() => setIsLoading(false), prefersReducedMotion ? 80 : 520);
-
-    return () => {
-      window.clearTimeout(progressTimer);
-      window.clearTimeout(finishTimer);
-    };
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const t1 = window.setTimeout(() => setProgress(100), reduced ? 0 : 100);
+    const t2 = window.setTimeout(() => setIsLoading(false), reduced ? 60 : 480);
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
   }, []);
 
   return (
     <AnimatePresence>
       {isLoading && (
         <motion.div
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#0a0a0f]"
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
+          style={{ background: 'var(--bg, #07070d)' }}
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
+          exit={{ opacity: 0, filter: 'blur(4px)' }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
         >
+          {/* Subtle radial glow behind the wordmark */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background: 'radial-gradient(ellipse 420px 260px at 50% 50%, rgba(156,255,147,0.055) 0%, transparent 70%)',
+            }}
+            aria-hidden="true"
+          />
+
           <motion.div
-            className="relative"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.3 }}
+            className="relative flex flex-col items-center"
+            initial={{ scale: 0.88, opacity: 0, y: 8 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
           >
-            <h1 className="text-4xl sm:text-6xl font-display font-bold tracking-tight text-on-surface">
-              Ayush<span className="text-primary">.</span>
+            {/* Wordmark */}
+            <h1 className="text-5xl sm:text-6xl font-display font-bold tracking-tight"
+              style={{ color: 'var(--on-surface, #eaeaee)' }}>
+              Ayush<span style={{ color: 'var(--primary-dim, #00ec3b)' }}>.</span>
             </h1>
 
+            {/* Animated underline sweep */}
             <motion.div
-              className="mt-2 h-[2px] bg-gradient-to-r from-primary to-tertiary"
-              initial={{ width: 0 }}
-              animate={{ width: '100%' }}
-              transition={{ duration: 0.45, delay: 0.05 }}
+              className="mt-2 h-[1.5px] rounded-full"
+              style={{ background: 'linear-gradient(90deg, var(--primary), var(--tertiary))' }}
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: '100%', opacity: 1 }}
+              transition={{ duration: 0.38, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
             />
           </motion.div>
 
-          <div className="mt-8 h-1 w-48 overflow-hidden rounded-full bg-surface-container-high">
+          {/* Progress bar */}
+          <div className="mt-10 h-[2px] w-36 overflow-hidden rounded-full"
+            style={{ background: 'var(--surface-high, #0f0f1a)' }}>
             <motion.div
-              className="h-full bg-gradient-to-r from-primary to-tertiary"
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.min(progress, 100)}%` }}
-              transition={{ duration: 0.3 }}
+              className="h-full rounded-full"
+              style={{ background: 'linear-gradient(90deg, var(--primary), var(--tertiary))' }}
+              initial={{ width: '0%' }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.28, ease: 'easeOut' }}
             />
           </div>
 
           <motion.p
-            className="mt-4 text-xs font-label uppercase tracking-widest text-on-surface/50"
+            className="mt-4 text-[10px] font-label uppercase tracking-[0.28em]"
+            style={{ color: 'rgba(156,163,175,0.5)' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.18 }}
           >
             Loading
           </motion.p>

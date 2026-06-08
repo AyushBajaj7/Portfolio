@@ -5,9 +5,10 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { Download, Menu, Moon, Sun, X } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 
 /**
  * MagneticButton component - Adds magnetic hover effect to buttons.
@@ -61,10 +62,13 @@ export const Navbar: React.FC = () => {
   const [edgeReveal, setEdgeReveal] = useState(false);
   const [navHovered, setNavHovered] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const activeSection = useStore((s) => s.activeSection);
-  const theme = useStore((s) => s.theme);
-  const toggleTheme = useStore((s) => s.toggleTheme);
-  const scrollProgress = useStore((s) => s.scrollProgress);
+  // Use useShallow to batch these into a single subscription so toggling theme or
+  // changing activeSection doesn't cause an extra re-render when scrollProgress ticks.
+  const { activeSection, theme, toggleTheme } = useStore(
+    useShallow((s) => ({ activeSection: s.activeSection, theme: s.theme, toggleTheme: s.toggleTheme }))
+  );
+  // Progress bar is updated directly on the DOM element to avoid re-renders on every scroll tick.
+  const progressBarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const scrollContainer = document.getElementById('scroll-container');
@@ -99,7 +103,9 @@ export const Navbar: React.FC = () => {
 
     const onMouseMove = (event: MouseEvent) => {
       if (window.innerWidth < 1024) return;
-      setEdgeReveal(event.clientY <= 72);
+      const isNearEdge = event.clientY <= 72;
+      // Only call setState when the value actually changes
+      setEdgeReveal(prev => prev !== isNearEdge ? isNearEdge : prev);
     };
 
     const onWindowLeave = () => {
@@ -143,6 +149,17 @@ export const Navbar: React.FC = () => {
     };
   }, []);
 
+  // Subscribe to scrollProgress imperatively so the progress bar updates without
+  // triggering a React re-render on every scroll tick (runs at 60fps).
+  useEffect(() => {
+    const unsubscribe = useStore.subscribe((state) => {
+      if (progressBarRef.current) {
+        progressBarRef.current.style.width = `${Math.round(state.scrollProgress * 100)}%`;
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   const scrollTo = (id: string) => {
     const element = document.getElementById(id);
     if (element) element.scrollIntoView({ behavior: 'smooth' });
@@ -170,6 +187,8 @@ export const Navbar: React.FC = () => {
     >
       <div className="relative z-[65] max-w-screen-2xl mx-auto px-6 lg:px-12 bg-surface/98 backdrop-blur-md lg:bg-transparent lg:backdrop-blur-none">
         <div className="flex justify-between items-center h-16">
+
+          {/* Logo */}
           <button
             className="text-lg font-display font-bold tracking-tight text-on-surface hover:text-primary-dim transition-colors duration-300"
             onClick={() => scrollTo('hero')}
@@ -177,77 +196,89 @@ export const Navbar: React.FC = () => {
             Ayush Bajaj<span className="text-primary-dim">.</span>
           </button>
 
-          {/* Desktop nav links */}
-          <div className="hidden lg:flex items-center gap-6">
-            <div className="flex items-center gap-1">
-              {links.map((link) => (
-                <MagneticButton
-                  key={link.id}
-                  onClick={() => scrollTo(link.id)}
-                  className={`px-4 py-2 rounded-lg text-sm font-body font-medium transition-all duration-300 ${
-                    activeSection === link.id
-                      ? 'text-primary-dim bg-primary/10'
-                      : 'text-on-surface-variant hover:text-on-surface hover:bg-on-surface/5'
-                  }`}
-                >
-                  {link.label}
-                </MagneticButton>
-              ))}
-            </div>
+          {/* Desktop nav */}
+          <div className="hidden lg:flex items-center gap-5">
+            <LayoutGroup id="navbar-pill">
+              <div className="flex items-center gap-0.5 rounded-xl border border-outline-variant bg-surface-container-high/40 p-1">
+                {links.map((link) => (
+                  <MagneticButton
+                    key={link.id}
+                    onClick={() => scrollTo(link.id)}
+                    className={`relative px-3.5 py-1.5 rounded-lg text-sm font-body font-medium transition-colors duration-200 ${
+                      activeSection === link.id
+                        ? 'text-on-surface'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    {activeSection === link.id && (
+                      <motion.span
+                        layoutId="navbar-active-pill"
+                        className="absolute inset-0 rounded-lg bg-primary/12 border border-primary/20"
+                        transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                      />
+                    )}
+                    <span className="relative z-10">{link.label}</span>
+                  </MagneticButton>
+                ))}
+              </div>
+            </LayoutGroup>
 
+            {/* Theme toggle */}
             <button
               onClick={toggleTheme}
               className="relative flex h-8 w-14 items-center rounded-full border border-outline-variant bg-surface-container-high p-1 transition-all duration-300 hover:border-primary/40"
               aria-label="Toggle theme"
             >
               <div
-                className={`flex h-6 w-6 items-center justify-center rounded-full shadow-lg transition-all duration-300 ${
+                className={`flex h-6 w-6 items-center justify-center rounded-full shadow-md transition-all duration-300 ${
                   theme === 'light'
                     ? 'translate-x-6 bg-primary text-on-primary'
                     : 'translate-x-0 bg-surface-container-highest text-primary-dim'
                 }`}
               >
-                {theme === 'light' ? <Sun size={14} /> : <Moon size={14} />}
+                {theme === 'light' ? <Sun size={13} /> : <Moon size={13} />}
               </div>
             </button>
 
+            {/* Resume link */}
             <a
               href={`${import.meta.env.BASE_URL}resume.pdf`}
               download
-              className="hidden xl:flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/8 border border-primary/20 text-primary-dim text-xs font-bold tracking-wider uppercase hover:bg-primary hover:text-on-primary transition-all duration-300"
+              className="hidden xl:flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/8 border border-primary/18 text-primary-dim text-xs font-bold tracking-wider uppercase hover:bg-primary hover:text-on-primary transition-all duration-300"
             >
-              <Download size={16} />
+              <Download size={15} />
               Resume
             </a>
           </div>
 
-          {/* Mobile: theme toggle + hamburger always visible */}
+          {/* Mobile controls */}
           <div className="lg:hidden flex items-center gap-2">
             <button
               onClick={toggleTheme}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high/80 text-on-surface"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-high/80 text-on-surface"
               aria-label="Toggle theme"
             >
-              {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+              {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
             </button>
             <button
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high/80 text-on-surface"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-high/80 text-on-surface"
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label="Toggle menu"
             >
-              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
         </div>
 
         {/* Scroll progress bar */}
-        <motion.div
-          className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-primary via-tertiary to-primary-dim"
-          style={{ width: `${Math.round(scrollProgress * 100)}%` }}
+        <div
+          ref={progressBarRef}
+          className="absolute bottom-0 left-0 h-[1.5px] bg-gradient-to-r from-primary via-tertiary to-primary-dim"
+          style={{ width: '0%' }}
         />
       </div>
 
-      {/* Mobile Menu Dropdown */}
+      {/* Mobile menu */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
@@ -255,35 +286,37 @@ export const Navbar: React.FC = () => {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
             style={{ overflow: 'hidden', zIndex: 64 }}
           >
-            <div className="flex flex-col items-start px-6 py-4 gap-4 w-full">
+            <div className="flex flex-col items-start px-6 py-5 gap-1 w-full">
               {links.map((link, i) => (
                 <motion.button
                   key={link.id}
                   onClick={() => scrollTo(link.id)}
-                  className={`text-2xl font-display font-semibold transition-colors duration-300 w-full text-left py-2 ${
-                    activeSection === link.id ? 'text-primary' : 'text-on-surface hover:text-primary-dim'
+                  className={`w-full text-left rounded-xl px-4 py-3 text-xl font-display font-semibold transition-colors duration-200 ${
+                    activeSection === link.id
+                      ? 'text-primary bg-primary/8'
+                      : 'text-on-surface hover:text-primary-dim hover:bg-surface-container-high/60'
                   }`}
-                  initial={{ x: -20, opacity: 0 }}
+                  initial={{ x: -16, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
-                  transition={{ duration: 0.3, delay: i * 0.05 }}
+                  transition={{ duration: 0.24, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
                 >
                   {link.label}
                 </motion.button>
               ))}
 
-              <div className="w-full h-[1px] bg-outline-variant/30 my-2" />
+              <div className="w-full h-px bg-outline-variant/30 my-3" />
 
               <a
                 href={`${import.meta.env.BASE_URL}resume.pdf`}
                 download
-                style={{ color: '#000000' }}
-                className="flex items-center gap-2 h-12 px-4 rounded-lg bg-primary border border-primary/20 font-extrabold text-sm w-full justify-center hover:bg-primary-dim transition-all duration-300 mb-4"
+                className="flex items-center gap-2 h-12 px-4 rounded-xl bg-primary border border-primary/20 font-extrabold text-sm w-full justify-center hover:bg-primary-dim transition-all duration-300 mb-2"
+                style={{ color: 'var(--on-primary)' }}
                 aria-label="Download resume"
               >
-                <Download size={18} />
+                <Download size={16} />
                 Download Resume
               </a>
             </div>

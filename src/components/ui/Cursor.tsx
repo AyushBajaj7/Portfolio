@@ -21,6 +21,7 @@ export const Cursor: React.FC = () => {
   const hasMouseRef = useRef(false);
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<number>(0);
+  const cursorRafRef = useRef<number>(0);
   const setCursorPosition = useStore((state) => state.setCursorPosition);
   const theme = useStore((state) => state.theme);
 
@@ -60,7 +61,16 @@ export const Cursor: React.FC = () => {
       // Direct motion value set — zero React re-renders
       cursorX.set(e.clientX);
       cursorY.set(e.clientY);
-      setCursorPosition(e.clientX, e.clientY);
+
+      // Throttle the Zustand write to once per rAF frame — Scene's subscribe
+      // callback runs off the store, so hammering it every pixel creates
+      // unnecessary work in the animation loop.
+      window.cancelAnimationFrame(cursorRafRef.current);
+      const cx = e.clientX;
+      const cy = e.clientY;
+      cursorRafRef.current = window.requestAnimationFrame(() => {
+        setCursorPosition(cx, cy);
+      });
       
       if (!hasMouseRef.current) {
         hasMouseRef.current = true;
@@ -122,6 +132,7 @@ export const Cursor: React.FC = () => {
         scrollContainer.removeEventListener('scroll', handleScrollStart);
       }
       clearTimeout(scrollTimeoutRef.current);
+      window.cancelAnimationFrame(cursorRafRef.current);
     };
   }, [cursorX, cursorY, setCursorPosition, setVisible]);
 
