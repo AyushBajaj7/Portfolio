@@ -21,8 +21,6 @@ export const Cursor: React.FC = () => {
   const hasMouseRef = useRef(false);
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<number>(0);
-  const cursorRafRef = useRef<number>(0);
-  const setCursorPosition = useStore((state) => state.setCursorPosition);
   const theme = useStore((state) => state.theme);
 
   const cursorX = useMotionValue(-100);
@@ -58,19 +56,9 @@ export const Cursor: React.FC = () => {
     const updateMousePosition = (e: MouseEvent) => {
       if (isScrollingRef.current) return;
       
-      // Direct motion value set — zero React re-renders
+      // Direct motion value set — zero React re-renders, zero Zustand dispatches
       cursorX.set(e.clientX);
       cursorY.set(e.clientY);
-
-      // Throttle the Zustand write to once per rAF frame — Scene's subscribe
-      // callback runs off the store, so hammering it every pixel creates
-      // unnecessary work in the animation loop.
-      window.cancelAnimationFrame(cursorRafRef.current);
-      const cx = e.clientX;
-      const cy = e.clientY;
-      cursorRafRef.current = window.requestAnimationFrame(() => {
-        setCursorPosition(cx, cy);
-      });
       
       if (!hasMouseRef.current) {
         hasMouseRef.current = true;
@@ -86,19 +74,10 @@ export const Cursor: React.FC = () => {
       const isLink = target.tagName === 'A' || target.tagName === 'BUTTON' || target.closest('a') || target.closest('button');
       const isText = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
       
-      if (isProjectCard) {
-        setCursorState('view');
-        setCursorText('VIEW');
-      } else if (isLink) {
-        setCursorState('hover');
-        setCursorText('');
-      } else if (isText) {
-        setCursorState('text');
-        setCursorText('');
-      } else {
-        setCursorState('default');
-        setCursorText('');
-      }
+      const nextState: CursorState = isProjectCard ? 'view' : isLink ? 'hover' : isText ? 'text' : 'default';
+      const nextText = isProjectCard ? 'VIEW' : '';
+      setCursorState(prev => prev !== nextState ? nextState : prev);
+      setCursorText(prev => prev !== nextText ? nextText : prev);
     };
 
     const handleMouseLeave = () => {
@@ -132,9 +111,8 @@ export const Cursor: React.FC = () => {
         scrollContainer.removeEventListener('scroll', handleScrollStart);
       }
       clearTimeout(scrollTimeoutRef.current);
-      window.cancelAnimationFrame(cursorRafRef.current);
     };
-  }, [cursorX, cursorY, setCursorPosition, setVisible]);
+  }, [cursorX, cursorY, setVisible]);
 
   // Touch bail — don't render anything
   if (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
@@ -165,26 +143,25 @@ export const Cursor: React.FC = () => {
       {/* Main cursor dot with magnetic spring */}
       <motion.div
         ref={dotRef}
-        className={`fixed top-0 left-0 pointer-events-none z-[9999] ${
-          theme === 'dark' ? 'mix-blend-difference' : ''
-        }`}
+        className="fixed top-0 left-0 pointer-events-none z-[9999] rounded-full"
         style={{
           x: cursorXSpring,
           y: cursorYSpring,
-          marginLeft: -size / 2,
-          marginTop: -size / 2,
+          width: 48,
+          height: 48,
+          marginLeft: -24,
+          marginTop: -24,
           opacity: 0,
           willChange: 'transform',
         }}
         animate={{
-          width: size,
-          height: size,
+          scale: size / 48,
           backgroundColor: cursorState === 'text'
             ? theme === 'dark' ? 'white' : 'var(--on-surface)'
             : getCursorColor(),
           borderRadius: cursorState === 'text' ? '0%' : '50%',
         }}
-        transition={{ type: 'spring', mass: 0.5, stiffness: 500, damping: 28 }}
+        transition={{ type: 'spring', mass: 0.4, stiffness: 450, damping: 28 }}
       />
       
       {/* Cursor label for special states */}

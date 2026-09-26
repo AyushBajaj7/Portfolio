@@ -17,6 +17,11 @@ export default defineConfig(({ command }) => ({
   base: process.env.VERCEL ? '/' : '/Portfolio/',
   /** Copy public assets in the post-build script; Vite's build copier hangs on the large frame set on Windows. */
   publicDir: command === 'build' ? false : 'public',
+  server: {
+    watch: {
+      ignored: ['**/public/frames/**', '**/public/frames-lowres/**', '**/.git/**', '**/dist/**'],
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),

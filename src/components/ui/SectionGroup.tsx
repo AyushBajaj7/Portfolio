@@ -6,6 +6,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useInView } from 'framer-motion';
 import {
   ArrowRight,
@@ -23,10 +24,18 @@ import {
   Sparkles,
   Briefcase,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
   Zap,
+  Terminal,
+  Grid,
+  SlidersHorizontal,
+  Cpu,
+  ChevronDown,
 } from 'lucide-react';
 import portfolioData from '../../data/portfolio.json';
 import { useStore } from '../../store/useStore';
+import { TerminalModal } from './TerminalModal';
 
 type Project = (typeof portfolioData.projects)[number];
 type SkillGroup = (typeof portfolioData.skills)[number];
@@ -43,8 +52,7 @@ type ResumeCueGeometry = {
 
 // Constants for scroll and animation thresholds
 const SECTION_VIEWPORT_THRESHOLD = 0.14;
-const SECTION_VIEWPORT_THRESHOLD_LARGE = 0.34;
-const PROGRESS_UPDATE_THRESHOLD = 0.006;
+const PROGRESS_UPDATE_THRESHOLD = 0.0002;
 
 const reveal = {
   initial: { opacity: 0, y: 28 },
@@ -91,11 +99,14 @@ const sectionCopy = {
 };
 
 const capabilitySummaries: Record<string, string> = {
-  'Frontend Engineering':    'Responsive interfaces, component systems, and interaction states.',
-  'Backend Systems':         'API design, application logic, and structured data handling.',
-  'Applied AI':              'Model workflows, evaluation, and production-minded ML usage.',
-  'Deployment & Media':      'Cloud delivery, media processing, and 3D asset workflows.',
-  'Engineering Foundations': 'Problem solving, debugging, and structured technical thinking.',
+  'Distributed & Backend Systems': 'Microservices, graph and vector databases, and real-time APIs.',
+  'Applied AI & Machine Learning': 'LLM orchestration, RAG pipelines, AST analysis, and model evaluation.',
+  'Frontend Engineering':          'Responsive interfaces, component systems, and interaction states.',
+  'Cloud & DevOps':                'Containerized deployments, media pipelines, and automated workflows.',
+  'Engineering Foundations':       'Distributed systems design, algorithms, and deep technical problem solving.',
+  'Backend Systems':               'API design, application logic, and structured data handling.',
+  'Applied AI':                    'Model workflows, evaluation, and production-minded ML usage.',
+  'Deployment & Media':            'Cloud delivery, media processing, and 3D asset workflows.',
 };
 
 const heroDots = [
@@ -109,9 +120,12 @@ const heroDots = [
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
 
 const getProjectCategory = (project: Project) => {
+  if ('category' in project && typeof project.category === 'string') {
+    return project.category;
+  }
   const s = `${project.title} ${project.subtitle} ${project.tech.join(' ')}`.toLowerCase();
-  if (s.includes('flan') || s.includes('disease') || s.includes('ml') || s.includes('ai')) return 'AI / ML';
-  if (s.includes('3d') || s.includes('unity') || s.includes('opengl')) return '3D Systems';
+  if (/\b(ai|ml|nlp|gemini|flan|transformers?|predictive|disease|drift|rag|chroma)\b/i.test(s) || s.includes('cat-x') || s.includes('trajectory') || s.includes('summary') || s.includes('mdt')) return 'AI / ML';
+  if (/\b(3d|unity|opengl|blender)\b/i.test(s)) return '3D Systems';
   return 'Full Stack';
 };
 
@@ -130,18 +144,17 @@ const getProjectSlug = (project: Project) =>
 const getProjectDemo = (project: Project): string | null =>
   'demo' in project && typeof project.demo === 'string' ? project.demo : null;
 
-const getResumeCueArrowPath = (g: ResumeCueGeometry) => {
-  const angle = Math.atan2(g.endY - g.controlTwoY, g.endX - g.controlTwoX);
-  const wl = 13, ws = 0.58;
-  return `M ${g.endX - Math.cos(angle - ws) * wl} ${g.endY - Math.sin(angle - ws) * wl} L ${g.endX} ${g.endY} L ${g.endX - Math.cos(angle + ws) * wl} ${g.endY - Math.sin(angle + ws) * wl}`;
-};
-
 const getImplementationFocus = (project: Project) => {
   const s = `${project.title} ${project.subtitle} ${project.tech.join(' ')}`.toLowerCase();
-  if (s.includes('agriconnect') || s.includes('express') || s.includes('mongo')) return 'Data flow and service wiring';
-  if (s.includes('ppt') || s.includes('flan') || s.includes('polly')) return 'Pipeline orchestration';
-  if (s.includes('disease') || s.includes('scikit') || s.includes('knn')) return 'Model evaluation setup';
-  if (s.includes('3d') || s.includes('unity') || s.includes('opengl')) return 'Interaction loop behavior';
+  if (s.includes('mdt') || s.includes('drift') || s.includes('microservice')) return 'Cross-service blast-radius & graph engine';
+  if (s.includes('cat-x') || s.includes('trajectory') || s.includes('twin')) return 'Telemetry and trajectory simulation';
+  if (s.includes('ppt') || s.includes('avatar') || s.includes('wav2lip') || s.includes('flan')) return 'Deep Learning Lip-Sync & Media Pipeline';
+  if (s.includes('luxon') || s.includes('razorpay') || s.includes('flask')) return 'Transactional flows and SQL aggregation';
+  if (s.includes('disease') || s.includes('microarray') || s.includes('scikit')) return 'Gene expression classifier & cross-validation';
+  if (s.includes('weather') || s.includes('vision') || s.includes('atmospheric')) return 'Zero-dependency telemetry proxy & AQI engine';
+  if (s.includes('agriconnect') || s.includes('express') || s.includes('mongo')) return 'Centralized agricultural data schema';
+  if (s.includes('3d') || s.includes('unity') || s.includes('opengl')) return 'Real-time 3D walkthrough & rendering loop';
+  if (s.includes('summary') || s.includes('gemini') || s.includes('document')) return 'Multimodal extraction & LLM summarization';
   return 'Implementation snapshot';
 };
 
@@ -175,7 +188,7 @@ const SectionShell: React.FC<{
   className?: string;
 }> = ({ id, children, className = '' }) => {
   const ref = useRef<HTMLElement>(null);
-  const isInView = useInView(ref, { amount: SECTION_VIEWPORT_THRESHOLD_LARGE });
+  const isInView = useInView(ref, { margin: '-20% 0px -40% 0px' });
   const setActiveSection = useStore.getState().setActiveSection;
 
   useEffect(() => {
@@ -231,6 +244,47 @@ const ProjectCard: React.FC<{
   rail?: boolean;
   onOpenCaseStudy?: (project: Project) => void;
 }> = React.memo(({ project, index, rail = false, onOpenCaseStudy }) => {
+  const cardRef = useRef<HTMLElement>(null);
+  const [tiltStyle, setTiltStyle] = useState<{
+    transform: string;
+    glareX: number;
+    glareY: number;
+    isHovered: boolean;
+  }>({
+    transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
+    glareX: 50,
+    glareY: 50,
+    isHovered: false,
+  });
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    if (window.innerWidth < 1024) return;
+    const card = cardRef.current;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const xPct = x / rect.width;
+    const yPct = y / rect.height;
+    const rotateX = (yPct - 0.5) * -8;
+    const rotateY = (xPct - 0.5) * 8;
+    setTiltStyle({
+      transform: `perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.02, 1.02, 1.02)`,
+      glareX: xPct * 100,
+      glareY: yPct * 100,
+      isHovered: true,
+    });
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setTiltStyle({
+      transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
+      glareX: 50,
+      glareY: 50,
+      isHovered: false,
+    });
+  }, []);
+
   const previewLines = project.codePreview ? getCodePreviewLines(project.codePreview, rail ? 1 : 4) : [];
   const totalLines = project.codePreview ? getCodePreviewLineCount(project.codePreview) : 0;
   const slug = getProjectSlug(project);
@@ -244,20 +298,18 @@ const ProjectCard: React.FC<{
     onOpenCaseStudy?.(project);
   };
 
-  return (
-    <motion.article
-      {...reveal}
-      tabIndex={0}
-      role="button"
-      aria-label={`Open ${project.title} case study`}
-      data-cursor="view"
-      onClick={openFromCard}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openFromCard(e); }}
-      className={`project-card shimmer-card group grid cursor-pointer overflow-hidden rounded-2xl border border-outline-variant transition-all duration-250 hover:border-primary/25 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-        rail ? 'h-full min-h-0' : 'min-h-[20rem]'
-      }`}
-    >
-      <div className={`flex h-full flex-col ${rail ? 'p-4' : 'p-5 lg:p-6'}`}>
+  const glareSheen = (
+    <div
+      className="tilt-glare"
+      style={{
+        background: `radial-gradient(circle at ${tiltStyle.glareX}% ${tiltStyle.glareY}%, rgba(156, 255, 147, 0.12), transparent 60%)`,
+        opacity: tiltStyle.isHovered ? 1 : 0,
+      }}
+    />
+  );
+
+  const cardContent = (
+    <div className={`flex h-full flex-col relative z-10 ${rail ? 'p-4' : 'p-5 lg:p-6'}`}>
 
         {/* Header row */}
         <div className="mb-3 flex items-center justify-between gap-3">
@@ -399,7 +451,339 @@ const ProjectCard: React.FC<{
           </>
         )}
       </div>
+  );
+
+  if (rail) {
+    return (
+      <article
+        ref={cardRef as any}
+        tabIndex={0}
+        role="button"
+        aria-label={`Open ${project.title} case study`}
+        data-cursor="view"
+        onClick={openFromCard}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        style={{ transform: tiltStyle.transform }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openFromCard(e); }}
+        className="project-card tilt-card shimmer-card group grid cursor-pointer overflow-hidden rounded-2xl border border-outline-variant transition-all duration-200 hover:border-primary/35 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary h-full min-h-0 relative"
+      >
+        {glareSheen}
+        {cardContent}
+      </article>
+    );
+  }
+
+  return (
+    <motion.article
+      {...reveal}
+      ref={cardRef as any}
+      tabIndex={0}
+      role="button"
+      aria-label={`Open ${project.title} case study`}
+      data-cursor="view"
+      onClick={openFromCard}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{ transform: tiltStyle.transform }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openFromCard(e); }}
+      className="project-card tilt-card shimmer-card group grid cursor-pointer overflow-hidden rounded-2xl border border-outline-variant transition-all duration-200 hover:border-primary/35 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary min-h-[20rem] relative"
+    >
+      {glareSheen}
+      {cardContent}
     </motion.article>
+  );
+});
+
+// ─── BentoGridView: High-Density Recruiter Matrix ────────────────────────────
+
+const BentoGridView: React.FC<{
+  projects: Project[];
+  onOpenCaseStudy: (project: Project) => void;
+}> = React.memo(({ projects, onOpenCaseStudy }) => {
+  if (projects.length === 0) {
+    return (
+      <div className="surface-panel rounded-2xl p-10 text-center text-on-surface-variant">
+        No projects match the selected filter.
+      </div>
+    );
+  }
+
+  const heroProject = projects[0];
+  const companionProject = projects.length > 1 ? projects[1] : null;
+  const secondaryProjects = projects.slice(2, 5);
+  const remainingProjects = projects.slice(5);
+
+  return (
+    <div className="bento-grid">
+      {/* TILE 1: Top Ranked Project (Hero 8-cols on desktop, 12 on tablet) */}
+      <motion.div
+        {...reveal}
+        tabIndex={0}
+        role="button"
+        onClick={() => onOpenCaseStudy(heroProject)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenCaseStudy(heroProject); }}
+        className={`col-span-12 ${companionProject ? 'lg:col-span-8' : 'lg:col-span-12'} surface-panel shimmer-card group rounded-2xl p-6 sm:p-7 border border-outline-variant hover:border-primary/40 transition-all duration-200 cursor-pointer flex flex-col justify-between`}
+      >
+        <div>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-primary/15 border border-primary/40 px-3 py-1 text-[11px] font-label font-bold uppercase tracking-[0.2em] text-primary">
+                ★ FEATURED ARCHITECTURE SYSTEM
+              </span>
+              <span className="rounded-full border border-[#8af2ff]/30 bg-[#8af2ff]/10 px-2.5 py-0.5 text-[10px] font-label uppercase tracking-[0.16em] text-[#8af2ff]">
+                {heroProject.category}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-on-surface-variant font-mono">
+              <span>{heroProject.tech.slice(0, 3).join(' · ')}</span>
+            </div>
+          </div>
+
+          <h3 className="text-2xl sm:text-3xl font-display font-bold text-on-surface leading-tight group-hover:text-primary transition-colors">
+            {heroProject.title}
+          </h3>
+          <p className="mt-1 text-xs font-label uppercase tracking-[0.20em] text-primary-dim">
+            {heroProject.subtitle}
+          </p>
+
+          <p className="mt-3.5 text-sm sm:text-base leading-7 text-on-surface-variant">
+            {heroProject.description}
+          </p>
+
+          {/* Architecture Pipeline Flow for MDT or top project */}
+          {heroProject.id === 1 ? (
+            <div className="mt-5 p-4 rounded-xl border border-primary/20 bg-surface/80 font-mono text-[11px] overflow-x-auto">
+              <div className="text-[10px] uppercase tracking-wider text-primary font-bold mb-2 flex items-center gap-1.5">
+                <Cpu size={13} />
+                SYSTEM ARCHITECTURE & BLAST-RADIUS DATAFLOW
+              </div>
+              <div className="flex items-center gap-2 text-on-surface whitespace-nowrap">
+                <span className="px-2 py-1 rounded bg-surface-container-high border border-outline-variant">Git Webhook</span>
+                <span className="text-primary font-bold">➔</span>
+                <span className="px-2 py-1 rounded bg-surface-container-high border border-outline-variant">AST Diff Parsing</span>
+                <span className="text-primary font-bold">➔</span>
+                <span className="px-2 py-1 rounded bg-primary/10 border border-primary/30 text-primary">Neo4j Dependency Graph</span>
+                <span className="text-primary font-bold">➔</span>
+                <span className="px-2 py-1 rounded bg-tertiary/10 border border-tertiary/30 text-tertiary">ChromaDB RAG</span>
+                <span className="text-primary font-bold">➔</span>
+                <span className="px-2.5 py-1 rounded bg-primary text-on-primary font-bold">HMDA Risk Score</span>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-5 p-4 rounded-xl border border-outline-variant bg-surface/80 font-mono text-[11px] overflow-x-auto">
+              <div className="text-[10px] uppercase tracking-wider text-primary font-bold mb-2 flex items-center gap-1.5">
+                <Cpu size={13} />
+                CORE STACK & PIPELINE
+              </div>
+              <div className="flex flex-wrap gap-2 text-on-surface">
+                {heroProject.tech.map((t) => (
+                  <span key={t} className="px-2.5 py-1 rounded bg-surface-container-high border border-outline-variant text-xs">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 pt-5 border-t border-outline-variant flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap gap-1.5">
+            {heroProject.tech.map((t) => (
+              <span key={t} className="rounded-full border border-outline-variant bg-surface-container-high/60 px-2.5 py-0.5 text-[11px] text-on-surface-variant font-mono">
+                {t}
+              </span>
+            ))}
+          </div>
+          <div className="flex items-center gap-3">
+            <a
+              href={heroProject.link}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-on-surface hover:text-primary transition"
+            >
+              GitHub Source <ExternalLink size={13} />
+            </a>
+            {'demo' in heroProject && typeof heroProject.demo === 'string' && (
+              <a
+                href={heroProject.demo}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/30 bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition"
+              >
+                <Zap size={13} /> Live Demo
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => onOpenCaseStudy(heroProject)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary-dim transition cursor-pointer"
+            >
+              Interactive Case Study <ArrowRight size={14} />
+            </button>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* TILE 2: Companion Project (4-cols on desktop, 12 or 6 on tablet) */}
+      {companionProject && (
+        <motion.div
+          {...reveal}
+          tabIndex={0}
+          role="button"
+          onClick={() => onOpenCaseStudy(companionProject)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenCaseStudy(companionProject); }}
+          className="col-span-12 md:col-span-12 lg:col-span-4 surface-panel shimmer-card group rounded-2xl p-6 border border-outline-variant hover:border-tertiary/40 transition-all duration-200 cursor-pointer flex flex-col justify-between"
+        >
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <span className="rounded-full bg-tertiary/15 border border-tertiary/40 px-2.5 py-0.5 text-[10px] font-label font-bold uppercase tracking-[0.18em] text-tertiary">
+                ★ {companionProject.category}
+              </span>
+              {'demo' in companionProject && (
+                <span className="text-[10px] text-primary-dim font-mono flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary-dim animate-ping" />
+                  Live System
+                </span>
+              )}
+            </div>
+
+            <h3 className="text-xl font-display font-bold text-on-surface leading-tight group-hover:text-tertiary transition-colors">
+              {companionProject.title}
+            </h3>
+            <p className="mt-1 text-[11px] font-label uppercase tracking-[0.18em] text-tertiary">
+              {companionProject.subtitle}
+            </p>
+
+            <p className="mt-3 text-xs sm:text-sm leading-6 text-on-surface-variant">
+              {companionProject.description}
+            </p>
+
+            <div className="mt-4 p-3 rounded-xl border border-outline-variant bg-surface/60 font-mono text-[11px] space-y-1.5">
+              <div className="text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold">
+                Implementation Focus
+              </div>
+              <div className="text-on-surface-variant text-[11px]">
+                {getImplementationFocus(companionProject)}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 pt-4 border-t border-outline-variant flex items-center justify-between">
+            {'demo' in companionProject && typeof companionProject.demo === 'string' && (
+              <a
+                href={companionProject.demo}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tertiary/10 text-tertiary border border-tertiary/30 text-xs font-semibold hover:bg-tertiary/20 transition"
+              >
+                <Zap size={13} />
+                Live Demo
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => onOpenCaseStudy(companionProject)}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-on-surface hover:text-tertiary transition ml-auto cursor-pointer"
+            >
+              Explore <ArrowRight size={13} />
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* SECONDARY ROW (3 tiles: 4-cols each on desktop, 6-cols on tablet) */}
+      {secondaryProjects.map((p, idx) => (
+        <motion.div
+          key={p.id}
+          {...revealFast}
+          tabIndex={0}
+          role="button"
+          onClick={() => onOpenCaseStudy(p)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenCaseStudy(p); }}
+          className="col-span-12 md:col-span-6 lg:col-span-4 surface-panel shimmer-card group rounded-2xl p-5 border border-outline-variant hover:border-primary/30 transition cursor-pointer flex flex-col justify-between"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-label uppercase tracking-widest text-primary-dim">
+                0{idx + 3} · {p.category}
+              </span>
+              <span className="text-[10px] font-mono text-on-surface-variant/70">
+                {p.tech.slice(0, 2).join(' · ')}
+              </span>
+            </div>
+            <h4 className="text-lg font-display font-bold text-on-surface group-hover:text-primary transition-colors">
+              {p.title}
+            </h4>
+            <p className="mt-2 text-xs leading-5 text-on-surface-variant line-clamp-3">
+              {p.description}
+            </p>
+          </div>
+          <div className="mt-4 pt-3 border-t border-outline-variant flex items-center justify-between text-xs">
+            {'demo' in p && typeof p.demo === 'string' ? (
+              <a
+                href={p.demo}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-primary hover:underline flex items-center gap-1 font-semibold"
+              >
+                <Zap size={12} /> Live Demo
+              </a>
+            ) : (
+              <a
+                href={p.link}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-on-surface-variant hover:text-primary flex items-center gap-1 font-semibold"
+              >
+                <Code2 size={12} /> Source
+              </a>
+            )}
+            <span className="text-on-surface-variant group-hover:text-primary flex items-center gap-1 font-semibold ml-auto">
+              Case Study <ArrowRight size={12} />
+            </span>
+          </div>
+        </motion.div>
+      ))}
+
+      {/* TERTIARY ROW (Remaining projects: 3-cols each on desktop, 6-cols on tablet) */}
+      {remainingProjects.map((p) => (
+        <motion.div
+          key={p.id}
+          {...revealFast}
+          tabIndex={0}
+          role="button"
+          onClick={() => onOpenCaseStudy(p)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenCaseStudy(p); }}
+          className="col-span-12 md:col-span-6 lg:col-span-3 surface-panel-subtle shimmer-card group rounded-2xl p-4 border border-outline-variant hover:border-primary/30 transition cursor-pointer flex flex-col justify-between"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[9px] font-label uppercase tracking-wider text-primary-dim">{p.category}</span>
+            </div>
+            <h5 className="text-sm font-display font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-1">
+              {p.title}
+            </h5>
+            <p className="mt-1 text-[11px] leading-4 text-on-surface-variant line-clamp-2">
+              {p.description}
+            </p>
+          </div>
+          <div className="mt-3 pt-2 border-t border-outline-variant/60 flex items-center justify-between text-[11px]">
+            <span className="text-on-surface-variant font-mono text-[10px]">
+              {p.tech.slice(0, 2).join(' · ')}
+            </span>
+            <span className="text-primary font-semibold flex items-center gap-1">
+              Details <ArrowRight size={10} />
+            </span>
+          </div>
+        </motion.div>
+      ))}
+    </div>
   );
 });
 
@@ -471,30 +855,31 @@ const ContactActions: React.FC<{ email: string }> = ({ email }) => {
 
 // ─── ProjectCaseStudy ─────────────────────────────────────────────────────────
 
-const ProjectCaseStudy: React.FC<{ project: Project; onClose: () => void }> = ({ project, onClose }) => {
-  const lines = project.codePreview ? getCodePreviewLines(project.codePreview, 8) : [];
-  const notes = getProjectScopeNotes(project);
-  const demo = getProjectDemo(project);
+const ProjectCaseStudy: React.FC<{ project: Project; onClose: () => void }> = React.memo(({ project, onClose }) => {
+  const lines = useMemo(() => project.codePreview ? getCodePreviewLines(project.codePreview, 8) : [], [project.codePreview]);
+  const notes = useMemo(() => getProjectScopeNotes(project), [project]);
+  const demo = useMemo(() => getProjectDemo(project), [project]);
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <motion.div
-      className="case-study-backdrop fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 sm:p-6"
+      className="case-study-backdrop fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-background/85 backdrop-blur-md"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.16, ease: 'easeOut' }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
       role="dialog"
       aria-modal="true"
       aria-label={`${project.title} case study`}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ backdropFilter: 'blur(12px)' }}
     >
       <motion.article
-        className="surface-panel max-h-[min(90dvh,800px)] w-full max-w-5xl overflow-y-auto rounded-2xl"
-        initial={{ opacity: 0, y: 18, scale: 0.982 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 14, scale: 0.99 }}
-        transition={{ duration: 0.20, ease: [0.22, 1, 0.36, 1] }}
+        className="case-study-dialog bg-surface/98 backdrop-blur-2xl border border-outline-variant max-h-[min(90dvh,820px)] w-full max-w-5xl overflow-y-auto rounded-2xl shadow-2xl"
+        initial={{ opacity: 0, scale: 0.96, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 10 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -589,36 +974,45 @@ const ProjectCaseStudy: React.FC<{ project: Project; onClose: () => void }> = ({
           </div>
         </div>
       </motion.article>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
-};
+});
 
 // ─── Main SectionGroup ────────────────────────────────────────────────────────
 
 export const SectionGroup: React.FC = () => {
   const { personal, projects, skills, socials } = portfolioData;
   const overlayRef = useRef<HTMLDivElement>(null);
-  const horizontalSectionRef = useRef<HTMLElement>(null);
-  const horizontalViewportRef = useRef<HTMLDivElement>(null);
-  const horizontalTrackRef = useRef<HTMLDivElement>(null);
+  const horizontalRailRef = useRef<HTMLDivElement>(null);
   const resumeButtonRef = useRef<HTMLAnchorElement>(null);
-  const horizontalTravelRef = useRef(0);
   const lastScrollProgressRef = useRef(0);
-  const lastHorizontalProgressRef = useRef(0);
-  const lastScrollModeRef = useRef<'vertical' | 'horizontal'>('vertical');
   const railProgressBarRef = useRef<HTMLDivElement>(null);
   const railCounterRef = useRef<HTMLSpanElement>(null);
   const visibleProjectsCountRef = useRef(0);
 
   const setScrollProgress = useStore((s) => s.setScrollProgress);
-  const setHorizontalProgress = useStore((s) => s.setHorizontalProgress);
-  const setScrollMode = useStore((s) => s.setScrollMode);
-  const setActiveSection = useStore((s) => s.setActiveSection);
 
   const [projectFilter, setProjectFilter] = useState('All');
   const [showResumeCue, setShowResumeCue] = useState(false);
   const [resumeCueGeometry, setResumeCueGeometry] = useState<ResumeCueGeometry | null>(null);
   const [activeProjectSlug, setActiveProjectSlug] = useState<string | null>(null);
+  const [projectViewMode, setProjectViewMode] = useState<'cinematic' | 'bento'>('bento');
+  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+
+  // Global shortcut (tilde/backtick) to toggle Developer CLI Terminal
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === '`' || e.key === '~') {
+        const activeElem = document.activeElement;
+        if (activeElem && ['INPUT', 'TEXTAREA'].includes(activeElem.tagName)) return;
+        e.preventDefault();
+        setIsTerminalOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const openCaseStudy = useCallback((project: Project) => {
     const slug = getProjectSlug(project);
@@ -633,34 +1027,33 @@ export const SectionGroup: React.FC = () => {
     }
   }, []);
 
-  // Resume cue animation
+  // Resume cue animation - localized directional indicator
   useEffect(() => {
     const measureCue = () => {
       const btn = resumeButtonRef.current;
       if (!btn) return;
       const rect = btn.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return;
-      const isSmall = window.innerWidth < 640;
-      const startX = window.innerWidth / 2;
-      const startY = isSmall
-        ? Math.max(160, Math.min(window.innerHeight * 0.42, rect.top - 42))
-        : window.innerHeight / 2;
       const endX = rect.left + rect.width / 2;
-      const endY = rect.top + Math.max(8, rect.height * 0.18);
-      const approachY = Math.max(72, endY - Math.min(isSmall ? 64 : 110, window.innerHeight * 0.16));
+      const endY = rect.top - 8;
+      const startX = endX - 52;
+      const startY = endY - 58;
       setResumeCueGeometry({
-        startX, startY, endX, endY,
-        controlOneX: startX + (endX - startX) * (isSmall ? 0.12 : 0.2),
-        controlOneY: startY - Math.max(isSmall ? 26 : 54, window.innerHeight * (isSmall ? 0.035 : 0.09)),
-        controlTwoX: endX,
-        controlTwoY: approachY,
+        startX,
+        startY,
+        endX,
+        endY,
+        controlOneX: startX + 10,
+        controlOneY: startY + 28,
+        controlTwoX: endX - 16,
+        controlTwoY: endY - 20,
       });
     };
     const showTimer = window.setTimeout(() => {
       measureCue();
       if (resumeButtonRef.current?.getBoundingClientRect().width) setShowResumeCue(true);
-    }, 900);
-    const hideTimer = window.setTimeout(() => setShowResumeCue(false), 6200);
+    }, 700);
+    const hideTimer = window.setTimeout(() => setShowResumeCue(false), 3600);
     const dismiss = () => setShowResumeCue(false);
     const sc = document.getElementById('scroll-container');
     window.addEventListener('keydown', dismiss, { once: true });
@@ -710,144 +1103,79 @@ export const SectionGroup: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [activeProject, closeCaseStudy]);
 
-  // Horizontal rail sizing
-  const updateHorizontalTravel = useCallback(() => {
-    const section = horizontalSectionRef.current;
-    const viewport = horizontalViewportRef.current;
-    const track = horizontalTrackRef.current;
-    if (!section || !track) return;
-    if (window.innerWidth < 1024 || !viewport) {
-      horizontalTravelRef.current = 0;
-      section.style.removeProperty('height');
-      track.style.setProperty('--rail-x', '0px');
-      return;
-    }
-    const currentProgress = useStore.getState().horizontalProgress;
-    const vs = window.getComputedStyle(viewport);
-    const visibleWidth = viewport.clientWidth - parseFloat(vs.paddingLeft || '0') - parseFloat(vs.paddingRight || '0');
-    const travel = Math.max(0, track.scrollWidth - Math.max(1, visibleWidth));
-    horizontalTravelRef.current = travel;
-    section.style.height = `${Math.max(window.innerHeight, Math.ceil(window.innerHeight + travel))}px`;
-    track.style.setProperty('--rail-x', `${-currentProgress * travel}px`);
+  // Interactive rail navigation
+  const scrollRail = useCallback((direction: number) => {
+    const rail = horizontalRailRef.current;
+    if (!rail) return;
+    const cardWidth = 360;
+    rail.scrollBy({ left: direction * cardWidth, behavior: 'smooth' });
   }, []);
 
-  // Main scroll handler
+  const handleRailScroll = useCallback(() => {
+    const rail = horizontalRailRef.current;
+    if (!rail) return;
+    const max = Math.max(1, rail.scrollWidth - rail.clientWidth);
+    const ratio = Math.min(1, Math.max(0, rail.scrollLeft / max));
+    if (railProgressBarRef.current) {
+      railProgressBarRef.current.style.width = `${Math.round(ratio * 100)}%`;
+    }
+    if (railCounterRef.current) {
+      const total = visibleProjectsCountRef.current || 1;
+      const current = Math.min(total, Math.max(1, Math.round(ratio * (total - 1)) + 1));
+      railCounterRef.current.textContent = `${current}/${total}`;
+    }
+  }, []);
+
+  const handleRailWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    const rail = horizontalRailRef.current;
+    if (!rail) return;
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && Math.abs(e.deltaY) > 8) {
+      const maxScroll = rail.scrollWidth - rail.clientWidth;
+      const canScrollRight = e.deltaY > 0 && rail.scrollLeft < maxScroll - 4;
+      const canScrollLeft = e.deltaY < 0 && rail.scrollLeft > 4;
+      if (canScrollRight || canScrollLeft) {
+        rail.scrollLeft += e.deltaY * 0.8;
+      }
+    }
+  }, []);
+
+  // Main scroll handler - pure layout reads from window.scrollY, zero forced reflows
   const updateScrollState = useCallback(() => {
-    const sc = overlayRef.current;
-    if (!sc) return;
-    const useWindow = window.innerWidth < 768;
-    const scrollTop = useWindow ? window.scrollY : sc.scrollTop;
-    const scrollHeight = useWindow
-      ? document.documentElement.scrollHeight - window.innerHeight
-      : sc.scrollHeight - sc.clientHeight;
-    const progress = Math.min(1, Math.max(0, scrollTop / Math.max(1, scrollHeight)));
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const scrollHeight = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    const progress = Math.min(1, Math.max(0, scrollTop / scrollHeight));
 
     if (Math.abs(progress - lastScrollProgressRef.current) > PROGRESS_UPDATE_THRESHOLD) {
       lastScrollProgressRef.current = progress;
       setScrollProgress(progress);
     }
+  }, [setScrollProgress]);
 
-    const hSection = horizontalSectionRef.current;
-    const railTrack = horizontalTrackRef.current;
-    if (hSection && window.innerWidth >= 1024) {
-      const rect = hSection.getBoundingClientRect();
-      const travelDistance = Math.max(1, horizontalTravelRef.current);
-      const hasTravel = horizontalTravelRef.current > 0;
-      const segmentProgress = hasTravel ? Math.min(1, Math.max(0, -rect.top / travelDistance)) : 0;
-      const inSegment = hasTravel && rect.top <= 0 && rect.bottom >= window.innerHeight;
-
-      if (
-        Math.abs(segmentProgress - lastHorizontalProgressRef.current) > PROGRESS_UPDATE_THRESHOLD ||
-        (segmentProgress === 0 && lastHorizontalProgressRef.current !== 0) ||
-        (segmentProgress === 1 && lastHorizontalProgressRef.current !== 1)
-      ) {
-        lastHorizontalProgressRef.current = segmentProgress;
-        setHorizontalProgress(segmentProgress);
-        if (railProgressBarRef.current) {
-          railProgressBarRef.current.style.width = `${Math.round(segmentProgress * 100)}%`;
-        }
-        if (railCounterRef.current) {
-          const n = Math.min(
-            visibleProjectsCountRef.current,
-            Math.max(1, Math.round(segmentProgress * visibleProjectsCountRef.current) || 1),
-          );
-          railCounterRef.current.textContent = `${n}/${visibleProjectsCountRef.current}`;
-        }
-      }
-
-      const nextMode = inSegment ? 'horizontal' : 'vertical';
-      if (lastScrollModeRef.current !== nextMode) {
-        lastScrollModeRef.current = nextMode;
-        setScrollMode(nextMode);
-      }
-
-      railTrack?.style.setProperty('--rail-x', `${-segmentProgress * horizontalTravelRef.current}px`);
-      if (inSegment) setActiveSection('projects');
-    } else {
-      if (lastHorizontalProgressRef.current !== 0) {
-        lastHorizontalProgressRef.current = 0;
-        setHorizontalProgress(0);
-        if (railProgressBarRef.current) railProgressBarRef.current.style.width = '0%';
-        if (railCounterRef.current) railCounterRef.current.textContent = `1/${visibleProjectsCountRef.current}`;
-      }
-      if (lastScrollModeRef.current !== 'vertical') {
-        lastScrollModeRef.current = 'vertical';
-        setScrollMode('vertical');
-      }
-      railTrack?.style.setProperty('--rail-x', '0px');
-    }
-  }, [setActiveSection, setHorizontalProgress, setScrollMode, setScrollProgress]);
-
-  // Scroll event binding
+  // Scroll event binding for native window scroll
   useEffect(() => {
-    const sc = overlayRef.current;
-    if (!sc) return;
-    let frame = 0, ticking = false, idleFrame = 0;
+    let frame = 0;
+    let scheduled = false;
 
     const scheduleUpdate = () => {
-      if (!ticking) {
-        window.cancelAnimationFrame(frame);
-        frame = window.requestAnimationFrame(() => { updateScrollState(); ticking = false; });
-        ticking = true;
+      if (!scheduled) {
+        scheduled = true;
+        frame = window.requestAnimationFrame(() => {
+          scheduled = false;
+          updateScrollState();
+        });
       }
-      window.cancelAnimationFrame(idleFrame);
-      idleFrame = window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => { updateScrollState(); });
-      });
     };
 
-    let resizeTimeout: number;
-    const handleResize = () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = window.setTimeout(() => { updateHorizontalTravel(); scheduleUpdate(); }, 150);
-    };
-
-    updateHorizontalTravel();
     updateScrollState();
     window.addEventListener('scroll', scheduleUpdate, { passive: true });
-    window.addEventListener('resize', handleResize, { passive: true });
-    sc.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate, { passive: true });
 
     return () => {
       window.cancelAnimationFrame(frame);
-      window.cancelAnimationFrame(idleFrame);
-      clearTimeout(resizeTimeout);
       window.removeEventListener('scroll', scheduleUpdate);
-      window.removeEventListener('resize', handleResize);
-      sc.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('resize', scheduleUpdate);
     };
-  }, [updateHorizontalTravel, updateScrollState]);
-
-  // ResizeObserver for rail
-  useEffect(() => {
-    const viewport = horizontalViewportRef.current;
-    const track = horizontalTrackRef.current;
-    if (!viewport || !track || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => { updateHorizontalTravel(); updateScrollState(); });
-    observer.observe(viewport);
-    observer.observe(track);
-    return () => observer.disconnect();
-  }, [visibleProjects.length, updateHorizontalTravel, updateScrollState]);
+  }, [updateScrollState]);
 
   // ─── Render ──────────────────────────────────────────────────────────────
 
@@ -866,57 +1194,62 @@ export const SectionGroup: React.FC = () => {
             <ProjectCaseStudy key={`cs-${activeProject.id}`} project={activeProject} onClose={closeCaseStudy} />
           )}
 
-          {/* Resume cue SVG animation */}
+          {/* Elegant Localized Resume Cue */}
           {showResumeCue && resumeCueGeometry && (
             <motion.div
               key="resume-cue"
               data-resume-cue
-              className="pointer-events-none fixed inset-0 z-40 overflow-hidden"
+              className="pointer-events-none fixed inset-0 z-40"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.45, ease: 'easeOut' }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
             >
-              <motion.div
-                className="resume-cue-veil absolute inset-0 bg-background/20"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 1, 1, 0] }}
-                transition={{ duration: 4.8, times: [0, 0.18, 0.74, 1], ease: 'easeInOut' }}
-              />
               <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
                 <defs>
-                  <linearGradient id="rcg" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%"   stopColor="var(--tertiary)" stopOpacity="0.05" />
-                    <stop offset="45%"  stopColor="var(--tertiary)" stopOpacity="0.95" />
-                    <stop offset="100%" stopColor="var(--primary)"  stopOpacity="0.95" />
+                  <linearGradient id="rcg" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="var(--tertiary)" stopOpacity="0.1" />
+                    <stop offset="50%" stopColor="var(--tertiary)" stopOpacity="0.95" />
+                    <stop offset="100%" stopColor="var(--primary)" stopOpacity="1" />
                   </linearGradient>
+                  <marker
+                    id="cue-arrow-head"
+                    viewBox="0 0 10 10"
+                    refX="5"
+                    refY="5"
+                    markerWidth="6"
+                    markerHeight="6"
+                    orient="auto-start-reverse"
+                  >
+                    <path d="M 1 2 L 8 5 L 1 8 z" fill="var(--primary)" />
+                  </marker>
                   <filter id="rcglow" x="-30%" y="-30%" width="160%" height="160%">
-                    <feGaussianBlur stdDeviation="4" result="blur" />
+                    <feGaussianBlur stdDeviation="3" result="blur" />
                     <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
                   </filter>
                 </defs>
-                <motion.path d={getResumeCuePath(resumeCueGeometry)} fill="none" stroke="url(#rcg)" strokeWidth="2" strokeLinecap="round" filter="url(#rcglow)"
-                  initial={{ pathLength: 0, opacity: 0, pathOffset: 0.16 }}
-                  animate={{ pathLength: [0, 1, 1], opacity: [0, 1, 0], pathOffset: [0.16, 0, 0] }}
-                  transition={{ duration: 4.6, times: [0, 0.72, 1], ease: 'easeInOut' }} />
-                <motion.circle r="8" fill="var(--primary)" filter="url(#rcglow)"
-                  style={{ offsetPath: `path('${getResumeCuePath(resumeCueGeometry)}')` }}
-                  initial={{ offsetDistance: "0%", opacity: 0, scale: 0.4 }}
-                  animate={{ offsetDistance: ["0%","100%"], opacity: [0,1,1,0], scale: [0.4,1,0.9,0.45] }}
-                  transition={{ duration: 4.25, times: [0,0.32,0.76,1], ease: 'easeInOut' }} />
-                <motion.path d={getResumeCueArrowPath(resumeCueGeometry)} fill="none" stroke="var(--primary)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" filter="url(#rcglow)"
-                  initial={{ opacity: 0, pathLength: 0 }}
-                  animate={{ opacity: [0,0,1,0], pathLength: [0,0,1,1] }}
-                  transition={{ duration: 4.4, times: [0,0.58,0.74,1], ease: 'easeInOut' }} />
+                <motion.path
+                  d={getResumeCuePath(resumeCueGeometry)}
+                  fill="none"
+                  stroke="url(#rcg)"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  markerEnd="url(#cue-arrow-head)"
+                  filter="url(#rcglow)"
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: [0, 1, 1] }}
+                  transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
+                />
               </svg>
               <motion.div
-                className="absolute rounded-full border border-tertiary/25 bg-surface/80 px-3 py-1.5 text-[10px] font-label uppercase tracking-[0.18em] text-tertiary shadow-xl shadow-tertiary/10"
-                style={{ left: resumeCueGeometry.startX, top: resumeCueGeometry.startY, transform: 'translate(-50%,-50%)' }}
-                initial={{ opacity: 0, y: 10, filter: 'blur(8px)' }}
-                animate={{ opacity: [0,1,1,0], y: [10,0,0,-8], filter: ['blur(8px)','blur(0px)','blur(0px)','blur(8px)'] }}
-                transition={{ duration: 4.2, times: [0,0.16,0.72,1], ease: 'easeOut' }}
+                className="absolute rounded-full border border-primary/35 bg-surface-container-high/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.16em] text-primary shadow-xl shadow-primary/10 flex items-center gap-1.5"
+                style={{ left: resumeCueGeometry.startX - 6, top: resumeCueGeometry.startY - 14, transform: 'translate(-50%,-50%)' }}
+                initial={{ opacity: 0, scale: 0.8, y: 6 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: 0.15, ease: 'easeOut' }}
               >
-                Resume download
+                <Download size={11} className="text-primary" />
+                <span>Resume PDF</span>
               </motion.div>
             </motion.div>
           )}
@@ -939,11 +1272,29 @@ export const SectionGroup: React.FC = () => {
           </div>
 
           <div className="mx-auto w-full min-w-0 max-w-screen-xl">
-            <motion.div {...reveal} className="max-w-3xl relative z-10">
-              {/* Status badge */}
-              <div className="mb-6 inline-flex items-center gap-2.5 rounded-full border border-primary/20 bg-primary/6 px-4 py-2 text-[11px] font-label font-semibold uppercase tracking-[0.20em] text-primary-dim">
-                <span className="status-dot h-2 w-2 rounded-full bg-primary-dim" />
-                Available for new roles
+            <motion.div {...reveal} className="max-w-xl md:max-w-[440px] lg:max-w-[500px] xl:max-w-3xl relative z-10">
+              {/* Recruiter HUD Status Beacon */}
+              <div className="mb-6 flex flex-wrap items-center gap-2.5">
+                <div className="inline-flex items-center gap-2.5 rounded-full border border-primary/30 bg-primary/8 px-4 py-2 text-[11px] font-label font-bold uppercase tracking-[0.20em] text-primary shadow-sm shadow-primary/10">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
+                  </span>
+                  Available for Full-Stack & AI Roles (2026)
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsTerminalOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-tertiary/35 bg-surface-container-high/80 px-3.5 py-2 text-[11px] font-mono font-semibold text-tertiary hover:border-tertiary hover:bg-tertiary/10 transition cursor-pointer"
+                  title="Open interactive Developer Terminal"
+                >
+                  <Terminal size={13} className="text-tertiary" />
+                  <span>Launch CLI</span>
+                  <span className="hidden sm:inline text-[9px] opacity-70 bg-surface-highest px-1.5 py-0.5 rounded border border-outline-variant font-mono">
+                    ~
+                  </span>
+                </button>
               </div>
 
               <h1 className="text-4xl font-display font-bold leading-[0.96] text-on-surface sm:text-5xl lg:text-6xl xl:text-[4.5rem]">
@@ -1000,130 +1351,234 @@ export const SectionGroup: React.FC = () => {
                 </span>
               ))}
             </motion.div>
+
+            {/* Interactive Scroll-Down Cue */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.9, duration: 0.6 }}
+              className="relative z-10 mt-10 hidden sm:flex items-center gap-3 text-[11px] font-label uppercase tracking-[0.22em] text-on-surface-variant/75"
+            >
+              <button
+                type="button"
+                onClick={() => document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' })}
+                className="inline-flex items-center gap-2.5 transition hover:text-primary cursor-pointer group"
+                aria-label="Scroll to Projects"
+              >
+                <div className="flex h-7 w-4.5 items-start justify-center rounded-full border border-outline-variant group-hover:border-primary/50 transition p-1">
+                  <motion.div
+                    animate={{ y: [0, 8, 0] }}
+                    transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                    className="h-1.5 w-1 rounded-full bg-primary"
+                  />
+                </div>
+                <span>Scroll to explore</span>
+                <ChevronDown size={14} className="text-primary group-hover:translate-y-0.5 transition-transform" />
+              </button>
+            </motion.div>
           </div>
         </SectionShell>
 
         {/* ── PROJECTS ─────────────────────────────────────────────────── */}
-        <section
+        <SectionShell
           id="projects"
-          ref={horizontalSectionRef}
-          className="horizontal-drive relative min-h-screen px-5 pb-16 pt-24 sm:px-8 lg:px-0 lg:pb-0 lg:pt-10"
+          className="px-5 py-20 sm:px-8 lg:px-12 xl:px-16"
         >
-          <div className="lg:sticky lg:top-16 lg:flex lg:h-[calc(100svh-4rem)] lg:flex-col lg:justify-start lg:overflow-hidden">
-            <div className="mx-auto w-full min-w-0 max-w-screen-2xl py-12 lg:max-w-none lg:py-6">
-              <div className="px-0 lg:px-12 xl:px-16">
-                <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                  <SectionHeading
-                    eyebrow={sectionCopy.projects.eyebrow}
-                    title={sectionCopy.projects.title}
-                    copy={sectionCopy.projects.copy}
-                  />
-                  <a
-                    href="https://github.com/AyushBajaj7"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 self-start rounded-xl border border-outline-variant bg-surface-container-high/65 px-5 py-2.5 text-sm font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary"
+          <div className="mx-auto w-full min-w-0 max-w-screen-2xl">
+            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <SectionHeading
+                eyebrow={sectionCopy.projects.eyebrow}
+                title={sectionCopy.projects.title}
+                copy={sectionCopy.projects.copy}
+              />
+              <div className="flex flex-wrap items-center gap-3 self-start lg:self-end">
+                {/* View Mode Toggle: Recruiter Bento Grid (default) vs Cinematic 3D Flow */}
+                <div className="flex items-center gap-1 p-1 rounded-xl border border-outline-variant bg-surface-container-high/65">
+                  <button
+                    type="button"
+                    onClick={() => setProjectViewMode('bento')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      projectViewMode === 'bento'
+                        ? 'bg-primary text-on-primary shadow-sm'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
                   >
-                    <Code2 size={16} />
-                    GitHub
-                  </a>
+                    <Grid size={13} />
+                    <span>Bento Grid</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProjectViewMode('cinematic')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      projectViewMode === 'cinematic'
+                        ? 'bg-primary text-on-primary shadow-sm'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <Sparkles size={13} />
+                    <span>Cinematic 3D</span>
+                  </button>
                 </div>
 
-                {/* Filter buttons */}
-                <div className="mb-4 flex flex-wrap gap-2">
-                  {projectFilters.map((filter) => (
+                {/* Arrow navigation buttons for smooth carousel gliding (Cinematic only) */}
+                {projectViewMode === 'cinematic' && (
+                  <div className="hidden sm:flex items-center gap-2">
                     <button
-                      key={filter}
                       type="button"
-                      onClick={() => setProjectFilter(filter)}
-                      className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
-                        projectFilter === filter
-                          ? 'border-primary bg-primary text-on-primary'
-                          : 'border-outline-variant bg-surface-container-high/60 text-on-surface-variant hover:border-primary/40 hover:text-primary'
-                      }`}
+                      onClick={() => scrollRail(-1)}
+                      aria-label="Previous projects"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-high/65 text-on-surface-variant transition hover:border-primary/40 hover:text-primary active:scale-95 cursor-pointer"
                     >
-                      {filter}
+                      <ChevronLeft size={18} />
                     </button>
-                  ))}
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => scrollRail(1)}
+                      aria-label="Next projects"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-high/65 text-on-surface-variant transition hover:border-primary/40 hover:text-primary active:scale-95 cursor-pointer"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                )}
+
+                <a
+                  href="https://github.com/AyushBajaj7"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl border border-outline-variant bg-surface-container-high/65 px-5 py-2.5 text-sm font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary"
+                >
+                  <Code2 size={16} />
+                  GitHub
+                </a>
+              </div>
+            </div>
+
+            {/* Filter buttons + Rail Progress */}
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap gap-2">
+                {projectFilters.map((filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => setProjectFilter(filter)}
+                    className={`rounded-xl border px-4 py-2 text-sm font-semibold transition cursor-pointer ${
+                      projectFilter === filter
+                        ? 'border-primary bg-primary text-on-primary'
+                        : 'border-outline-variant bg-surface-container-high/60 text-on-surface-variant hover:border-primary/40 hover:text-primary'
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                ))}
               </div>
 
-              {/* Desktop horizontal rail */}
-              <div ref={horizontalViewportRef} className="hidden overflow-hidden px-12 xl:px-16 lg:block">
-                <div className="mb-3 flex items-center justify-between gap-6">
-                  <div className="flex items-center gap-2.5 text-[11px] font-label uppercase tracking-[0.2em] text-on-surface-variant">
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary-dim" />
-                    Project rail
-                  </div>
-                  <div className="h-0.5 w-48 overflow-hidden rounded-full bg-surface-container-high">
+              {projectViewMode === 'cinematic' && (
+                <div className="hidden sm:flex items-center gap-4 text-[11px] font-label uppercase tracking-[0.18em] text-on-surface-variant">
+                  <span ref={railCounterRef}>1/{visibleProjects.length}</span>
+                  <div className="h-1.5 w-36 overflow-hidden rounded-full bg-surface-container-high">
                     <div
                       ref={railProgressBarRef}
-                      className="h-full rounded-full bg-gradient-to-r from-primary to-tertiary transition-none"
-                      style={{ width: '0%' }}
+                      className="h-full rounded-full bg-gradient-to-r from-primary to-tertiary transition-all duration-150"
+                      style={{ width: `${Math.round((1 / Math.max(1, visibleProjects.length)) * 100)}%` }}
                     />
                   </div>
                 </div>
+              )}
+            </div>
 
-                <div className="mb-3 flex items-center justify-between gap-6 text-[11px] font-label uppercase tracking-[0.18em] text-on-surface-variant">
-                  <span ref={railCounterRef}>1/{visibleProjects.length} visible</span>
-                  <span>{projectFilter === 'All' ? 'All categories' : projectFilter}</span>
-                </div>
-
-                <div ref={horizontalTrackRef} className="horizontal-track flex w-max items-stretch gap-5 py-2">
-                  <div className="hidden w-[8vw] min-w-8 flex-none xl:block" aria-hidden="true" />
-
-                  {/* Intro card */}
-                  <div className="surface-panel shimmer-card flex h-[var(--project-rail-card-height)] w-[20rem] flex-none flex-col justify-between rounded-2xl p-5 xl:w-[21rem]">
-                    <div>
-                      <div className="mb-3 flex items-center gap-2">
-                        <Briefcase size={14} className="text-primary-dim" />
-                        <p className="text-[10px] font-label uppercase tracking-[0.22em] text-primary-dim">Overview</p>
+            {/* View Mode Switching: Recruiter Bento Grid vs Cinematic 3D Flow */}
+            {projectViewMode === 'bento' ? (
+              <BentoGridView projects={visibleProjects} onOpenCaseStudy={openCaseStudy} />
+            ) : (
+              <>
+                {/* Desktop horizontal rail with smooth native momentum and 3D tilt */}
+                <div className="hidden lg:block relative cinematic-stage">
+                  <div
+                    ref={horizontalRailRef}
+                    onScroll={handleRailScroll}
+                    onWheel={handleRailWheel}
+                    className="project-rail-scroll flex w-full gap-5 overflow-x-auto overflow-y-hidden py-3"
+                  >
+                    {/* Intro card */}
+                    <div className="project-rail-item surface-panel shimmer-card flex h-[21rem] w-[20rem] flex-none flex-col justify-between rounded-2xl p-6 xl:w-[21.5rem]">
+                      <div>
+                        <div className="mb-3 flex items-center gap-2">
+                          <Briefcase size={14} className="text-primary-dim" />
+                          <p className="text-[10px] font-label uppercase tracking-[0.22em] text-primary-dim">Overview</p>
+                        </div>
+                        <h3 className="text-xl font-display font-bold leading-tight text-on-surface">
+                          Real systems with technical context.
+                        </h3>
                       </div>
-                      <h3 className="text-xl font-display font-bold leading-tight text-on-surface">
-                        Real projects with technical context.
-                      </h3>
+                      <p className="text-sm leading-6 text-on-surface-variant">
+                        {projects.length} production systems with architectural focus, live demos, and source code.
+                      </p>
+                      <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                        <span>Swipe or click arrows</span>
+                        <ArrowRight size={14} />
+                      </div>
                     </div>
-                    <p className="text-sm leading-6 text-on-surface-variant">
-                      Four projects with scope, stack, and implementation notes.
-                    </p>
+
+                    {visibleProjects.map((project, index) => (
+                      <div key={project.id} className="project-rail-item flex h-[21rem] w-[20rem] flex-none flex-col xl:w-[21.5rem]">
+                        <ProjectCard project={project} index={index} rail onOpenCaseStudy={openCaseStudy} />
+                      </div>
+                    ))}
+
+                    {/* Continue to profile card */}
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}
+                      className="project-rail-item surface-panel shimmer-card group flex h-[21rem] w-[20rem] flex-none flex-col justify-between rounded-2xl p-6 text-left transition hover:border-primary/35 xl:w-[21.5rem] cursor-pointer"
+                    >
+                      <span className="text-[10px] font-label uppercase tracking-[0.22em] text-primary-dim">Next</span>
+                      <span className="text-xl font-display font-bold leading-tight text-on-surface">Continue to profile.</span>
+                      <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary text-on-primary transition group-hover:translate-x-1.5">
+                        <ArrowRight size={20} />
+                      </span>
+                    </button>
                   </div>
 
-                  {visibleProjects.map((project, index) => (
-                    <div key={project.id} className="flex h-[var(--project-rail-card-height)] w-[20rem] flex-none flex-col xl:w-[21rem]">
-                      <ProjectCard project={project} index={index} rail onOpenCaseStudy={openCaseStudy} />
-                    </div>
-                  ))}
-
-                  {/* Continue card */}
-                  <button
-                    type="button"
-                    onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="surface-panel shimmer-card group flex h-[var(--project-rail-card-height)] w-[20rem] flex-none flex-col justify-between rounded-2xl p-5 text-left transition hover:border-primary/35 xl:w-[21rem]"
-                  >
-                    <span className="text-[10px] font-label uppercase tracking-[0.22em] text-primary-dim">Next</span>
-                    <span className="text-xl font-display font-bold leading-tight text-on-surface">Continue to profile.</span>
-                    <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary text-on-primary transition group-hover:translate-x-1.5">
-                      <ArrowRight size={20} />
+                  {/* Interactive Timeline Filmstrip Scrubber */}
+                  <div className="flex items-center gap-2 mt-4 px-1 py-2 overflow-x-auto hide-scrollbar border-t border-outline-variant/60 pt-4">
+                    <span className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant/70 mr-1 flex items-center gap-1.5 shrink-0">
+                      <SlidersHorizontal size={12} className="text-primary" />
+                      Filmstrip Scrubber:
                     </span>
-                  </button>
-
-                  <div className="hidden w-[16vw] min-w-16 flex-none xl:block" aria-hidden="true" />
+                    {visibleProjects.map((p, idx) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          const rail = horizontalRailRef.current;
+                          if (!rail) return;
+                          const cardWidth = 360;
+                          rail.scrollTo({ left: (idx + 1) * cardWidth, behavior: 'smooth' });
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-high/60 text-[11px] font-mono text-on-surface-variant hover:border-primary/40 hover:text-primary hover:bg-surface-container-highest transition cursor-pointer shrink-0"
+                      >
+                        <span className="text-primary font-bold">{String(idx + 1).padStart(2, '0')}</span>
+                        <span className="truncate max-w-[120px]">{p.title.split(':')[0]}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Mobile/tablet grid */}
-              <div className="grid gap-5 md:grid-cols-2 lg:hidden">
-                {visibleProjects.map((project, index) => (
-                  <ProjectCard key={project.id} project={project} index={index} onOpenCaseStudy={openCaseStudy} />
-                ))}
-              </div>
-            </div>
+                {/* Mobile/tablet grid */}
+                <div className="grid gap-5 md:grid-cols-2 lg:hidden">
+                  {visibleProjects.map((project, index) => (
+                    <ProjectCard key={project.id} project={project} index={index} onOpenCaseStudy={openCaseStudy} />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-        </section>
+        </SectionShell>
 
         {/* ── ABOUT ────────────────────────────────────────────────────── */}
         <SectionShell id="about" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-28">
-          <div className="mr-auto max-w-4xl grid gap-10 lg:grid-cols-2 lg:items-start">
+          <div className="mr-auto max-w-xl md:max-w-[440px] lg:max-w-4xl grid gap-8 sm:gap-10 lg:grid-cols-2 lg:items-start">
             <SectionHeading
               eyebrow={sectionCopy.about.eyebrow}
               title={sectionCopy.about.title}
@@ -1190,12 +1645,14 @@ export const SectionGroup: React.FC = () => {
 
         {/* ── CONTACT ──────────────────────────────────────────────────── */}
         <SectionShell id="contact" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-28">
-          <div className="mr-auto max-w-2xl grid gap-10">
-            <SectionHeading
-              eyebrow={sectionCopy.contact.eyebrow}
-              title={sectionCopy.contact.title}
-              copy={sectionCopy.contact.copy}
-            />
+          <div className="mr-auto max-w-xl md:max-w-[440px] lg:max-w-[500px] xl:max-w-2xl grid gap-8 sm:gap-10">
+            <div className="max-w-[240px] sm:max-w-none">
+              <SectionHeading
+                eyebrow={sectionCopy.contact.eyebrow}
+                title={sectionCopy.contact.title}
+                copy={sectionCopy.contact.copy}
+              />
+            </div>
 
             <motion.div {...reveal} className="surface-panel shimmer-card rounded-2xl p-6 sm:p-8">
               {/* Availability badge */}
@@ -1237,6 +1694,39 @@ export const SectionGroup: React.FC = () => {
           </div>
         </SectionShell>
       </main>
+
+      {/* Floating Developer CLI Terminal Trigger Button */}
+      {!activeProject && (
+        <div className="fixed bottom-6 right-6 z-40">
+          <button
+            type="button"
+            onClick={() => setIsTerminalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full border border-tertiary/40 bg-surface/90 backdrop-blur-md px-4 py-2.5 text-xs font-mono font-semibold text-on-surface shadow-2xl hover:border-tertiary hover:text-tertiary hover:shadow-tertiary/20 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+            aria-label="Open Developer CLI Terminal"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-tertiary" />
+            </span>
+            <Terminal size={14} className="text-tertiary" />
+            <span>CLI Terminal</span>
+            <span className="hidden sm:inline text-[9px] text-tertiary/80 bg-tertiary/10 px-1.5 py-0.5 rounded border border-tertiary/20">
+              ~
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Developer CLI Terminal Modal */}
+      <TerminalModal
+        isOpen={isTerminalOpen}
+        onClose={() => setIsTerminalOpen(false)}
+        onOpenCaseStudy={(slug) => {
+          setIsTerminalOpen(false);
+          const p = projects.find((proj) => getProjectSlug(proj) === slug);
+          if (p) openCaseStudy(p);
+        }}
+      />
     </div>
   );
 };

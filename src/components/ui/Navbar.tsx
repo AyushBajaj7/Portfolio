@@ -75,10 +75,7 @@ export const Navbar: React.FC = () => {
     if (!scrollContainer) return;
 
     const onScroll = () => {
-      const scrollContainer = document.getElementById('scroll-container');
-      if (!scrollContainer) return;
-      const useWindowScroll = window.innerWidth < 768;
-      const currentScrollY = useWindowScroll ? window.scrollY : scrollContainer.scrollTop;
+      const currentScrollY = window.scrollY || (scrollContainer ? scrollContainer.scrollTop : 0);
       
       if (currentScrollY > 24) {
         const newDir = currentScrollY > lastScrollY.current ? 'down' : 'up';

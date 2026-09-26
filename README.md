@@ -29,10 +29,15 @@ A modern, interactive portfolio website showcasing my work as a Software Develop
 
 | Project | Description | Tech Stack |
 |---------|-------------|------------|
-| AgriConnect | Full-stack agricultural platform | React, Node.js, MongoDB |
-| AI PPT Explainer | ML pipeline for video generation | Python, FLAN-T5, AWS |
-| Disease Prediction | Classification ML system | Scikit-learn, Python |
-| 3D Architecture | Interactive visualization | Blender, Unity |
+| Microservice Drift Tracker (MDT) | Cross-service impact & drift analysis platform with AST parsing & graph modeling | Python, FastAPI, Neo4j, ChromaDB, Docker, RAG |
+| Cat-X | In-cab operator shift twin & consequence engine (Caterpillar Hackathon 2026) | Python, FastAPI, WebSockets, React, ML |
+| Document Summary Assistant | Multimodal AI document summarizer with OCR & selectable lengths | Next.js, TypeScript, Gemini API, Tailwind |
+| Luxon | Premium luxury shopping destination e-commerce platform | Python, Flask, SQLAlchemy, Tailwind, Razorpay |
+| AgriConnect | Full-stack agricultural market & schemes platform | React, Node.js, Express, MongoDB |
+| WeatherVision | Zero-dependency high-performance atmospheric analytics | Python, JavaScript ES6+, Chart.js, OpenWeather |
+| AI PPT Explainer | Cloud-deployed ML pipeline for video generation | Python, FLAN-T5, Amazon Polly, AWS EC2 |
+| Disease Prediction | Gene expression microarray classification ML system | Python, Scikit-learn, FastAPI, Next.js |
+| 3D Architecture | Interactive 3D architectural walkthrough system | Blender, Unity, Python, OpenGL |
 
 ## Getting Started
 

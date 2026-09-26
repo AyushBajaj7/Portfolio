@@ -7,17 +7,15 @@
 
 @import "tailwindcss";
 
-/* Smooth scroll snap for sections */
+/* Natural, high-performance scroll without forced browser snapping */
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   font-size: 16px;
   text-rendering: optimizeLegibility;
 }
 
-/* Section snap points */
+/* Section anchor offset for navigation */
 .section-snap {
-  scroll-snap-align: start;
-  scroll-snap-stop: normal;
   scroll-margin-top: 72px;
 }
 
@@ -315,7 +313,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.5s ease, color 0.5s ease;
   min-height: 100vh;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 ::selection {
@@ -356,8 +355,8 @@ a {
 #root {
   position: relative;
   width: 100%;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow: visible;
 }
 
 /* ─── Canvas (WebGL Layer - always behind everything) ─────────── */
@@ -379,49 +378,70 @@ a {
 
 /* ─── Scroll Overlay ─────────────────────────────────────────────── */
 .ui-overlay {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  width: 100%;
   z-index: 10;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scroll-behavior: auto;
-  scroll-padding-top: 72px;
-  scrollbar-gutter: stable;
-  -webkit-overflow-scrolling: touch;
+  overflow: visible;
 }
 
-.ui-overlay::-webkit-scrollbar {
-  width: 3px;
+/* Native Window Scrollbar */
+html::-webkit-scrollbar {
+  width: 6px;
 }
-
-.ui-overlay::-webkit-scrollbar-track {
+html::-webkit-scrollbar-track {
   background: transparent;
 }
-
-.ui-overlay::-webkit-scrollbar-thumb {
+html::-webkit-scrollbar-thumb {
   background: rgba(156, 255, 147, 0.25);
   border-radius: 4px;
 }
-
-.ui-overlay::-webkit-scrollbar-thumb:hover {
+html::-webkit-scrollbar-thumb:hover {
   background: rgba(156, 255, 147, 0.45);
 }
-
-.light-theme .ui-overlay {
-  scrollbar-color: rgba(4, 120, 87, 0.5) transparent;
-}
-
-.light-theme .ui-overlay::-webkit-scrollbar-thumb {
+.light-theme html::-webkit-scrollbar-thumb {
   background: rgba(4, 120, 87, 0.5);
 }
 
-.light-theme .ui-overlay::-webkit-scrollbar-thumb:hover {
-  background: rgba(4, 120, 87, 0.72);
+/* ─── Project Horizontal Rail Carousel ──────────────────────────── */
+.project-rail-scroll {
+  display: flex;
+  gap: 1.25rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-top: 0.5rem;
+  padding-bottom: 0.75rem;
+}
+
+.project-rail-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.project-rail-item {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+.case-study-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 7, 12, 0.85);
+  padding: 1rem;
+}
+
+.case-study-dialog {
+  transform: translateZ(0);
+  will-change: transform, opacity;
 }
 
 .horizontal-drive {
-  scroll-snap-align: start;
-  scroll-snap-stop: normal;
   scroll-margin-top: 72px;
   --project-rail-card-height: clamp(14rem, 36svh, 18.5rem);
   contain: layout style;
@@ -477,6 +497,98 @@ a {
   line-clamp: 2;
 }
 
+/* ─── 3D Cinematic Showcase ───────────────────────────────────────── */
+.cinematic-stage {
+  perspective: 1200px;
+}
+
+.tilt-card {
+  transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.4, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+  will-change: transform;
+}
+
+.tilt-glare {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+
+.tilt-card:hover .tilt-glare {
+  opacity: 1;
+}
+
+/* ─── Recruiter Bento Grid Layout ─────────────────────────────────── */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .bento-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+}
+
+/* ─── Terminal CRT styling & sleek scrollbar ───────────────────────── */
+.terminal-window {
+  background: rgba(10, 14, 20, 0.96);
+  border: 1px solid rgba(138, 242, 255, 0.28);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.85), 0 0 40px rgba(0, 242, 255, 0.14);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.terminal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(138, 242, 255, 0.35) rgba(10, 14, 20, 0.6);
+}
+
+.terminal-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.terminal-scroll::-webkit-scrollbar-track {
+  background: rgba(10, 14, 20, 0.7);
+  border-radius: 4px;
+}
+
+.terminal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(138, 242, 255, 0.28);
+  border-radius: 4px;
+  border: 1px solid rgba(138, 242, 255, 0.15);
+}
+
+.terminal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(138, 242, 255, 0.55);
+}
+
+.terminal-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.terminal-scanline {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.04),
+    rgba(0, 255, 0, 0.02),
+    rgba(0, 0, 255, 0.04)
+  );
+  background-size: 100% 3px, 6px 100%;
+  pointer-events: none;
+}
+
 @media (min-height: 860px) {
   .horizontal-drive {
     --project-rail-card-height: 18.5rem;
@@ -488,10 +600,9 @@ section {
   contain: layout style;
 }
 
-/* Below-fold sections defer paint cost until they approach the viewport */
+/* Clean containment without dynamic scroll height shifts */
 .section-snap:not(#hero) {
-  content-visibility: auto;
-  contain-intrinsic-size: 0 600px;
+  contain: style;
 }
 
 /* ─── Smooth transition curves ────────────────────────────────────── */

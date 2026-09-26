@@ -2,36 +2,60 @@
   "personal": {
     "name": "Ayush Bajaj",
     "title": "Software Developer",
-    "tagline": "Building full-stack systems, ML workflows, and interactive applications.",
-    "bio": "I build full-stack platforms, machine learning workflows, and data-intensive products with a focus on clean architecture, reliable delivery, and practical problem solving.",
-    "about": "I work across web development, machine learning, and cloud infrastructure, building tools that are functional, robust, and shaped by real-world problems, from agricultural platforms to AI-powered video pipelines.",
+    "tagline": "Building distributed systems, AI workflows, and high-performance applications.",
+    "bio": "I build distributed platforms, intelligent developer tooling, and applied machine learning workflows with a focus on clean systems architecture, reliable delivery, and practical engineering.",
+    "about": "I engineer across distributed backend systems, applied AI, and cloud infrastructure — designing impact-analysis engines for microservices, heavy-equipment digital twins, deep learning media pipelines, and full-stack transactional platforms.",
     "location": "India and Kathmandu, Nepal",
     "email": "ayushbajaj215@gmail.com"
   },
   "projects": [
     {
       "id": 1,
-      "title": "AgriConnect",
-      "subtitle": "Full-stack Agricultural Platform",
-      "tech": ["React.js", "Node.js", "Express.js", "MongoDB"],
-      "link": "https://github.com/AyushBajaj7/AgriConnect",
-      "demo": "https://agri-connect-gamma-one.vercel.app/",
-      "description": "Full-stack platform designed to centralize agricultural data and schemes. Built to improve usability and access to critical information for farmers using a robust React-based frontend and MongoDB backend.",
-      "codePreview": "const connectDB = async () => {\n  try {\n    await mongoose.connect(process.env.MONGO_URI);\n    console.log('MongoDB Connected');\n  } catch (error) {\n    console.error('Error:', error);\n  }\n};"
+      "title": "Microservice Drift Tracker (MDT)",
+      "subtitle": "Cross-Service Impact & Drift Analysis Platform",
+      "category": "AI / ML",
+      "tech": ["Python", "FastAPI", "Neo4j", "ChromaDB", "Docker Compose", "React", "RAG"],
+      "link": "https://github.com/kartick026/MDT",
+      "description": "An AI-assisted cross-service impact analysis framework for microservice architectures. Ingests git commits via webhooks, performs AST diff parsing, builds service dependency graphs in Neo4j, retrieves semantic context with ChromaDB, and calculates deployment blast-radius using the HMDA risk-scoring engine.",
+      "codePreview": "class ImpactEngine:\n  async def analyze_impact(self, diff: CommitDiff, base_sha: str) -> ImpactResult:\n    factors = await self._calculate_risk_factors(diff)\n    subgraph = await self.dep_graph.get_downstream_impact(diff.service)\n    semantic = await self.retrieval.get_semantic_risk(diff)\n    return self._synthesize_risk_score(factors, subgraph, semantic)"
     },
     {
       "id": 2,
-      "title": "AI-Based PPT Explainer & Video Generator",
-      "subtitle": "Cloud-Deployed ML Pipeline",
-      "tech": ["Python", "FLAN-T5", "Amazon Polly", "Wav2Lip", "FFmpeg", "AWS EC2"],
-      "link": "https://github.com/AyushBajaj7/Avatar-for-presentation-",
-      "description": "An automated pipeline deployed on AWS EC2 that converts PowerPoint slides into narrated videos. Extracts text using python-pptx, generates contextual explanations using FLAN-T5, synthesizes speech via Amazon Polly, syncs lip movements using Wav2Lip, and renders the final video with FFmpeg.",
-      "codePreview": "def generate_explanation(text):\n  inputs = tokenizer(text, return_tensors='pt')\n  outputs = model.generate(\n    inputs.input_ids,\n    max_length=200\n  )\n  return tokenizer.decode(outputs[0])"
+      "title": "Cat-X: Operator Shift Twin",
+      "subtitle": "In-Cab Telemetry & Consequence Engine",
+      "category": "AI / ML",
+      "tech": ["Python", "FastAPI", "WebSockets", "React", "Predictive ML", "Docker"],
+      "link": "https://github.com/AyushBajaj7/Cat-X",
+      "demo": "https://cat-frontend-su80.onrender.com/shift",
+      "description": "Intelligent in-cab companion and consequence engine developed for the Caterpillar Hackathon 2026. Models operator shift telemetry in real time, evaluates proximity hazards and seatbelt compliance, detects machine fatigue anomalies, and simulates forward operational trajectories.",
+      "codePreview": "class EvaluatedScenarioResult:\n  def __init__(self, scenario_id, action_id, predicted_outcome):\n    self.scenario_id = scenario_id\n    self.action_id = action_id\n    self.predicted_outcome = predicted_outcome\n    self.consequence_graph = generate_graph(action_id)"
     },
     {
       "id": 3,
+      "title": "AI-Based PPT Explainer & Video Generator",
+      "subtitle": "Cloud-Deployed ML Pipeline",
+      "category": "AI / ML",
+      "tech": ["Python", "FLAN-T5", "Amazon Polly", "Wav2Lip", "FFmpeg", "AWS EC2"],
+      "link": "https://github.com/AyushBajaj7/Avatar-for-presentation-",
+      "description": "An automated pipeline deployed on AWS EC2 that converts PowerPoint slides into narrated videos. Extracts text using python-pptx, generates contextual explanations using FLAN-T5, synthesizes speech via Amazon Polly, syncs lip movements using Wav2Lip GAN, and renders the final video with FFmpeg.",
+      "codePreview": "def generate_explanation(text):\n  inputs = tokenizer(text, return_tensors='pt')\n  outputs = model.generate(\n    inputs.input_ids,\n    max_length=200\n  )\n  return tokenizer.decode(outputs[0])"
+    },
+    {
+      "id": 4,
+      "title": "Luxon",
+      "subtitle": "Full-Stack Luxury E-Commerce Platform",
+      "category": "Full Stack",
+      "tech": ["Python", "Flask", "SQLAlchemy", "PostgreSQL", "Tailwind CSS", "Cloudinary", "Razorpay"],
+      "link": "https://github.com/AyushBajaj7/Luxon",
+      "demo": "https://luxon-store.onrender.com/",
+      "description": "Full-stack e-commerce marketplace featuring luxury merchandise, dynamic filtering, wishlists, cart session workflows, and Razorpay checkout. Includes a dedicated admin portal for live inventory management, order processing, and Cloudinary media pipelines.",
+      "codePreview": "def get_cart_totals(cart_id):\n  return db.session.query(\n    db.func.sum(Product.price * CartItem.quantity),\n    db.func.sum(CartItem.quantity)\n  ).join(CartItem, Product.id == CartItem.product_id).filter(CartItem.cart_id == cart_id).first()"
+    },
+    {
+      "id": 5,
       "title": "AI Disease Prediction Model",
       "subtitle": "Gene Expression Classification",
+      "category": "AI / ML",
       "tech": ["Python", "Scikit-learn", "FastAPI", "Next.js", "ExtraTrees"],
       "link": "https://github.com/RahulNatesan/AI-Disease-Prediction",
       "demo": "https://ai-disease-prediction-olive.vercel.app/",
@@ -39,35 +63,69 @@
       "codePreview": "pipeline = Pipeline([\n  (\"scaler\", StandardScaler()),\n  (\"classifier\", ExtraTreesClassifier(random_state=42))\n])\n\nscores = cross_validate(\n  pipeline, x_trainN, train_class,\n  cv=StratifiedKFold(n_splits=5)\n)"
     },
     {
-      "id": 4,
+      "id": 6,
+      "title": "WeatherVision",
+      "subtitle": "Zero-Dependency Atmospheric Analytics",
+      "category": "Full Stack",
+      "tech": ["Python", "JavaScript ES6+", "Chart.js", "OpenWeather API", "Motion One", "CSS3"],
+      "link": "https://github.com/AyushBajaj7/WeatherVision",
+      "demo": "https://weathervision.onrender.com/",
+      "description": "High-performance atmospheric monitoring dashboard built with a zero-dependency Python standard library server. Visualizes real-time weather metrics, Air Quality Index (AQI), hourly precipitation graphs, and cross-city comparison profiles with GPU-accelerated motion.",
+      "codePreview": "def fetch_json(url: str) -> dict:\n  req = urllib.request.Request(url, headers={'User-Agent': 'WeatherVision/1.0'})\n  with urllib.request.urlopen(req, timeout=15) as resp:\n    return json.loads(resp.read().decode('utf-8'))"
+    },
+    {
+      "id": 7,
+      "title": "AgriConnect",
+      "subtitle": "Full-stack Agricultural Platform",
+      "category": "Full Stack",
+      "tech": ["React.js", "Node.js", "Express.js", "MongoDB", "Tailwind CSS"],
+      "link": "https://github.com/AyushBajaj7/AgriConnect",
+      "demo": "https://agri-connect-gamma-one.vercel.app/",
+      "description": "Full-stack platform designed to centralize agricultural data and schemes. Built to improve usability and access to critical information for farmers using a robust React-based frontend and MongoDB backend.",
+      "codePreview": "const connectDB = async () => {\n  try {\n    await mongoose.connect(process.env.MONGO_URI);\n    console.log('MongoDB Connected');\n  } catch (error) {\n    console.error('Error:', error);\n  }\n};"
+    },
+    {
+      "id": 8,
       "title": "3D Architecture Visualization System",
       "subtitle": "Interactive 3D Walkthrough",
+      "category": "3D Systems",
       "tech": ["Blender", "Unity", "Python", "OpenGL"],
       "link": "https://github.com/AyushBajaj7",
       "description": "An interactive 3D walkthrough system for architectural visualization. Built using Blender for modeling and Unity for the interactive experience, integrating Python and OpenGL concepts to enhance rendering and interactivity.",
       "codePreview": "void Update() {\n  float horizontal = Input.GetAxis(\"Horizontal\");\n  float vertical = Input.GetAxis(\"Vertical\");\n  \n  Vector3 movement = new Vector3(\n    horizontal, 0f, vertical\n  );\n  transform.Translate(movement * speed * Time.deltaTime);\n}"
+    },
+    {
+      "id": 9,
+      "title": "Document Summary Assistant",
+      "subtitle": "Multimodal AI Document Intelligence",
+      "category": "AI / ML",
+      "tech": ["Next.js", "TypeScript", "Google Gemini API", "Tailwind CSS", "OCR", "Vercel"],
+      "link": "https://github.com/AyushBajaj7/Document-summary-assistant",
+      "demo": "https://document-summary-assistant-beta.vercel.app/",
+      "description": "Lightweight multimodal document summarizer built with Next.js and Google Gemini. Ingests PDFs, Office docs, and images with OCR to provide structured bullet summaries and quick takeaways.",
+      "codePreview": "const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });\nconst response = await ai.models.generateContent({\n  model: 'gemini-2.5-flash-lite',\n  contents: [{ role: 'user', parts: [filePart, { text: prompt }] }]\n});"
     }
   ],
   "skills": [
     {
+      "category": "Distributed & Backend Systems",
+      "items": ["FastAPI", "Node.js", "Express.js", "Python (Flask)", "Neo4j (Graph DB)", "ChromaDB (Vector DB)", "PostgreSQL", "MongoDB", "REST APIs", "WebSockets", "Docker Compose"]
+    },
+    {
+      "category": "Applied AI & Machine Learning",
+      "items": ["Google Gemini API", "RAG & Vector Retrieval", "Transformers (FLAN-T5)", "AST Analysis", "Scikit-learn", "OCR & Multimodal AI", "Model Evaluation"]
+    },
+    {
       "category": "Frontend Engineering",
-      "items": ["React.js", "Responsive UI", "Semantic HTML", "CSS systems", "Component architecture"]
+      "items": ["React.js", "Next.js", "TypeScript", "Tailwind CSS", "Framer Motion", "Component Architecture", "Responsive UI"]
     },
     {
-      "category": "Backend Systems",
-      "items": ["Node.js", "Express.js", "REST APIs", "MongoDB / MySQL", "Version control"]
-    },
-    {
-      "category": "Applied AI",
-      "items": ["Python", "Scikit-learn", "Transformers (FLAN-T5)", "Model evaluation", "Data preprocessing"]
-    },
-    {
-      "category": "Deployment & Media",
-      "items": ["AWS EC2", "IAM", "Amazon Polly", "FFmpeg", "3D asset workflows"]
+      "category": "Cloud & DevOps",
+      "items": ["Docker", "AWS EC2", "Render / Vercel", "Git Webhooks & CI/CD", "Amazon Polly", "FFmpeg", "Cloudinary"]
     },
     {
       "category": "Engineering Foundations",
-      "items": ["Data Structures & Algorithms", "Problem solving", "Critical thinking", "Debugging", "Adaptability"]
+      "items": ["Distributed Systems Design", "Microservice Drift & Impact Analysis", "Data Structures & Algorithms", "System Architecture", "Performance Optimization"]
     }
   ],
   "socials": [

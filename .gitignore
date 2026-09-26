@@ -3,3 +3,6 @@ dist
 graphify-out
 raw
 .codex
+.playwright-mcp
+*.png
+figma design/

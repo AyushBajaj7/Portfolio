@@ -6,17 +6,31 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useStore } from '../../store/useStore';
 
 export const PageLoader: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState(0);
+  const avatarReady = useStore((s) => s.avatarReady);
 
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const t1 = window.setTimeout(() => setProgress(100), reduced ? 0 : 100);
-    const t2 = window.setTimeout(() => setIsLoading(false), reduced ? 60 : 480);
-    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
-  }, []);
+    let t2: number;
+    const finish = () => {
+      setProgress(100);
+      t2 = window.setTimeout(() => setIsLoading(false), reduced ? 40 : 280);
+    };
+
+    if (avatarReady || reduced) {
+      finish();
+    } else {
+      // Fallback max wait 600ms so loader never hangs
+      const maxTimer = window.setTimeout(finish, 600);
+      return () => { clearTimeout(maxTimer); clearTimeout(t2); };
+    }
+
+    return () => { clearTimeout(t2); };
+  }, [avatarReady]);
 
   return (
     <AnimatePresence>
