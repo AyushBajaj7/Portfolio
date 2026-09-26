@@ -36,6 +36,9 @@ import {
 import portfolioData from '../../data/portfolio.json';
 import { useStore } from '../../store/useStore';
 import { TerminalModal } from './TerminalModal';
+import { TiltCard } from './TiltCard';
+import { BlastRadiusSimulator } from './BlastRadiusSimulator';
+import { RecruiterRoleFastTrack, RECRUITER_ROLES } from './RecruiterRoleFastTrack';
 
 type Project = (typeof portfolioData.projects)[number];
 type SkillGroup = (typeof portfolioData.skills)[number];
@@ -519,179 +522,173 @@ const BentoGridView: React.FC<{
       {/* TILE 1: Top Ranked Project (Hero 8-cols on desktop, 12 on tablet) */}
       <motion.div
         {...reveal}
-        tabIndex={0}
-        role="button"
-        onClick={() => onOpenCaseStudy(heroProject)}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenCaseStudy(heroProject); }}
-        className={`col-span-12 ${companionProject ? 'lg:col-span-8' : 'lg:col-span-12'} surface-panel shimmer-card group rounded-2xl p-6 sm:p-7 border border-outline-variant hover:border-primary/40 transition-all duration-200 cursor-pointer flex flex-col justify-between`}
+        className={`col-span-12 ${companionProject ? 'lg:col-span-8' : 'lg:col-span-12'} flex flex-col`}
       >
-        <div>
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-primary/15 border border-primary/40 px-3 py-1 text-[11px] font-label font-bold uppercase tracking-[0.2em] text-primary">
-                ★ FEATURED ARCHITECTURE SYSTEM
-              </span>
-              <span className="rounded-full border border-[#8af2ff]/30 bg-[#8af2ff]/10 px-2.5 py-0.5 text-[10px] font-label uppercase tracking-[0.16em] text-[#8af2ff]">
-                {heroProject.category}
-              </span>
+        <TiltCard
+          tabIndex={0}
+          role="button"
+          onClick={() => onOpenCaseStudy(heroProject)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenCaseStudy(heroProject); }}
+          className="h-full surface-panel shimmer-card group rounded-2xl p-6 sm:p-7 border border-outline-variant hover:border-primary/40 transition-all duration-200 cursor-pointer flex flex-col justify-between"
+        >
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-primary/15 border border-primary/40 px-3 py-1 text-[11px] font-label font-bold uppercase tracking-[0.2em] text-primary">
+                  ★ FEATURED ARCHITECTURE SYSTEM
+                </span>
+                <span className="rounded-full border border-[#8af2ff]/30 bg-[#8af2ff]/10 px-2.5 py-0.5 text-[10px] font-label uppercase tracking-[0.16em] text-[#8af2ff]">
+                  {heroProject.category}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-on-surface-variant font-mono">
+                <span>{heroProject.tech.slice(0, 3).join(' · ')}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-xs text-on-surface-variant font-mono">
-              <span>{heroProject.tech.slice(0, 3).join(' · ')}</span>
-            </div>
+
+            <h3 className="text-2xl sm:text-3xl font-display font-bold text-on-surface leading-tight group-hover:text-primary transition-colors">
+              {heroProject.title}
+            </h3>
+            <p className="mt-1 text-xs font-label uppercase tracking-[0.20em] text-primary-dim">
+              {heroProject.subtitle}
+            </p>
+
+            <p className="mt-3.5 text-sm sm:text-base leading-7 text-on-surface-variant">
+              {heroProject.description}
+            </p>
+
+            {/* Architecture Pipeline Flow or Blast-Radius Simulator for MDT */}
+            {heroProject.id === 1 ? (
+              <div className="mt-5">
+                <BlastRadiusSimulator onExploreMore={() => onOpenCaseStudy(heroProject)} />
+              </div>
+            ) : (
+              <div className="mt-5 p-4 rounded-xl border border-outline-variant bg-surface/80 font-mono text-[11px] overflow-x-auto">
+                <div className="text-[10px] uppercase tracking-wider text-primary font-bold mb-2 flex items-center gap-1.5">
+                  <Cpu size={13} />
+                  CORE STACK & PIPELINE
+                </div>
+                <div className="flex flex-wrap gap-2 text-on-surface">
+                  {heroProject.tech.map((t) => (
+                    <span key={t} className="px-2.5 py-1 rounded bg-surface-container-high border border-outline-variant text-xs">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          <h3 className="text-2xl sm:text-3xl font-display font-bold text-on-surface leading-tight group-hover:text-primary transition-colors">
-            {heroProject.title}
-          </h3>
-          <p className="mt-1 text-xs font-label uppercase tracking-[0.20em] text-primary-dim">
-            {heroProject.subtitle}
-          </p>
-
-          <p className="mt-3.5 text-sm sm:text-base leading-7 text-on-surface-variant">
-            {heroProject.description}
-          </p>
-
-          {/* Architecture Pipeline Flow for MDT or top project */}
-          {heroProject.id === 1 ? (
-            <div className="mt-5 p-4 rounded-xl border border-primary/20 bg-surface/80 font-mono text-[11px] overflow-x-auto">
-              <div className="text-[10px] uppercase tracking-wider text-primary font-bold mb-2 flex items-center gap-1.5">
-                <Cpu size={13} />
-                SYSTEM ARCHITECTURE & BLAST-RADIUS DATAFLOW
-              </div>
-              <div className="flex items-center gap-2 text-on-surface whitespace-nowrap">
-                <span className="px-2 py-1 rounded bg-surface-container-high border border-outline-variant">Git Webhook</span>
-                <span className="text-primary font-bold">➔</span>
-                <span className="px-2 py-1 rounded bg-surface-container-high border border-outline-variant">AST Diff Parsing</span>
-                <span className="text-primary font-bold">➔</span>
-                <span className="px-2 py-1 rounded bg-primary/10 border border-primary/30 text-primary">Neo4j Dependency Graph</span>
-                <span className="text-primary font-bold">➔</span>
-                <span className="px-2 py-1 rounded bg-tertiary/10 border border-tertiary/30 text-tertiary">ChromaDB RAG</span>
-                <span className="text-primary font-bold">➔</span>
-                <span className="px-2.5 py-1 rounded bg-primary text-on-primary font-bold">HMDA Risk Score</span>
-              </div>
+          <div className="mt-6 pt-5 border-t border-outline-variant flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap gap-1.5">
+              {heroProject.tech.map((t) => (
+                <span key={t} className="rounded-full border border-outline-variant bg-surface-container-high/60 px-2.5 py-0.5 text-[11px] text-on-surface-variant font-mono">
+                  {t}
+                </span>
+              ))}
             </div>
-          ) : (
-            <div className="mt-5 p-4 rounded-xl border border-outline-variant bg-surface/80 font-mono text-[11px] overflow-x-auto">
-              <div className="text-[10px] uppercase tracking-wider text-primary font-bold mb-2 flex items-center gap-1.5">
-                <Cpu size={13} />
-                CORE STACK & PIPELINE
-              </div>
-              <div className="flex flex-wrap gap-2 text-on-surface">
-                {heroProject.tech.map((t) => (
-                  <span key={t} className="px-2.5 py-1 rounded bg-surface-container-high border border-outline-variant text-xs">
-                    {t}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="mt-6 pt-5 border-t border-outline-variant flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap gap-1.5">
-            {heroProject.tech.map((t) => (
-              <span key={t} className="rounded-full border border-outline-variant bg-surface-container-high/60 px-2.5 py-0.5 text-[11px] text-on-surface-variant font-mono">
-                {t}
-              </span>
-            ))}
-          </div>
-          <div className="flex items-center gap-3">
-            <a
-              href={heroProject.link}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-on-surface hover:text-primary transition"
-            >
-              GitHub Source <ExternalLink size={13} />
-            </a>
-            {'demo' in heroProject && typeof heroProject.demo === 'string' && (
+            <div className="flex items-center gap-3">
               <a
-                href={heroProject.demo}
+                href={heroProject.link}
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/30 bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-on-surface hover:text-primary transition"
               >
-                <Zap size={13} /> Live Demo
+                GitHub Source <ExternalLink size={13} />
               </a>
-            )}
-            <button
-              type="button"
-              onClick={() => onOpenCaseStudy(heroProject)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary-dim transition cursor-pointer"
-            >
-              Interactive Case Study <ArrowRight size={14} />
-            </button>
+              {'demo' in heroProject && typeof heroProject.demo === 'string' && (
+                <a
+                  href={heroProject.demo}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/30 bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition"
+                >
+                  <Zap size={13} /> Live Demo
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => onOpenCaseStudy(heroProject)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary-dim transition cursor-pointer"
+              >
+                Interactive Case Study <ArrowRight size={14} />
+              </button>
+            </div>
           </div>
-        </div>
+        </TiltCard>
       </motion.div>
 
       {/* TILE 2: Companion Project (4-cols on desktop, 12 or 6 on tablet) */}
       {companionProject && (
         <motion.div
           {...reveal}
-          tabIndex={0}
-          role="button"
-          onClick={() => onOpenCaseStudy(companionProject)}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenCaseStudy(companionProject); }}
-          className="col-span-12 md:col-span-12 lg:col-span-4 surface-panel shimmer-card group rounded-2xl p-6 border border-outline-variant hover:border-tertiary/40 transition-all duration-200 cursor-pointer flex flex-col justify-between"
+          className="col-span-12 md:col-span-12 lg:col-span-4 flex flex-col"
         >
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <span className="rounded-full bg-tertiary/15 border border-tertiary/40 px-2.5 py-0.5 text-[10px] font-label font-bold uppercase tracking-[0.18em] text-tertiary">
-                ★ {companionProject.category}
-              </span>
-              {'demo' in companionProject && (
-                <span className="text-[10px] text-primary-dim font-mono flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary-dim animate-ping" />
-                  Live System
+          <TiltCard
+            tabIndex={0}
+            role="button"
+            onClick={() => onOpenCaseStudy(companionProject)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenCaseStudy(companionProject); }}
+            className="h-full surface-panel shimmer-card group rounded-2xl p-6 border border-outline-variant hover:border-tertiary/40 transition-all duration-200 cursor-pointer flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <span className="rounded-full bg-tertiary/15 border border-tertiary/40 px-2.5 py-0.5 text-[10px] font-label font-bold uppercase tracking-[0.18em] text-tertiary">
+                  ★ {companionProject.category}
                 </span>
+                {'demo' in companionProject && (
+                  <span className="text-[10px] text-primary-dim font-mono flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary-dim animate-ping" />
+                    Live System
+                  </span>
+                )}
+              </div>
+
+              <h3 className="text-xl font-display font-bold text-on-surface leading-tight group-hover:text-tertiary transition-colors">
+                {companionProject.title}
+              </h3>
+              <p className="mt-1 text-[11px] font-label uppercase tracking-[0.18em] text-tertiary">
+                {companionProject.subtitle}
+              </p>
+
+              <p className="mt-3 text-xs sm:text-sm leading-6 text-on-surface-variant">
+                {companionProject.description}
+              </p>
+
+              <div className="mt-4 p-3 rounded-xl border border-outline-variant bg-surface/60 font-mono text-[11px] space-y-1.5">
+                <div className="text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold">
+                  Implementation Focus
+                </div>
+                <div className="text-on-surface-variant text-[11px]">
+                  {getImplementationFocus(companionProject)}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-outline-variant flex items-center justify-between">
+              {'demo' in companionProject && typeof companionProject.demo === 'string' && (
+                <a
+                  href={companionProject.demo}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tertiary/10 text-tertiary border border-tertiary/30 text-xs font-semibold hover:bg-tertiary/20 transition"
+                >
+                  <Zap size={13} />
+                  Live Demo
+                </a>
               )}
-            </div>
-
-            <h3 className="text-xl font-display font-bold text-on-surface leading-tight group-hover:text-tertiary transition-colors">
-              {companionProject.title}
-            </h3>
-            <p className="mt-1 text-[11px] font-label uppercase tracking-[0.18em] text-tertiary">
-              {companionProject.subtitle}
-            </p>
-
-            <p className="mt-3 text-xs sm:text-sm leading-6 text-on-surface-variant">
-              {companionProject.description}
-            </p>
-
-            <div className="mt-4 p-3 rounded-xl border border-outline-variant bg-surface/60 font-mono text-[11px] space-y-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold">
-                Implementation Focus
-              </div>
-              <div className="text-on-surface-variant text-[11px]">
-                {getImplementationFocus(companionProject)}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-5 pt-4 border-t border-outline-variant flex items-center justify-between">
-            {'demo' in companionProject && typeof companionProject.demo === 'string' && (
-              <a
-                href={companionProject.demo}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tertiary/10 text-tertiary border border-tertiary/30 text-xs font-semibold hover:bg-tertiary/20 transition"
+              <button
+                type="button"
+                onClick={() => onOpenCaseStudy(companionProject)}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-on-surface hover:text-tertiary transition ml-auto cursor-pointer"
               >
-                <Zap size={13} />
-                Live Demo
-              </a>
-            )}
-            <button
-              type="button"
-              onClick={() => onOpenCaseStudy(companionProject)}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-on-surface hover:text-tertiary transition ml-auto cursor-pointer"
-            >
-              Explore <ArrowRight size={13} />
-            </button>
-          </div>
+                Explore <ArrowRight size={13} />
+              </button>
+            </div>
+          </TiltCard>
         </motion.div>
       )}
 
@@ -700,54 +697,58 @@ const BentoGridView: React.FC<{
         <motion.div
           key={p.id}
           {...revealFast}
-          tabIndex={0}
-          role="button"
-          onClick={() => onOpenCaseStudy(p)}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenCaseStudy(p); }}
-          className="col-span-12 md:col-span-6 lg:col-span-4 surface-panel shimmer-card group rounded-2xl p-5 border border-outline-variant hover:border-primary/30 transition cursor-pointer flex flex-col justify-between"
+          className="col-span-12 md:col-span-6 lg:col-span-4 flex flex-col"
         >
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-label uppercase tracking-widest text-primary-dim">
-                0{idx + 3} · {p.category}
-              </span>
-              <span className="text-[10px] font-mono text-on-surface-variant/70">
-                {p.tech.slice(0, 2).join(' · ')}
+          <TiltCard
+            tabIndex={0}
+            role="button"
+            onClick={() => onOpenCaseStudy(p)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenCaseStudy(p); }}
+            className="h-full surface-panel shimmer-card group rounded-2xl p-5 border border-outline-variant hover:border-primary/30 transition cursor-pointer flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-label uppercase tracking-widest text-primary-dim">
+                  0{idx + 3} · {p.category}
+                </span>
+                <span className="text-[10px] font-mono text-on-surface-variant/70">
+                  {p.tech.slice(0, 2).join(' · ')}
+                </span>
+              </div>
+              <h4 className="text-lg font-display font-bold text-on-surface group-hover:text-primary transition-colors">
+                {p.title}
+              </h4>
+              <p className="mt-2 text-xs leading-5 text-on-surface-variant line-clamp-3">
+                {p.description}
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-outline-variant flex items-center justify-between text-xs">
+              {'demo' in p && typeof p.demo === 'string' ? (
+                <a
+                  href={p.demo}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-primary hover:underline flex items-center gap-1 font-semibold"
+                >
+                  <Zap size={12} /> Live Demo
+                </a>
+              ) : (
+                <a
+                  href={p.link}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-on-surface-variant hover:text-primary flex items-center gap-1 font-semibold"
+                >
+                  <Code2 size={12} /> Source
+                </a>
+              )}
+              <span className="text-on-surface-variant group-hover:text-primary flex items-center gap-1 font-semibold ml-auto">
+                Case Study <ArrowRight size={12} />
               </span>
             </div>
-            <h4 className="text-lg font-display font-bold text-on-surface group-hover:text-primary transition-colors">
-              {p.title}
-            </h4>
-            <p className="mt-2 text-xs leading-5 text-on-surface-variant line-clamp-3">
-              {p.description}
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-outline-variant flex items-center justify-between text-xs">
-            {'demo' in p && typeof p.demo === 'string' ? (
-              <a
-                href={p.demo}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="text-primary hover:underline flex items-center gap-1 font-semibold"
-              >
-                <Zap size={12} /> Live Demo
-              </a>
-            ) : (
-              <a
-                href={p.link}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="text-on-surface-variant hover:text-primary flex items-center gap-1 font-semibold"
-              >
-                <Code2 size={12} /> Source
-              </a>
-            )}
-            <span className="text-on-surface-variant group-hover:text-primary flex items-center gap-1 font-semibold ml-auto">
-              Case Study <ArrowRight size={12} />
-            </span>
-          </div>
+          </TiltCard>
         </motion.div>
       ))}
 
@@ -756,31 +757,35 @@ const BentoGridView: React.FC<{
         <motion.div
           key={p.id}
           {...revealFast}
-          tabIndex={0}
-          role="button"
-          onClick={() => onOpenCaseStudy(p)}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenCaseStudy(p); }}
-          className="col-span-12 md:col-span-6 lg:col-span-3 surface-panel-subtle shimmer-card group rounded-2xl p-4 border border-outline-variant hover:border-primary/30 transition cursor-pointer flex flex-col justify-between"
+          className="col-span-12 md:col-span-6 lg:col-span-3 flex flex-col"
         >
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[9px] font-label uppercase tracking-wider text-primary-dim">{p.category}</span>
+          <TiltCard
+            tabIndex={0}
+            role="button"
+            onClick={() => onOpenCaseStudy(p)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenCaseStudy(p); }}
+            className="h-full surface-panel-subtle shimmer-card group rounded-2xl p-4 border border-outline-variant hover:border-primary/30 transition cursor-pointer flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[9px] font-label uppercase tracking-wider text-primary-dim">{p.category}</span>
+              </div>
+              <h5 className="text-sm font-display font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-1">
+                {p.title}
+              </h5>
+              <p className="mt-1 text-[11px] leading-4 text-on-surface-variant line-clamp-2">
+                {p.description}
+              </p>
             </div>
-            <h5 className="text-sm font-display font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-1">
-              {p.title}
-            </h5>
-            <p className="mt-1 text-[11px] leading-4 text-on-surface-variant line-clamp-2">
-              {p.description}
-            </p>
-          </div>
-          <div className="mt-3 pt-2 border-t border-outline-variant/60 flex items-center justify-between text-[11px]">
-            <span className="text-on-surface-variant font-mono text-[10px]">
-              {p.tech.slice(0, 2).join(' · ')}
-            </span>
-            <span className="text-primary font-semibold flex items-center gap-1">
-              Details <ArrowRight size={10} />
-            </span>
-          </div>
+            <div className="mt-3 pt-2 border-t border-outline-variant/60 flex items-center justify-between text-[11px]">
+              <span className="text-on-surface-variant font-mono text-[10px]">
+                {p.tech.slice(0, 2).join(' · ')}
+              </span>
+              <span className="text-primary font-semibold flex items-center gap-1">
+                Details <ArrowRight size={10} />
+              </span>
+            </div>
+          </TiltCard>
         </motion.div>
       ))}
     </div>
@@ -789,7 +794,7 @@ const BentoGridView: React.FC<{
 
 // ─── SkillCard ────────────────────────────────────────────────────────────────
 
-const SkillCard: React.FC<{ group: SkillGroup; index: number }> = React.memo(({ group, index }) => {
+const SkillCard: React.FC<{ group: SkillGroup; index: number; matchedSkills?: string[] }> = React.memo(({ group, index, matchedSkills }) => {
   const Icon = skillIcons[index % skillIcons.length];
   return (
     <motion.div
@@ -808,9 +813,22 @@ const SkillCard: React.FC<{ group: SkillGroup; index: number }> = React.memo(({ 
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
-        {group.items.map((item) => (
-          <span key={item} className="skill-pill">{item}</span>
-        ))}
+        {group.items.map((item) => {
+          const isMatched = matchedSkills?.some((s) => s.toLowerCase() === item.toLowerCase());
+          return (
+            <span
+              key={item}
+              className={`skill-pill transition-all duration-200 ${
+                isMatched
+                  ? 'border-primary/70 bg-primary/18 text-primary font-semibold shadow-sm shadow-primary/25 ring-1 ring-primary/40'
+                  : ''
+              }`}
+            >
+              {item}
+              {isMatched && <span className="ml-1 text-[9px] text-primary">★</span>}
+            </span>
+          );
+        })}
       </div>
     </motion.div>
   );
@@ -1069,14 +1087,38 @@ export const SectionGroup: React.FC = () => {
   }, []);
 
   const allSkills = useMemo(() => skills.flatMap((g) => g.items), [skills]);
+  const [activeRecruiterRoleId, setActiveRecruiterRoleId] = useState<string | null>(null);
+
+  const activeRecruiterRole = useMemo(
+    () => RECRUITER_ROLES.find((r) => r.id === activeRecruiterRoleId) ?? null,
+    [activeRecruiterRoleId],
+  );
+
   const projectFilters = useMemo(
     () => ['All', ...Array.from(new Set(projects.map(getProjectCategory)))],
     [projects],
   );
-  const visibleProjects = useMemo(
-    () => projects.filter((p) => projectFilter === 'All' || getProjectCategory(p) === projectFilter),
-    [projectFilter, projects],
-  );
+
+  const visibleProjects = useMemo(() => {
+    let list = projects.filter((p) => projectFilter === 'All' || getProjectCategory(p) === projectFilter);
+    if (activeRecruiterRole) {
+      list = [...list].sort((a, b) => {
+        const aSlug = getProjectSlug(a);
+        const bSlug = getProjectSlug(b);
+        const aIdx = activeRecruiterRole.recommendedProjectSlugs.indexOf(aSlug);
+        const bIdx = activeRecruiterRole.recommendedProjectSlugs.indexOf(bSlug);
+        if (aIdx !== -1 && bIdx === -1) return -1;
+        if (aIdx === -1 && bIdx !== -1) return 1;
+        if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+        return 0;
+      });
+    }
+    return list;
+  }, [activeRecruiterRole, projectFilter, projects]);
+
+  const scrollToContact = useCallback(() => {
+    document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
   visibleProjectsCountRef.current = visibleProjects.length;
 
   const activeProject = useMemo(
@@ -1285,6 +1327,16 @@ export const SectionGroup: React.FC = () => {
 
                 <button
                   type="button"
+                  onClick={() => document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/35 bg-primary/10 px-3.5 py-2 text-[11px] font-mono font-semibold text-primary hover:bg-primary/20 transition cursor-pointer"
+                  title="Filter portfolio by target vacancy (Backend, AI, Full-Stack)"
+                >
+                  <Zap size={13} />
+                  <span>Recruiter Fast-Track</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setIsTerminalOpen(true)}
                   className="inline-flex items-center gap-1.5 rounded-full border border-tertiary/35 bg-surface-container-high/80 px-3.5 py-2 text-[11px] font-mono font-semibold text-tertiary hover:border-tertiary hover:bg-tertiary/10 transition cursor-pointer"
                   title="Open interactive Developer Terminal"
@@ -1453,6 +1505,13 @@ export const SectionGroup: React.FC = () => {
                 </a>
               </div>
             </div>
+
+            {/* Recruiter Fast-Track Vacancy Matcher */}
+            <RecruiterRoleFastTrack
+              activeRoleId={activeRecruiterRoleId}
+              onSelectRole={setActiveRecruiterRoleId}
+              onScrollToContact={scrollToContact}
+            />
 
             {/* Filter buttons + Rail Progress */}
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -1637,7 +1696,12 @@ export const SectionGroup: React.FC = () => {
             />
             <div className="mt-10 grid max-w-4xl gap-4 md:grid-cols-2">
               {skills.map((group, index) => (
-                <SkillCard key={group.category} group={group} index={index} />
+                <SkillCard
+                  key={group.category}
+                  group={group}
+                  index={index}
+                  matchedSkills={activeRecruiterRole?.matchedSkills}
+                />
               ))}
             </div>
           </div>
@@ -1697,11 +1761,11 @@ export const SectionGroup: React.FC = () => {
 
       {/* Floating Developer CLI Terminal Trigger Button */}
       {!activeProject && (
-        <div className="fixed bottom-6 right-6 z-40">
+        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40">
           <button
             type="button"
             onClick={() => setIsTerminalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-full border border-tertiary/40 bg-surface/90 backdrop-blur-md px-4 py-2.5 text-xs font-mono font-semibold text-on-surface shadow-2xl hover:border-tertiary hover:text-tertiary hover:shadow-tertiary/20 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-full border border-tertiary/40 bg-surface/90 backdrop-blur-md px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs font-mono font-semibold text-on-surface shadow-2xl hover:border-tertiary hover:text-tertiary hover:shadow-tertiary/20 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
             aria-label="Open Developer CLI Terminal"
           >
             <span className="relative flex h-2 w-2">
