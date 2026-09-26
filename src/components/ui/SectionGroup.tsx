@@ -38,7 +38,7 @@ import { useStore } from '../../store/useStore';
 import { TerminalModal } from './TerminalModal';
 import { TiltCard } from './TiltCard';
 import { BlastRadiusSimulator } from './BlastRadiusSimulator';
-import { RecruiterRoleFastTrack, RECRUITER_ROLES } from './RecruiterRoleFastTrack';
+import { CatXTelemetryWidget } from './CatXTelemetryWidget';
 
 type Project = (typeof portfolioData.projects)[number];
 type SkillGroup = (typeof portfolioData.skills)[number];
@@ -657,36 +657,50 @@ const BentoGridView: React.FC<{
                 {companionProject.description}
               </p>
 
-              <div className="mt-4 p-3 rounded-xl border border-outline-variant bg-surface/60 font-mono text-[11px] space-y-1.5">
-                <div className="text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold">
-                  Implementation Focus
-                </div>
-                <div className="text-on-surface-variant text-[11px]">
-                  {getImplementationFocus(companionProject)}
-                </div>
-              </div>
+              {/* In-Cab Digital Twin Telemetry & Consequence Simulator */}
+              <CatXTelemetryWidget />
             </div>
 
-            <div className="mt-5 pt-4 border-t border-outline-variant flex items-center justify-between">
-              {'demo' in companionProject && typeof companionProject.demo === 'string' && (
-                <a
-                  href={companionProject.demo}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tertiary/10 text-tertiary border border-tertiary/30 text-xs font-semibold hover:bg-tertiary/20 transition"
+            <div className="mt-5 pt-4 border-t border-outline-variant flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap gap-1.5">
+                {companionProject.tech.map((t) => (
+                  <span key={t} className="rounded-full border border-outline-variant bg-surface-container-high/60 px-2 py-0.5 text-[10px] text-on-surface-variant font-mono">
+                    {t}
+                  </span>
+                ))}
+              </div>
+              <div className="flex items-center gap-2.5 sm:ml-auto">
+                {companionProject.link && (
+                  <a
+                    href={companionProject.link}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-on-surface hover:text-tertiary transition"
+                  >
+                    GitHub <ExternalLink size={12} />
+                  </a>
+                )}
+                {'demo' in companionProject && typeof companionProject.demo === 'string' && (
+                  <a
+                    href={companionProject.demo}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-tertiary/10 text-tertiary border border-tertiary/30 text-xs font-semibold hover:bg-tertiary/20 transition"
+                  >
+                    <Zap size={13} />
+                    Live Demo
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onOpenCaseStudy(companionProject)}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-on-surface hover:text-tertiary transition cursor-pointer"
                 >
-                  <Zap size={13} />
-                  Live Demo
-                </a>
-              )}
-              <button
-                type="button"
-                onClick={() => onOpenCaseStudy(companionProject)}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-on-surface hover:text-tertiary transition ml-auto cursor-pointer"
-              >
-                Explore <ArrowRight size={13} />
-              </button>
+                  Explore <ArrowRight size={13} />
+                </button>
+              </div>
             </div>
           </TiltCard>
         </motion.div>
@@ -794,7 +808,7 @@ const BentoGridView: React.FC<{
 
 // ─── SkillCard ────────────────────────────────────────────────────────────────
 
-const SkillCard: React.FC<{ group: SkillGroup; index: number; matchedSkills?: string[] }> = React.memo(({ group, index, matchedSkills }) => {
+const SkillCard: React.FC<{ group: SkillGroup; index: number }> = React.memo(({ group, index }) => {
   const Icon = skillIcons[index % skillIcons.length];
   return (
     <motion.div
@@ -813,22 +827,9 @@ const SkillCard: React.FC<{ group: SkillGroup; index: number; matchedSkills?: st
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
-        {group.items.map((item) => {
-          const isMatched = matchedSkills?.some((s) => s.toLowerCase() === item.toLowerCase());
-          return (
-            <span
-              key={item}
-              className={`skill-pill transition-all duration-200 ${
-                isMatched
-                  ? 'border-primary/70 bg-primary/18 text-primary font-semibold shadow-sm shadow-primary/25 ring-1 ring-primary/40'
-                  : ''
-              }`}
-            >
-              {item}
-              {isMatched && <span className="ml-1 text-[9px] text-primary">★</span>}
-            </span>
-          );
-        })}
+        {group.items.map((item) => (
+          <span key={item} className="skill-pill">{item}</span>
+        ))}
       </div>
     </motion.div>
   );
@@ -1087,38 +1088,14 @@ export const SectionGroup: React.FC = () => {
   }, []);
 
   const allSkills = useMemo(() => skills.flatMap((g) => g.items), [skills]);
-  const [activeRecruiterRoleId, setActiveRecruiterRoleId] = useState<string | null>(null);
-
-  const activeRecruiterRole = useMemo(
-    () => RECRUITER_ROLES.find((r) => r.id === activeRecruiterRoleId) ?? null,
-    [activeRecruiterRoleId],
-  );
-
   const projectFilters = useMemo(
     () => ['All', ...Array.from(new Set(projects.map(getProjectCategory)))],
     [projects],
   );
-
-  const visibleProjects = useMemo(() => {
-    let list = projects.filter((p) => projectFilter === 'All' || getProjectCategory(p) === projectFilter);
-    if (activeRecruiterRole) {
-      list = [...list].sort((a, b) => {
-        const aSlug = getProjectSlug(a);
-        const bSlug = getProjectSlug(b);
-        const aIdx = activeRecruiterRole.recommendedProjectSlugs.indexOf(aSlug);
-        const bIdx = activeRecruiterRole.recommendedProjectSlugs.indexOf(bSlug);
-        if (aIdx !== -1 && bIdx === -1) return -1;
-        if (aIdx === -1 && bIdx !== -1) return 1;
-        if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
-        return 0;
-      });
-    }
-    return list;
-  }, [activeRecruiterRole, projectFilter, projects]);
-
-  const scrollToContact = useCallback(() => {
-    document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+  const visibleProjects = useMemo(
+    () => projects.filter((p) => projectFilter === 'All' || getProjectCategory(p) === projectFilter),
+    [projectFilter, projects],
+  );
   visibleProjectsCountRef.current = visibleProjects.length;
 
   const activeProject = useMemo(
@@ -1327,16 +1304,6 @@ export const SectionGroup: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/35 bg-primary/10 px-3.5 py-2 text-[11px] font-mono font-semibold text-primary hover:bg-primary/20 transition cursor-pointer"
-                  title="Filter portfolio by target vacancy (Backend, AI, Full-Stack)"
-                >
-                  <Zap size={13} />
-                  <span>Recruiter Fast-Track</span>
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => setIsTerminalOpen(true)}
                   className="inline-flex items-center gap-1.5 rounded-full border border-tertiary/35 bg-surface-container-high/80 px-3.5 py-2 text-[11px] font-mono font-semibold text-tertiary hover:border-tertiary hover:bg-tertiary/10 transition cursor-pointer"
                   title="Open interactive Developer Terminal"
@@ -1505,13 +1472,6 @@ export const SectionGroup: React.FC = () => {
                 </a>
               </div>
             </div>
-
-            {/* Recruiter Fast-Track Vacancy Matcher */}
-            <RecruiterRoleFastTrack
-              activeRoleId={activeRecruiterRoleId}
-              onSelectRole={setActiveRecruiterRoleId}
-              onScrollToContact={scrollToContact}
-            />
 
             {/* Filter buttons + Rail Progress */}
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -1696,12 +1656,7 @@ export const SectionGroup: React.FC = () => {
             />
             <div className="mt-10 grid max-w-4xl gap-4 md:grid-cols-2">
               {skills.map((group, index) => (
-                <SkillCard
-                  key={group.category}
-                  group={group}
-                  index={index}
-                  matchedSkills={activeRecruiterRole?.matchedSkills}
-                />
+                <SkillCard key={group.category} group={group} index={index} />
               ))}
             </div>
           </div>

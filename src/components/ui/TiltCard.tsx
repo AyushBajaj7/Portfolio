@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 
 interface TiltCardProps {
   children: React.ReactNode;
@@ -24,57 +24,95 @@ export const TiltCard: React.FC<TiltCardProps> = ({
   role,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
-  const [transform, setTransform] = useState('');
-  const [glarePosition, setGlarePosition] = useState<{ x: number; y: number; opacity: number }>({
-    x: 50,
-    y: 50,
-    opacity: 0,
-  });
-  const [isHovered, setIsHovered] = useState(false);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const glareRef = useRef<HTMLDivElement>(null);
+  const rectRef = useRef<{ left: number; top: number; width: number; height: number } | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const isTouchRef = useRef(false);
+  const isHoveredRef = useRef(false);
 
   useEffect(() => {
-    // Detect touch / non-hover screens to disable tilt physics and conserve resources
-    const hasTouch = window.matchMedia('(pointer: coarse)').matches || !window.matchMedia('(hover: hover)').matches;
-    setIsTouchDevice(hasTouch);
+    isTouchRef.current =
+      window.matchMedia('(pointer: coarse)').matches ||
+      !window.matchMedia('(hover: hover)').matches;
+
+    // Reset tilt on scroll to avoid GPU compositing contention
+    const handleScroll = () => {
+      if (isHoveredRef.current && cardRef.current) {
+        cardRef.current.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+        if (glareRef.current) glareRef.current.style.opacity = '0';
+        rectRef.current = null;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+    };
   }, []);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (isTouchDevice || !cardRef.current) return;
-
-    const rect = cardRef.current.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const percentX = mouseX / width;
-    const percentY = mouseY / height;
-
-    // Calculate rotation (-maxTilt to +maxTilt)
-    const rotateX = ((percentY - 0.5) * -maxTilt).toFixed(2);
-    const rotateY = ((percentX - 0.5) * maxTilt).toFixed(2);
-
-    setTransform(`perspective(900px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.012, 1.012, 1.012)`);
-    setGlarePosition({
-      x: percentX * 100,
-      y: percentY * 100,
-      opacity: glareOpacity,
-    });
-  }, [isTouchDevice, maxTilt, glareOpacity]);
-
   const handleMouseEnter = useCallback(() => {
-    if (isTouchDevice) return;
-    setIsHovered(true);
-  }, [isTouchDevice]);
+    if (isTouchRef.current || !cardRef.current) return;
+    isHoveredRef.current = true;
+    const r = cardRef.current.getBoundingClientRect();
+    rectRef.current = { left: r.left, top: r.top, width: r.width, height: r.height };
+    cardRef.current.style.transition = 'transform 0.1s cubic-bezier(0.2, 0, 0, 1)';
+  }, []);
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (isTouchRef.current || !isHoveredRef.current || !cardRef.current) return;
+
+      // Lazy cache rect if not set
+      if (!rectRef.current) {
+        const r = cardRef.current.getBoundingClientRect();
+        rectRef.current = { left: r.left, top: r.top, width: r.width, height: r.height };
+      }
+
+      const rect = rectRef.current;
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const percentX = Math.min(1, Math.max(0, mouseX / rect.width));
+      const percentY = Math.min(1, Math.max(0, mouseY / rect.height));
+
+      const rotateX = ((percentY - 0.5) * -maxTilt).toFixed(2);
+      const rotateY = ((percentX - 0.5) * maxTilt).toFixed(2);
+
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+
+      rafIdRef.current = requestAnimationFrame(() => {
+        if (!cardRef.current) return;
+        cardRef.current.style.transform = `perspective(900px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.01, 1.01, 1.01)`;
+        if (glareRef.current) {
+          glareRef.current.style.opacity = `${glareOpacity}`;
+          glareRef.current.style.background = `radial-gradient(circle 380px at ${(percentX * 100).toFixed(1)}% ${(percentY * 100).toFixed(1)}%, rgba(${glareColor}, 0.22), transparent 70%)`;
+        }
+      });
+    },
+    [maxTilt, glareOpacity, glareColor]
+  );
 
   const handleMouseLeave = useCallback(() => {
-    if (isTouchDevice) return;
-    setIsHovered(false);
-    setTransform('perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)');
-    setGlarePosition((prev) => ({ ...prev, opacity: 0 }));
-  }, [isTouchDevice]);
+    if (isTouchRef.current || !cardRef.current) return;
+    isHoveredRef.current = false;
+    rectRef.current = null;
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    cardRef.current.style.transition = 'transform 0.4s cubic-bezier(0.2, 1, 0.36, 1)';
+    cardRef.current.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+    if (glareRef.current) {
+      glareRef.current.style.opacity = '0';
+    }
+  }, []);
 
   return (
     <div
@@ -87,25 +125,17 @@ export const TiltCard: React.FC<TiltCardProps> = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       style={{
-        transform: transform || undefined,
-        transformStyle: 'preserve-3d',
-        transition: isHovered
-          ? 'transform 0.1s cubic-bezier(0.2, 0, 0, 1)'
-          : 'transform 0.45s cubic-bezier(0.2, 1, 0.36, 1)',
+        transform: 'perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
+        willChange: 'transform',
       }}
       className={`relative overflow-hidden ${className}`}
     >
-      {/* Dynamic Specular Holographic Glare Layer */}
-      {!isTouchDevice && (
-        <div
-          className="pointer-events-none absolute -inset-px rounded-[inherit] transition-opacity duration-300 z-10"
-          style={{
-            opacity: glarePosition.opacity,
-            background: `radial-gradient(circle 380px at ${glarePosition.x}% ${glarePosition.y}%, rgba(${glareColor}, 0.22), transparent 70%)`,
-          }}
-          aria-hidden="true"
-        />
-      )}
+      {/* Specular Holographic Glare Layer - Updated directly via ref */}
+      <div
+        ref={glareRef}
+        className="pointer-events-none absolute -inset-px rounded-[inherit] transition-opacity duration-300 z-10 opacity-0"
+        aria-hidden="true"
+      />
       {children}
     </div>
   );

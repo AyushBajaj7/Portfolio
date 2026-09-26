@@ -74,21 +74,27 @@ export const Navbar: React.FC = () => {
     const scrollContainer = document.getElementById('scroll-container');
     if (!scrollContainer) return;
 
+    let scrollTicking = false;
     const onScroll = () => {
-      const currentScrollY = window.scrollY || (scrollContainer ? scrollContainer.scrollTop : 0);
-      
-      if (currentScrollY > 24) {
-        const newDir = currentScrollY > lastScrollY.current ? 'down' : 'up';
-        setScrollDirection(prev => prev !== newDir ? newDir : prev);
-      }
-      lastScrollY.current = currentScrollY;
-      
-      setScrollTop(prev => {
-        if ((prev > 96 && currentScrollY <= 96) || (prev <= 96 && currentScrollY > 96)) return currentScrollY;
-        if (Math.abs(prev - currentScrollY) > 50) return currentScrollY;
-        return prev;
+      if (scrollTicking) return;
+      scrollTicking = true;
+      requestAnimationFrame(() => {
+        scrollTicking = false;
+        const currentScrollY = window.scrollY || (scrollContainer ? scrollContainer.scrollTop : 0);
+        
+        if (currentScrollY > 24) {
+          const newDir = currentScrollY > lastScrollY.current ? 'down' : 'up';
+          setScrollDirection(prev => prev !== newDir ? newDir : prev);
+        }
+        lastScrollY.current = currentScrollY;
+        
+        setScrollTop(prev => {
+          if ((prev > 96 && currentScrollY <= 96) || (prev <= 96 && currentScrollY > 96)) return currentScrollY;
+          if (Math.abs(prev - currentScrollY) > 50) return currentScrollY;
+          return prev;
+        });
+        setScrolled(prev => (currentScrollY > 24) !== prev ? (currentScrollY > 24) : prev);
       });
-      setScrolled(prev => (currentScrollY > 24) !== prev ? (currentScrollY > 24) : prev);
     };
 
     const onResize = () => {

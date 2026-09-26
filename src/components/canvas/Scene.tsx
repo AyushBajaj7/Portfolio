@@ -509,30 +509,38 @@ export const Scene: React.FC = () => {
 
     // 3. Fallback: Find nearest loaded frame in either cache for INSTANT display (<= 6 frames away)
     let nearestImg: HTMLImageElement | null = null;
-    let minDiff = Infinity;
     let nearestIndex = -1;
     let nearestType: 'lowres' | 'highres' = 'lowres';
 
-    for (const [cachedIdx, img] of highResCache.current.entries()) {
-      if (img.complete && img.naturalWidth > 0) {
+    // Fast outward search - O(1) hash lookups instead of O(N) full-cache traversal
+    for (let offset = 1; offset <= 30; offset++) {
+      const prev = safeIndex - offset;
+      const next = safeIndex + offset;
+
+      if (prev >= 0 && lowResCache.current.has(prev)) {
+        nearestImg = lowResCache.current.get(prev)!;
+        nearestIndex = prev;
+        nearestType = 'lowres';
+        break;
+      }
+      if (next < FRAME_COUNT && lowResCache.current.has(next)) {
+        nearestImg = lowResCache.current.get(next)!;
+        nearestIndex = next;
+        nearestType = 'lowres';
+        break;
+      }
+    }
+
+    // Fallback to highResCache anchor check if still not found
+    if (!nearestImg) {
+      let minDiff = Infinity;
+      for (const [cachedIdx, img] of highResCache.current.entries()) {
         const diff = Math.abs(cachedIdx - safeIndex);
         if (diff < minDiff) {
           minDiff = diff;
           nearestImg = img;
           nearestIndex = cachedIdx;
           nearestType = 'highres';
-        }
-      }
-    }
-
-    for (const [cachedIdx, img] of lowResCache.current.entries()) {
-      if (img.complete && img.naturalWidth > 0) {
-        const diff = Math.abs(cachedIdx - safeIndex);
-        if (diff < minDiff) {
-          minDiff = diff;
-          nearestImg = img;
-          nearestIndex = cachedIdx;
-          nearestType = 'lowres';
         }
       }
     }
@@ -609,7 +617,7 @@ export const Scene: React.FC = () => {
     const nextOpacity = visibleOpacity.toFixed(3);
     if (nextOpacity !== lastOpacityRef.current) {
       lastOpacityRef.current = nextOpacity;
-      container.style.opacity = nextOpacity;
+      canvas.style.opacity = nextOpacity;
     }
     const nextTransform = `translate3d(${pose.x.toFixed(2)}vw, ${pose.y.toFixed(2)}vh, 0) scale(${pose.scale.toFixed(3)})`;
     if (nextTransform !== lastTransformRef.current) {
@@ -713,11 +721,28 @@ export const Scene: React.FC = () => {
       });
     }, 600);
 
-    // 6. Background sequential filling during idle periods
+    // 6. Background sequential filling during idle periods (pauses during active scroll)
     let idleTimer: number;
     let currentFillIdx = 7;
+    let isScrolling = false;
+    let scrollIdleTimer: number;
+
+    const onScrollActivity = () => {
+      isScrolling = true;
+      window.clearTimeout(scrollIdleTimer);
+      scrollIdleTimer = window.setTimeout(() => {
+        isScrolling = false;
+      }, 400);
+    };
+
+    window.addEventListener('scroll', onScrollActivity, { passive: true });
 
     const fillNext = () => {
+      if (isScrolling) {
+        idleTimer = window.setTimeout(fillNext, 350);
+        return;
+      }
+
       while (currentFillIdx < FRAME_COUNT && lowResCache.current.has(currentFillIdx)) {
         currentFillIdx++;
       }
@@ -726,12 +751,14 @@ export const Scene: React.FC = () => {
       requestLowResFrame(currentFillIdx);
       currentFillIdx++;
 
-      idleTimer = window.setTimeout(fillNext, 90);
+      idleTimer = window.setTimeout(fillNext, 120);
     };
 
-    idleTimer = window.setTimeout(fillNext, 700);
+    idleTimer = window.setTimeout(fillNext, 800);
 
     return () => {
+      window.removeEventListener('scroll', onScrollActivity);
+      clearTimeout(scrollIdleTimer);
       clearTimeout(t2);
       clearTimeout(t3);
       clearTimeout(tSectionHighRes);
@@ -834,8 +861,6 @@ export const Scene: React.FC = () => {
         height: '100vh',
         zIndex: 1,
         pointerEvents: 'none',
-        backgroundColor: 'var(--bg)',
-        opacity: 0,
         contain: 'strict',
       }}
     >
@@ -848,6 +873,7 @@ export const Scene: React.FC = () => {
           transform: 'translate3d(0, 0, 0) scale(1)',
           transformOrigin: 'center center',
           willChange: 'transform, opacity',
+          opacity: 0,
           filter: 'none',
         }}
       />
