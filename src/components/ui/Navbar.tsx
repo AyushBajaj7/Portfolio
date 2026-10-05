@@ -14,40 +14,19 @@ import { useShallow } from 'zustand/react/shallow';
  * MagneticButton component - Adds magnetic hover effect to buttons.
  * Button subtly attracts to cursor position on hover for interactive feel.
  */
-const MagneticButton: React.FC<{ children: React.ReactNode; className?: string; onClick?: () => void }> = ({
+const NavButton: React.FC<{ children: React.ReactNode; className?: string; onClick?: () => void }> = ({
   children,
   className = '',
   onClick,
 }) => {
-  const ref = useRef<HTMLButtonElement>(null);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (!ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const distanceX = e.clientX - centerX;
-    const distanceY = e.clientY - centerY;
-    setPosition({ x: distanceX * 0.15, y: distanceY * 0.15 });
-  };
-
-  const handleMouseLeave = () => {
-    setPosition({ x: 0, y: 0 });
-  };
-
   return (
-    <motion.button
-      ref={ref}
-      className={className}
+    <button
+      type="button"
+      className={`magnetic-button ${className}`}
       onClick={onClick}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      animate={{ x: position.x, y: position.y }}
-      transition={{ type: 'spring', stiffness: 350, damping: 15, mass: 0.5 }}
     >
       {children}
-    </motion.button>
+    </button>
   );
 };
 
@@ -165,7 +144,10 @@ export const Navbar: React.FC = () => {
 
   const scrollTo = (id: string) => {
     const element = document.getElementById(id);
-    if (element) element.scrollIntoView({ behavior: 'smooth' });
+    if (element) {
+      const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+      element.scrollIntoView({ behavior, block: 'start' });
+    }
     setMobileOpen(false);
   };
 
@@ -181,6 +163,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <nav
+      aria-label="Primary navigation"
       onMouseEnter={() => setNavHovered(true)}
       onMouseLeave={() => setNavHovered(false)}
       className={`fixed top-0 w-full transition-all duration-500 ${
@@ -204,7 +187,7 @@ export const Navbar: React.FC = () => {
             <LayoutGroup id="navbar-pill">
               <div className="flex items-center gap-0.5 rounded-xl border border-outline-variant bg-surface-container-high/40 p-1">
                 {links.map((link) => (
-                  <MagneticButton
+                  <NavButton
                     key={link.id}
                     onClick={() => scrollTo(link.id)}
                     className={`relative px-3.5 py-1.5 rounded-lg text-sm font-body font-medium transition-colors duration-200 ${
@@ -221,16 +204,18 @@ export const Navbar: React.FC = () => {
                       />
                     )}
                     <span className="relative z-10">{link.label}</span>
-                  </MagneticButton>
+                  </NavButton>
                 ))}
               </div>
             </LayoutGroup>
 
             {/* Theme toggle */}
             <button
+              type="button"
               onClick={toggleTheme}
               className="relative flex h-8 w-14 items-center rounded-full border border-outline-variant bg-surface-container-high p-1 transition-all duration-300 hover:border-primary/40"
-              aria-label="Toggle theme"
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+              aria-pressed={theme === 'light'}
             >
               <div
                 className={`flex h-6 w-6 items-center justify-center rounded-full shadow-md transition-all duration-300 ${
@@ -239,7 +224,7 @@ export const Navbar: React.FC = () => {
                     : 'translate-x-0 bg-surface-container-highest text-primary-dim'
                 }`}
               >
-                {theme === 'light' ? <Sun size={13} /> : <Moon size={13} />}
+                {theme === 'light' ? <Moon size={13} /> : <Sun size={13} />}
               </div>
             </button>
 
@@ -257,16 +242,21 @@ export const Navbar: React.FC = () => {
           {/* Mobile controls */}
           <div className="lg:hidden flex items-center gap-2">
             <button
+              type="button"
               onClick={toggleTheme}
               className="flex h-9 w-9 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-high/80 text-on-surface"
-              aria-label="Toggle theme"
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+              aria-pressed={theme === 'light'}
             >
               {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
             </button>
             <button
+              type="button"
               className="flex h-9 w-9 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-high/80 text-on-surface"
               onClick={() => setMobileOpen(!mobileOpen)}
-              aria-label="Toggle menu"
+              aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileOpen}
+              aria-controls="mobile-navigation"
             >
               {mobileOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
@@ -285,6 +275,7 @@ export const Navbar: React.FC = () => {
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
+            id="mobile-navigation"
             className="absolute top-[63px] left-0 w-full flex flex-col bg-surface/98 backdrop-blur-md border-b border-outline-variant/30 lg:hidden shadow-xl"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}

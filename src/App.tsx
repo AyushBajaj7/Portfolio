@@ -8,7 +8,7 @@ import { Scene } from './components/canvas/Scene';
 import { Navbar } from './components/ui/Navbar';
 import { SectionGroup } from './components/ui/SectionGroup';
 import { Cursor } from './components/ui/Cursor';
-import { PageLoader } from './components/ui/PageLoader';
+import { MotionConfig } from 'framer-motion';
 
 /**
  * Main application component that orchestrates all major UI components.
@@ -16,13 +16,12 @@ import { PageLoader } from './components/ui/PageLoader';
  */
 function App() {
   return (
-    <>
-      <PageLoader />
+    <MotionConfig reducedMotion="user">
       <Cursor />
       <Navbar />
       <Scene />
       <SectionGroup />
-    </>
+    </MotionConfig>
   );
 }
 

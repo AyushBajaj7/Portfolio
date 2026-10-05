@@ -46,7 +46,7 @@ const SCENARIOS: Scenario[] = [
     riskScore: 88,
     severity: 'HIGH',
     ragExplanation:
-      'ChromaDB RAG detected breaking contract drift: order-engine deserializer expects float amounts; downstream notif-worker schema validation will reject event stream.',
+      'Illustrative result: if order-engine expects float amounts, a breaking contract change could affect downstream event consumers.',
   },
   {
     id: 'db-migration',
@@ -57,7 +57,7 @@ const SCENARIOS: Scenario[] = [
     riskScore: 68,
     severity: 'MEDIUM',
     ragExplanation:
-      'Neo4j graph indicates order-engine queries legacy_sku_code during batch reservation. Risk score 68/100 due to backward-incompatibility.',
+      'Illustrative result: a dependency graph could reveal that order-engine still reads the column during batch reservation.',
   },
   {
     id: 'safe-refactor',
@@ -68,7 +68,7 @@ const SCENARIOS: Scenario[] = [
     riskScore: 14,
     severity: 'LOW',
     ragExplanation:
-      'Zero API contract drift detected. AST diff verified complete backwards-compatibility. Blast radius is isolated to auth-service internal memory.',
+      'Illustrative result: a change with no contract drift can remain isolated to auth-service internal memory.',
   },
 ];
 
@@ -127,11 +127,11 @@ export const BlastRadiusSimulator: React.FC<{ onExploreMore?: () => void }> = ({
                 Interactive AST Blast-Radius Simulator
               </span>
               <span className="rounded-full bg-surface-container-high border border-outline-variant px-2 py-0.2 text-[9px] font-mono text-on-surface-variant">
-                MDT Engine v2.4
+                SAMPLE SCENARIO
               </span>
             </div>
             <p className="text-[11px] text-on-surface-variant font-mono">
-              Simulate Git commit diffs across microservice dependency graph
+              Explore how a service change could ripple through a dependency graph
             </p>
           </div>
         </div>
@@ -175,6 +175,8 @@ export const BlastRadiusSimulator: React.FC<{ onExploreMore?: () => void }> = ({
           )}
         </div>
       </div>
+
+      <p className="mt-3 text-[10px] leading-4 text-on-surface-variant/75">Preset service names, diffs, and scores are sample scenarios that illustrate the interaction.</p>
 
       {/* Scenario Selector Pills */}
       <div className="mt-3.5 flex flex-wrap items-center gap-2">
@@ -223,10 +225,10 @@ export const BlastRadiusSimulator: React.FC<{ onExploreMore?: () => void }> = ({
       {/* Interactive Microservice Graph Topology */}
       <div className="mt-4 rounded-xl border border-outline-variant/50 bg-surface-container-lowest/60 p-3 sm:p-4">
         <div className="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant/70 mb-3 flex items-center justify-between">
-          <span>GRAPH TOPOLOGY (NEO4J DEPTH TRAVERSAL)</span>
+          <span>SAMPLE SERVICE GRAPH</span>
           {simulationStage !== 'idle' && simulationStage !== 'complete' && (
-            <span className="text-primary flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
+              <span className="text-primary flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
               {simulationStage === 'ast' && 'Step 1/3: Tokenizing AST Symbols...'}
               {simulationStage === 'graph' && 'Step 2/3: Traversing Neo4j Dependency Graph...'}
               {simulationStage === 'rag' && 'Step 3/3: ChromaDB Semantic Drift Score...'}
@@ -264,12 +266,12 @@ export const BlastRadiusSimulator: React.FC<{ onExploreMore?: () => void }> = ({
                     {svc.runtime.split('/')[0]}
                   </span>
                   {isSrc && (
-                    <span className="rounded bg-error px-1 py-0.2 text-[8px] font-bold text-white uppercase animate-pulse">
+                    <span className="rounded bg-error px-1 py-0.2 text-[8px] font-bold text-on-error uppercase">
                       SOURCE
                     </span>
                   )}
                   {isImp && (
-                    <span className="rounded bg-amber-500 px-1 py-0.2 text-[8px] font-bold text-black uppercase animate-pulse">
+                    <span className="rounded bg-amber-500 px-1 py-0.2 text-[8px] font-bold text-black uppercase">
                       BROKEN
                     </span>
                   )}
@@ -290,11 +292,6 @@ export const BlastRadiusSimulator: React.FC<{ onExploreMore?: () => void }> = ({
                 {/* Microservice Pulse Ring */}
                 {(isSrc || isImp) && (
                   <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                    <span
-                      className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                        isSrc ? 'bg-error' : 'bg-amber-400'
-                      }`}
-                    />
                     <span
                       className={`relative inline-flex rounded-full h-3 w-3 ${
                         isSrc ? 'bg-error' : 'bg-amber-500'
@@ -321,7 +318,7 @@ export const BlastRadiusSimulator: React.FC<{ onExploreMore?: () => void }> = ({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold uppercase text-on-surface">
-                  HMDA BLAST-RADIUS IMPACT SCORE:
+                  ILLUSTRATIVE IMPACT SCORE:
                 </span>
                 <span
                   className={`text-sm font-extrabold px-2.5 py-0.5 rounded-lg border ${
@@ -346,7 +343,7 @@ export const BlastRadiusSimulator: React.FC<{ onExploreMore?: () => void }> = ({
             <div className="rounded-lg border border-outline-variant/60 bg-surface-container-high/40 p-2.5 text-on-surface leading-5 text-[11px]">
               <div className="text-primary font-bold mb-1 flex items-center gap-1">
                 <Sparkles size={12} />
-                ChromaDB Semantic Analysis:
+                Why this scenario can matter:
               </div>
               <p className="text-on-surface-variant">{selectedScenario.ragExplanation}</p>
             </div>

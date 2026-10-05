@@ -47,9 +47,29 @@ const BANNER_ASCII_MOBILE = `
   ╚═════╝ ╚═╝  ╚═╝ ╚════╝ ╚═╝  ╚═╝ ╚════╝ 
 `;
 
-export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, onOpenCaseStudy: _onOpenCaseStudy }) => {
+export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, onOpenCaseStudy }) => {
   const [input, setInput] = useState('');
-  const [history, setHistory] = useState<CommandHistoryItem[]>([]);
+  const [history, setHistory] = useState<CommandHistoryItem[]>(() => [{
+    id: 'welcome',
+    command: 'init',
+    timestamp: new Date().toLocaleTimeString(),
+    output: (
+      <div className="space-y-2 text-xs leading-5">
+        <pre className="hidden sm:block text-primary font-mono text-[9px] sm:text-[11px] leading-tight select-none opacity-90 overflow-x-auto hide-scrollbar">
+          {BANNER_ASCII_DESKTOP}
+        </pre>
+        <pre className="block sm:hidden text-primary font-mono text-[8px] leading-tight select-none opacity-90 overflow-x-auto hide-scrollbar">
+          {BANNER_ASCII_MOBILE}
+        </pre>
+        <div className="text-on-surface-variant pt-1">
+          Welcome to Ayush Bajaj's Developer Console v2.6.
+        </div>
+        <div className="text-on-surface-variant">
+          Type <span className="text-tertiary font-bold">help</span> to view available commands or <span className="text-primary font-bold">sudo hire-ayush</span> to evaluate candidate profile.
+        </div>
+      </div>
+    ),
+  }]);
   const [commandHistoryIndex, setCommandHistoryIndex] = useState(-1);
   const [pastCommands, setPastCommands] = useState<string[]>([]);
 
@@ -63,39 +83,21 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isOpen, onClose]);
+
   // Scroll to bottom on new history output
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [history]);
-
-  // Initialize with welcome message
-  useEffect(() => {
-    if (isOpen && history.length === 0) {
-      setHistory([
-        {
-          id: 'welcome',
-          command: 'init',
-          timestamp: new Date().toLocaleTimeString(),
-          output: (
-            <div className="space-y-2 text-xs leading-5">
-              <pre className="hidden sm:block text-primary font-mono text-[9px] sm:text-[11px] leading-tight select-none opacity-90 overflow-x-auto hide-scrollbar">
-                {BANNER_ASCII_DESKTOP}
-              </pre>
-              <pre className="block sm:hidden text-primary font-mono text-[8px] leading-tight select-none opacity-90 overflow-x-auto hide-scrollbar">
-                {BANNER_ASCII_MOBILE}
-              </pre>
-              <div className="text-on-surface-variant pt-1">
-                Welcome to Ayush Bajaj's Developer Console v2.6.
-              </div>
-              <div className="text-on-surface-variant">
-                Type <span className="text-tertiary font-bold">help</span> to view available commands or <span className="text-primary font-bold">sudo hire-ayush</span> to evaluate candidate profile.
-              </div>
-            </div>
-          ),
-        },
-      ]);
-    }
-  }, [isOpen, history.length]);
 
   const executeCommand = useCallback(
     (cmdRaw: string) => {
@@ -138,12 +140,12 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
         case 'projects':
           output = (
             <div className="space-y-3 text-xs font-mono">
-              <div className="text-tertiary font-bold">Featured Production Systems:</div>
+              <div className="text-tertiary font-bold">Ranked Portfolio Projects:</div>
               <div className="space-y-2.5">
-                {portfolioData.projects.slice(0, 5).map((p, idx) => (
+                {portfolioData.projects.map((p, idx) => (
                   <div key={p.id} className="border-l-2 border-primary/30 pl-3 py-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-primary font-bold">0{idx + 1}.</span>
+                      <span className="text-primary font-bold">{String(idx + 1).padStart(2, '0')}.</span>
                       <span className="text-on-surface font-semibold">{p.title}</span>
                       <span className="text-[10px] text-tertiary px-1.5 py-0.2 rounded bg-tertiary/10 border border-tertiary/20">
                         {p.category}
@@ -158,14 +160,18 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
                       ))}
                     </div>
                     <div className="flex items-center gap-3 mt-1.5 text-[11px]">
-                      <a
-                        href={p.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-tertiary hover:underline inline-flex items-center gap-1"
-                      >
-                        GitHub <ExternalLink size={10} />
-                      </a>
+                      {'sourceAccess' in p && p.sourceAccess === 'private' ? (
+                        <span className="text-on-surface-variant">Private source</span>
+                      ) : (
+                        <a
+                          href={p.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-tertiary hover:underline inline-flex items-center gap-1"
+                        >
+                          GitHub <ExternalLink size={10} />
+                        </a>
+                      )}
                       {'demo' in p && typeof p.demo === 'string' && (
                         <a
                           href={p.demo}
@@ -176,6 +182,13 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
                           Live Demo <ExternalLink size={10} />
                         </a>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => onOpenCaseStudy?.(p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''))}
+                        className="text-primary hover:underline"
+                      >
+                        Case study
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -206,7 +219,7 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
         case 'about':
           output = (
             <div className="space-y-2 text-xs font-mono text-on-surface-variant leading-6">
-              <div className="text-primary font-bold">Ayush Bajaj · Systems & AI Engineer</div>
+              <div className="text-primary font-bold">{portfolioData.personal.name} · {portfolioData.personal.title}</div>
               <p>{portfolioData.personal.bio}</p>
               <p>{portfolioData.personal.about}</p>
               <div className="text-[11px] text-tertiary">Location: {portfolioData.personal.location}</div>
@@ -305,7 +318,7 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
       ]);
       setInput('');
     },
-    [onClose]
+    [onClose, onOpenCaseStudy]
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

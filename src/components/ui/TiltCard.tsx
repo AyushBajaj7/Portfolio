@@ -39,6 +39,7 @@ export const TiltCard: React.FC<TiltCardProps> = ({
     const handleScroll = () => {
       if (isHoveredRef.current && cardRef.current) {
         cardRef.current.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+        cardRef.current.style.willChange = 'auto';
         if (glareRef.current) glareRef.current.style.opacity = '0';
         rectRef.current = null;
       }
@@ -56,6 +57,7 @@ export const TiltCard: React.FC<TiltCardProps> = ({
   const handleMouseEnter = useCallback(() => {
     if (isTouchRef.current || !cardRef.current) return;
     isHoveredRef.current = true;
+    cardRef.current.style.willChange = 'transform';
     const r = cardRef.current.getBoundingClientRect();
     rectRef.current = { left: r.left, top: r.top, width: r.width, height: r.height };
     cardRef.current.style.transition = 'transform 0.1s cubic-bezier(0.2, 0, 0, 1)';
@@ -64,6 +66,7 @@ export const TiltCard: React.FC<TiltCardProps> = ({
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (isTouchRef.current || !isHoveredRef.current || !cardRef.current) return;
+      cardRef.current.style.willChange = 'transform';
 
       // Lazy cache rect if not set
       if (!rectRef.current) {
@@ -103,6 +106,7 @@ export const TiltCard: React.FC<TiltCardProps> = ({
     if (isTouchRef.current || !cardRef.current) return;
     isHoveredRef.current = false;
     rectRef.current = null;
+    cardRef.current.style.willChange = 'auto';
     if (rafIdRef.current !== null) {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
@@ -114,19 +118,23 @@ export const TiltCard: React.FC<TiltCardProps> = ({
     }
   }, []);
 
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (role === 'button' && event.key === ' ') event.preventDefault();
+    onKeyDown?.(event);
+  }, [onKeyDown, role]);
+
   return (
     <div
       ref={cardRef}
       role={role}
       tabIndex={tabIndex}
       onClick={onClick}
-      onKeyDown={onKeyDown}
+      onKeyDown={handleKeyDown}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       style={{
         transform: 'perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
-        willChange: 'transform',
       }}
       className={`relative overflow-hidden ${className}`}
     >

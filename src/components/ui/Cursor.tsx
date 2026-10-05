@@ -129,10 +129,11 @@ export const Cursor: React.FC = () => {
   };
 
   const getCursorColor = () => {
+    const lightTheme = theme === 'light';
     switch (cursorState) {
-      case 'hover': return 'rgba(156, 255, 147, 0.2)';
-      case 'view': return 'rgba(0, 242, 255, 0.3)';
-      default: return 'rgba(156, 255, 147, 0.8)';
+      case 'hover': return lightTheme ? 'rgba(4, 120, 87, 0.16)' : 'rgba(156, 255, 147, 0.2)';
+      case 'view': return lightTheme ? 'rgba(14, 116, 144, 0.22)' : 'rgba(0, 242, 255, 0.3)';
+      default: return lightTheme ? 'rgba(4, 120, 87, 0.75)' : 'rgba(156, 255, 147, 0.8)';
     }
   };
 
@@ -182,7 +183,7 @@ export const Cursor: React.FC = () => {
           transition={{ duration: 0.15 }}
         >
           <span 
-            className="absolute text-[10px] font-label tracking-widest text-white font-bold whitespace-nowrap"
+            className="absolute text-[10px] font-label tracking-widest text-on-surface font-bold whitespace-nowrap"
             style={{
               left: '50%',
               top: '50%',

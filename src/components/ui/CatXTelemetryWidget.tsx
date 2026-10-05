@@ -59,15 +59,14 @@ export const CatXTelemetryWidget: React.FC = () => {
       <div className="flex items-center justify-between gap-1.5 border-b border-outline-variant/60 pb-2 mb-2.5">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-md bg-tertiary/15 text-tertiary shrink-0">
-            <Radio size={11} className="animate-pulse" />
+            <Radio size={11} />
           </span>
           <span className="text-[10px] sm:text-[11px] uppercase font-bold tracking-wider text-tertiary truncate">
-            In-Cab Digital Twin
+            Operator Safety Scenarios
           </span>
         </div>
-        <span className="rounded-full bg-surface-container-high border border-outline-variant px-2 py-0.5 text-[8.5px] sm:text-[9px] text-primary font-mono flex items-center gap-1 shrink-0">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
-          10Hz WS
+        <span className="rounded-full bg-surface-container-high border border-outline-variant px-2 py-0.5 text-[8.5px] sm:text-[9px] text-tertiary font-mono flex items-center gap-1 shrink-0">
+          SAMPLE DATA
         </span>
       </div>
 
@@ -86,23 +85,25 @@ export const CatXTelemetryWidget: React.FC = () => {
                 : 'border-outline-variant/60 text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            ✓ Nominal
+            <ShieldCheck size={11} className="inline-block mr-1" />Nominal
           </button>
           <button
             type="button"
             onClick={() => setActiveMode('hazard')}
             className={`w-full py-1 px-1.5 text-center rounded-lg text-[9.5px] sm:text-[10px] font-bold transition cursor-pointer border ${
               activeMode === 'hazard'
-                ? 'bg-error/20 text-error border-error/50 animate-pulse'
+                ? 'bg-error/20 text-error border-error/50'
                 : 'border-outline-variant/60 text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            ⚠ Hazard Sim
+            <ShieldAlert size={11} className="inline-block mr-1" />Hazard scenario
           </button>
         </div>
       </div>
 
-      {/* Live Sensor Metrics */}
+      <p className="mb-2.5 text-[9px] leading-4 text-on-surface-variant/75">Preset scenarios demonstrate the interface; values are illustrative, not a live sensor feed.</p>
+
+      {/* Scenario telemetry */}
       <div className="space-y-2">
         {/* Metric 1: Operator Machine Fatigue */}
         <div>

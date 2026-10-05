@@ -10,8 +10,12 @@ import { create } from 'zustand';
 const getInitialTheme = (): 'dark' | 'light' => {
   if (typeof window === 'undefined') return 'dark';
 
-  const storedTheme = window.localStorage.getItem('portfolio-theme');
-  if (storedTheme === 'dark' || storedTheme === 'light') return storedTheme;
+  try {
+    const storedTheme = window.localStorage.getItem('portfolio-theme');
+    if (storedTheme === 'dark' || storedTheme === 'light') return storedTheme;
+  } catch {
+    // Storage can be disabled in private browsing; the system preference still works.
+  }
 
   return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
 };
@@ -100,7 +104,11 @@ export const useStore = create<PortfolioState>((set) => ({
     set((state) => {
       const newTheme = state.theme === 'dark' ? 'light' : 'dark';
       applyThemeClass(newTheme);
-      window.localStorage.setItem('portfolio-theme', newTheme);
+      try {
+        window.localStorage.setItem('portfolio-theme', newTheme);
+      } catch {
+        // Keep the current session usable when storage is unavailable.
+      }
       return { theme: newTheme };
     }),
   avatarReady: false,
