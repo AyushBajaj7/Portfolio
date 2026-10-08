@@ -7,26 +7,25 @@
 import { create } from 'zustand';
 
 /** Global state interface for the portfolio application */
-const getInitialTheme = (): 'dark' | 'light' => {
+const getInitialTheme = (): 'dark' => {
   if (typeof window === 'undefined') return 'dark';
 
   try {
-    const storedTheme = window.localStorage.getItem('portfolio-theme');
-    if (storedTheme === 'dark' || storedTheme === 'light') return storedTheme;
+    window.localStorage.removeItem('portfolio-theme');
   } catch {
-    // Storage can be disabled in private browsing; the system preference still works.
+    // Storage can be disabled in private browsing.
   }
 
-  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  return 'dark';
 };
 
-const applyThemeClass = (theme: 'dark' | 'light') => {
+const applyThemeClass = () => {
   if (typeof document === 'undefined') return;
-  document.documentElement.classList.toggle('light-theme', theme === 'light');
+  document.documentElement.classList.remove('light-theme');
 };
 
-const initialTheme = getInitialTheme();
-applyThemeClass(initialTheme);
+getInitialTheme();
+applyThemeClass();
 
 interface PortfolioState {
   /** Currently active/visible section ID */
@@ -65,6 +64,10 @@ interface PortfolioState {
   avatarReady: boolean;
   /** Set avatar ready state */
   setAvatarReady: (ready: boolean) => void;
+  /** Current project view mode: 'bento' (grid matrix) or 'cinematic' (horizontal rail) */
+  projectViewMode: 'bento' | 'cinematic';
+  /** Set project view mode */
+  setProjectViewMode: (mode: 'bento' | 'cinematic') => void;
 }
 
 export const useStore = create<PortfolioState>((set) => ({
@@ -99,21 +102,18 @@ export const useStore = create<PortfolioState>((set) => ({
   scrollMode: 'vertical',
   setScrollMode: (mode) =>
     set((s) => (s.scrollMode === mode ? s : { scrollMode: mode })),
-  theme: initialTheme,
+  theme: 'dark' as const,
   toggleTheme: () =>
-    set((state) => {
-      const newTheme = state.theme === 'dark' ? 'light' : 'dark';
-      applyThemeClass(newTheme);
-      try {
-        window.localStorage.setItem('portfolio-theme', newTheme);
-      } catch {
-        // Keep the current session usable when storage is unavailable.
-      }
-      return { theme: newTheme };
+    set(() => {
+      applyThemeClass();
+      return { theme: 'dark' as const };
     }),
   avatarReady: false,
   setAvatarReady: (ready) =>
     set((s) => (s.avatarReady === ready ? s : { avatarReady: ready })),
+  projectViewMode: 'bento',
+  setProjectViewMode: (mode) =>
+    set((s) => (s.projectViewMode === mode ? s : { projectViewMode: mode })),
 }));
 
 if (typeof window !== 'undefined') {

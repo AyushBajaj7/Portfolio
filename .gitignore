@@ -2,7 +2,14 @@ node_modules
 dist
 graphify-out
 raw
+raw-assets
 .codex
 .playwright-mcp
 *.png
+*.zip
+*.mp4
+*.diff
+.env
+.env.local
 figma design/
+.agents/

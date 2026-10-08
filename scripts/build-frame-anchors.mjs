@@ -1,8 +1,8 @@
 import sharp from 'sharp';
 import { mkdir, readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
-const root = process.cwd();
+const root = resolve(process.argv[2] ?? process.cwd());
 const sourceDir = join(root, 'public', 'frames-lowres');
 const outputDir = join(root, 'public', 'frames-anchors');
 const frameIndices = [...Array.from({ length: 75 }, (_, index) => index * 4), 299];
@@ -18,7 +18,7 @@ for (const frameIndex of frameIndices) {
 
   await sharp(join(sourceDir, fileName))
     .resize({ width: 480, height: 270, fit: 'fill' })
-    .webp({ quality: 78, effort: 4 })
+    .webp({ quality: 88, effort: 4, alphaQuality: 95 })
     .toFile(join(outputDir, fileName));
 }
 

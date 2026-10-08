@@ -70,11 +70,12 @@ export const Cursor: React.FC = () => {
       if (isScrollingRef.current) return;
       
       const target = e.target as HTMLElement;
-      const isProjectCard = target.closest('[data-cursor="view"]');
-      const isLink = target.tagName === 'A' || target.tagName === 'BUTTON' || target.closest('a') || target.closest('button');
+      const isDemoNoView = target.closest('[data-no-view-cursor]');
+      const isLink = target.tagName === 'A' || target.tagName === 'BUTTON' || Boolean(target.closest('a')) || Boolean(target.closest('button'));
       const isText = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      const isProjectCard = !isDemoNoView && !isLink && !isText && Boolean(target.closest('[data-cursor="view"]'));
       
-      const nextState: CursorState = isProjectCard ? 'view' : isLink ? 'hover' : isText ? 'text' : 'default';
+      const nextState: CursorState = isText ? 'text' : isLink ? 'hover' : isProjectCard ? 'view' : 'default';
       const nextText = isProjectCard ? 'VIEW' : '';
       setCursorState(prev => prev !== nextState ? nextState : prev);
       setCursorText(prev => prev !== nextText ? nextText : prev);

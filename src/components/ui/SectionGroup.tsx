@@ -9,24 +9,31 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion';
 import {
+  AlertCircle,
   ArrowRight,
+  Briefcase,
+  Calendar,
   Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Code2,
   Copy,
-  Download,
-  FileText,
-  ExternalLink,
-  Layers3,
-  Send,
-  MapPin,
-  X,
-  Server,
-  Sparkles,
-  Calendar,
-  Zap,
-  Terminal,
   Cpu,
-  ChevronDown,
+  Download,
+  ExternalLink,
+  FileText,
+  Grid,
+  Layers3,
+  Loader2,
+  MapPin,
+  Send,
+  Server,
+  SlidersHorizontal,
+  Sparkles,
+  Terminal,
+  X,
+  Zap,
 } from 'lucide-react';
 import portfolioData from '../../data/portfolio.json';
 import { useStore } from '../../store/useStore';
@@ -34,6 +41,8 @@ import { TerminalModal } from './TerminalModal';
 import { TiltCard } from './TiltCard';
 import { BlastRadiusSimulator } from './BlastRadiusSimulator';
 import { CatXTelemetryWidget } from './CatXTelemetryWidget';
+import { TradersErpSimulator } from './TradersErpSimulator';
+import { ArchitectureViewer3D } from './ArchitectureViewer3D';
 
 type Project = (typeof portfolioData.projects)[number];
 type SkillGroup = (typeof portfolioData.skills)[number];
@@ -245,12 +254,294 @@ const Metric: React.FC<{ value: string; label: string; accent?: boolean }> = Rea
   )
 );
 
+// ─── ProjectCard ──────────────────────────────────────────────────────────────
+
+const ProjectCard: React.FC<{
+  project: Project;
+  index: number;
+  rail?: boolean;
+  onOpenCaseStudy?: (project: Project) => void;
+}> = React.memo(({ project, index, rail = false, onOpenCaseStudy }) => {
+  const cardRef = useRef<HTMLElement>(null);
+  const [tiltStyle, setTiltStyle] = useState<{
+    transform: string;
+    glareX: number;
+    glareY: number;
+    isHovered: boolean;
+  }>({
+    transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
+    glareX: 50,
+    glareY: 50,
+    isHovered: false,
+  });
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    if (window.innerWidth < 1024) return;
+    const card = cardRef.current;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const xPct = x / rect.width;
+    const yPct = y / rect.height;
+    const rotateX = (yPct - 0.5) * -8;
+    const rotateY = (xPct - 0.5) * 8;
+    setTiltStyle({
+      transform: `perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.02, 1.02, 1.02)`,
+      glareX: xPct * 100,
+      glareY: yPct * 100,
+      isHovered: true,
+    });
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setTiltStyle({
+      transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
+      glareX: 50,
+      glareY: 50,
+      isHovered: false,
+    });
+  }, []);
+
+  const previewLines = project.codePreview ? getCodePreviewLines(project.codePreview, rail ? 1 : 4) : [];
+  const totalLines = project.codePreview ? getCodePreviewLineCount(project.codePreview) : 0;
+  const slug = getProjectSlug(project);
+  const demo = getProjectDemo(project);
+  const category = getProjectCategory(project);
+  const categoryStyle = CATEGORY_COLORS[category] ?? 'text-on-surface-variant border-outline-variant bg-transparent';
+
+  const openFromCard = (event: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>) => {
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim().length > 0) return;
+    if ((event.target as HTMLElement).closest('a, button, input, textarea, select')) return;
+    event.preventDefault();
+    onOpenCaseStudy?.(project);
+  };
+
+  const glareSheen = (
+    <div
+      className="tilt-glare"
+      style={{
+        background: `radial-gradient(circle at ${tiltStyle.glareX}% ${tiltStyle.glareY}%, rgba(156, 255, 147, 0.12), transparent 60%)`,
+        opacity: tiltStyle.isHovered ? 1 : 0,
+      }}
+    />
+  );
+
+  const cardContent = (
+    <div className={`flex h-full flex-col relative z-10 ${rail ? 'p-4' : 'p-5 lg:p-6'}`}>
+      {/* Header row */}
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-outline-variant bg-surface/50 px-2.5 py-0.5 text-[10px] font-label font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
+            {String(index + 1).padStart(2, '0')}
+          </span>
+          <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-label uppercase tracking-[0.16em] ${categoryStyle}`}>
+            {category}
+          </span>
+        </div>
+        {rail && (
+          <div className="flex items-center gap-1.5">
+            <a
+              href={`#project-${slug}`}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenCaseStudy?.(project); }}
+              data-cursor="view"
+              aria-label={`Open ${project.title} case study`}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-outline-variant bg-surface/50 text-on-surface-variant transition hover:border-primary/40 hover:text-primary"
+            >
+              <FileText size={14} />
+            </a>
+            <a
+              href={project.link}
+              target="_blank"
+              rel="noreferrer"
+              data-cursor="view"
+              aria-label={`Open ${project.title} source`}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-outline-variant bg-surface/50 text-on-surface-variant transition hover:border-primary/40 hover:text-primary"
+            >
+              <ExternalLink size={14} />
+            </a>
+            {demo && (
+              <a
+                href={demo}
+                target="_blank"
+                rel="noreferrer"
+                data-cursor="view"
+                aria-label={`Open ${project.title} live demo`}
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/28 bg-primary/10 text-primary transition hover:border-primary/55 hover:bg-primary/18"
+              >
+                <Zap size={14} />
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Subtitle + title */}
+      <p className={`${rail ? 'text-[10px]' : 'text-[11px]'} font-label uppercase tracking-[0.20em] text-primary-dim`}>
+        {project.subtitle}
+      </p>
+      <h3 className={`${rail ? 'mt-1.5 text-[15px]' : 'mt-2.5 text-xl'} font-display font-bold leading-tight text-on-surface`}>
+        {project.title}
+      </h3>
+      <p className={`${rail ? 'mt-2 text-[12px] leading-5 project-description-rail' : 'mt-3 text-sm leading-6'} flex-1 text-on-surface-variant`}>
+        {project.description}
+      </p>
+
+      {/* Code preview block */}
+      {previewLines.length > 0 && (
+        <div className={`${rail ? 'mt-3' : 'mt-4'} overflow-hidden rounded-xl border border-outline-variant bg-surface/60`}>
+          <div className={`flex items-center justify-between gap-3 ${rail ? 'px-3 py-2' : 'border-b border-outline-variant px-4 py-2.5'}`}>
+            <div>
+              <p className="text-[9px] font-label uppercase tracking-[0.20em] text-on-surface-variant/70">
+                {getImplementationFocus(project)}
+              </p>
+            </div>
+            <span className="rounded-full border border-outline-variant/60 px-2 py-0.5 text-[9px] font-label uppercase tracking-[0.14em] text-on-surface-variant/60">
+              {totalLines}L
+            </span>
+          </div>
+          {!rail && (
+            <div className="pointer-events-none select-none px-4 py-3 font-mono">
+              {previewLines.map((line, li) => (
+                <div
+                  key={`${project.id}-${li}`}
+                  className={`grid grid-cols-[22px_minmax(0,1fr)] gap-3 py-1.5 ${li > 0 ? 'border-t border-outline-variant/40' : ''}`}
+                >
+                  <span className="text-[9px] font-label tabular-nums text-on-surface-variant/50 select-none">
+                    {li + 1}
+                  </span>
+                  <code className="block overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-5 text-on-surface/90 lg:text-[11.5px]">
+                    {line}
+                  </code>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Card footer — full cards only */}
+      {!rail && (
+        <>
+          <div className="mt-5 flex flex-wrap gap-1.5">
+            {project.tech.slice(0, 5).map((tech) => (
+              <span
+                key={tech}
+                className="rounded-full border border-outline-variant/70 bg-surface-container-high/50 px-2.5 py-0.5 text-[10px] text-on-surface-variant"
+              >
+                {tech}
+              </span>
+            ))}
+          </div>
+          <div className="mt-5 flex items-center justify-end gap-3">
+            {demo && (
+              <a
+                href={demo}
+                target="_blank"
+                rel="noreferrer"
+                data-cursor="view"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/18"
+              >
+                Live demo
+                <Zap size={14} />
+              </a>
+            )}
+            <a
+              href={`#project-${slug}`}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenCaseStudy?.(project); }}
+              data-cursor="view"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-outline-variant bg-surface/60 px-4 py-2 text-sm font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary"
+            >
+              Case study
+              <FileText size={14} />
+            </a>
+            <a
+              href={project.link}
+              target="_blank"
+              rel="noreferrer"
+              data-cursor="view"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-outline-variant bg-surface/60 px-4 py-2 text-sm font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary"
+            >
+              Source
+              <ExternalLink size={14} />
+            </a>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  if (rail) {
+    return (
+      <article
+        ref={cardRef as React.Ref<HTMLElement>}
+        tabIndex={0}
+        role="button"
+        aria-label={`Open ${project.title} case study`}
+        data-cursor="view"
+        onClick={openFromCard}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        style={{ transform: tiltStyle.transform }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openFromCard(e); }}
+        className="project-card tilt-card shimmer-card group grid cursor-pointer overflow-hidden rounded-2xl border border-outline-variant transition-all duration-200 hover:border-primary/35 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary h-full min-h-0 relative"
+      >
+        {glareSheen}
+        {cardContent}
+      </article>
+    );
+  }
+
+  return (
+    <motion.article
+      {...reveal}
+      ref={cardRef as React.Ref<HTMLElement>}
+      tabIndex={0}
+      role="button"
+      aria-label={`Open ${project.title} case study`}
+      data-cursor="view"
+      onClick={openFromCard}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{ transform: tiltStyle.transform }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openFromCard(e); }}
+      className="project-card tilt-card shimmer-card group grid cursor-pointer overflow-hidden rounded-2xl border border-outline-variant transition-all duration-200 hover:border-primary/35 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary min-h-[20rem] relative"
+    >
+      {glareSheen}
+      {cardContent}
+    </motion.article>
+  );
+});
+
 // ─── BentoGridView: High-Density Recruiter Matrix ────────────────────────────
 
 const BentoGridView: React.FC<{
   projects: Project[];
   onOpenCaseStudy: (project: Project) => void;
 }> = React.memo(({ projects, onOpenCaseStudy }) => {
+  // Supported interactive demos:
+  // - id: 1 -> Microservice Drift Tracker (AST Blast-Radius Simulator)
+  // - id: 2 -> Cat-X (Operator Shift Twin Telemetry)
+  // - id: 10 -> Traders ERP (Hardware ERP & VCTS Engine)
+  // - id: 8 -> 3D Architecture Visualization System (Interactive 3D Viewport)
+  const hasDemo = (id: number) => [1, 2, 10, 8].includes(id);
+
+  // User-selected interactive demo project ID (or 'hidden' if user manually hid it)
+  const [userSelectedDemoId, setUserSelectedDemoId] = useState<number | null | 'hidden'>(null);
+
+  // Unconditionally derive the active demo ID directly during render without useEffect / cascading renders
+  const defaultDemoProject = projects.find((p) => hasDemo(p.id));
+  const activeDemoId = userSelectedDemoId === 'hidden'
+    ? null
+    : (userSelectedDemoId !== null && projects.some((p) => p.id === userSelectedDemoId))
+      ? userSelectedDemoId
+      : (defaultDemoProject?.id ?? null);
+
+  const setActiveDemoId = (id: number | null) => {
+    setUserSelectedDemoId(id === null ? 'hidden' : id);
+  };
+
   if (projects.length === 0) {
     return (
       <div className="surface-panel rounded-2xl p-10 text-center text-on-surface-variant">
@@ -259,20 +550,103 @@ const BentoGridView: React.FC<{
     );
   }
 
+  const getDemoMeta = (id: number) => {
+    switch (id) {
+      case 1:
+        return {
+          title: 'AST Blast-Radius Simulator',
+          badge: 'Interactive AI/ML Engine',
+          accent: 'text-primary',
+          border: 'border-primary/40',
+          bg: 'bg-primary/10 hover:bg-primary/18',
+        };
+      case 2:
+        return {
+          title: 'In-Cab Telemetry Twin Simulator',
+          badge: 'Live Operator Safety',
+          accent: 'text-tertiary',
+          border: 'border-tertiary/40',
+          bg: 'bg-tertiary/10 hover:bg-tertiary/18',
+        };
+      case 10:
+        return {
+          title: 'Hardware ERP & VCTS Engine',
+          badge: 'PostgreSQL Stored-Proc',
+          accent: 'text-primary',
+          border: 'border-primary/40',
+          bg: 'bg-primary/10 hover:bg-primary/18',
+        };
+      case 8:
+        return {
+          title: '3D Architectural Model Viewport',
+          badge: 'Real-time WebGL / Canvas 3D',
+          accent: 'text-sky-400',
+          border: 'border-sky-500/40',
+          bg: 'bg-sky-500/10 hover:bg-sky-500/18',
+        };
+      default:
+        return {
+          title: 'Interactive Demo',
+          badge: 'Live Preview',
+          accent: 'text-primary',
+          border: 'border-primary/40',
+          bg: 'bg-primary/10 hover:bg-primary/18',
+        };
+    }
+  };
+
+  const renderDemo = (project: Project) => {
+    switch (project.id) {
+      case 1:
+        return <BlastRadiusSimulator onExploreMore={() => onOpenCaseStudy(project)} />;
+      case 2:
+        return <CatXTelemetryWidget />;
+      case 10:
+        return <TradersErpSimulator onExploreMore={() => onOpenCaseStudy(project)} />;
+      case 8:
+        return <ArchitectureViewer3D onExploreMore={() => onOpenCaseStudy(project)} />;
+      default:
+        return null;
+    }
+  };
+
   const heroProject = projects[0];
   const companionProject = projects.length > 1 ? projects[1] : null;
   const secondaryProjects = projects.slice(2, 5);
   const remainingProjects = projects.slice(5);
 
+  const handleCardClick = (project: Project, e: React.MouseEvent<HTMLElement>) => {
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim().length > 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('a, button, input, textarea, select, canvas, [data-no-card-click]')) return;
+    onOpenCaseStudy(project);
+  };
+
+  const handleCardKeyDown = (project: Project, e: React.KeyboardEvent<HTMLElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('a, button, input, textarea, select')) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onOpenCaseStudy(project);
+    }
+  };
+
   return (
     <div className="bento-grid">
-      {/* TILE 1: Top Ranked Project (Hero 8-cols on desktop, 12 on tablet) */}
+      {/* TILE 1: Top Ranked Project (Hero 12-cols in left lane) */}
       <motion.div
         {...reveal}
-        className={`col-span-12 ${companionProject ? 'lg:col-span-8' : 'lg:col-span-12'} flex flex-col`}
+        className="col-span-12 flex flex-col"
       >
         <TiltCard
-          className="h-full surface-panel shimmer-card group rounded-2xl p-6 sm:p-7 border border-outline-variant hover:border-primary/40 transition-all duration-200 flex flex-col justify-between"
+          role="button"
+          tabIndex={0}
+          aria-label={`Open ${heroProject.title} case study`}
+          data-cursor="view"
+          onClick={(e) => handleCardClick(heroProject, e)}
+          onKeyDown={(e) => handleCardKeyDown(heroProject, e)}
+          className="h-full surface-panel shimmer-card group rounded-2xl p-6 sm:p-7 border border-outline-variant hover:border-primary/40 transition-all duration-200 flex flex-col justify-between cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           <div>
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -300,15 +674,53 @@ const BentoGridView: React.FC<{
               {heroProject.description}
             </p>
 
-            {/* Give the lead Cat-X story its telemetry interaction; retain MDT's simulator on its case study. */}
-            {heroProject.id === 2 ? (
-              <div className="mt-5">
-                <CatXTelemetryWidget />
-              </div>
-            ) : heroProject.id === 1 ? (
-              <div className="mt-5">
-                <BlastRadiusSimulator onExploreMore={() => onOpenCaseStudy(heroProject)} />
-              </div>
+            {/* Interactive Demo or Launch Banner */}
+            {hasDemo(heroProject.id) ? (
+              activeDemoId === heroProject.id ? (
+                <div className="mt-5 space-y-2" data-no-view-cursor data-no-card-click onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between pb-1 border-b border-outline-variant/40">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-primary font-bold flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                      ACTIVE DEMO · {getDemoMeta(heroProject.id).title}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveDemoId(null);
+                      }}
+                      className="text-[11px] text-on-surface-variant hover:text-on-surface font-mono underline cursor-pointer"
+                    >
+                      Hide Demo
+                    </button>
+                  </div>
+                  {renderDemo(heroProject)}
+                </div>
+              ) : (
+                <div className="mt-5">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveDemoId(heroProject.id);
+                    }}
+                    className={`w-full flex items-center justify-between p-3.5 rounded-xl border ${getDemoMeta(heroProject.id).border} ${getDemoMeta(heroProject.id).bg} text-on-surface transition cursor-pointer group shadow-xs`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Sparkles size={15} className={`${getDemoMeta(heroProject.id).accent} animate-pulse`} />
+                      <span className={`text-xs font-bold font-mono ${getDemoMeta(heroProject.id).accent} uppercase tracking-wider`}>
+                        {getDemoMeta(heroProject.id).title}
+                      </span>
+                      <span className="hidden sm:inline-block rounded-md border border-outline-variant bg-surface px-1.5 py-0.5 text-[9px] font-mono text-on-surface-variant">
+                        {getDemoMeta(heroProject.id).badge}
+                      </span>
+                    </div>
+                    <span className={`text-xs font-bold ${getDemoMeta(heroProject.id).accent} flex items-center gap-1 group-hover:translate-x-1 transition-transform`}>
+                      Launch Demo <ArrowRight size={13} />
+                    </span>
+                  </button>
+                </div>
+              )
             ) : (
               <div className="mt-5 p-4 rounded-xl border border-outline-variant bg-surface/80 font-mono text-[11px] overflow-x-auto">
                 <div className="text-[10px] uppercase tracking-wider text-primary font-bold mb-2 flex items-center gap-1.5">
@@ -361,7 +773,10 @@ const BentoGridView: React.FC<{
               )}
               <button
                 type="button"
-                onClick={() => onOpenCaseStudy(heroProject)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenCaseStudy(heroProject);
+                }}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary-dim transition cursor-pointer"
               >
                 Interactive Case Study <ArrowRight size={14} />
@@ -371,14 +786,20 @@ const BentoGridView: React.FC<{
         </TiltCard>
       </motion.div>
 
-      {/* TILE 2: Companion Project (4-cols on desktop, 12 or 6 on tablet) */}
+      {/* TILE 2: Companion Project (12-cols in left lane) */}
       {companionProject && (
         <motion.div
           {...reveal}
-          className="col-span-12 md:col-span-12 lg:col-span-4 flex flex-col"
+          className="col-span-12 flex flex-col"
         >
           <TiltCard
-            className="h-full surface-panel shimmer-card group rounded-2xl p-6 border border-outline-variant hover:border-tertiary/40 transition-all duration-200 flex flex-col justify-between"
+            role="button"
+            tabIndex={0}
+            aria-label={`Open ${companionProject.title} case study`}
+            data-cursor="view"
+            onClick={(e) => handleCardClick(companionProject, e)}
+            onKeyDown={(e) => handleCardKeyDown(companionProject, e)}
+            className="h-full surface-panel shimmer-card group rounded-2xl p-6 border border-outline-variant hover:border-tertiary/40 transition-all duration-200 flex flex-col justify-between cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary"
           >
             <div>
               <div className="flex items-center justify-between gap-2 mb-3">
@@ -404,8 +825,54 @@ const BentoGridView: React.FC<{
                 {companionProject.description}
               </p>
 
-              {/* In-Cab Digital Twin Telemetry & Consequence Simulator */}
-              {companionProject.id === 2 && <CatXTelemetryWidget />}
+              {/* Companion Interactive Demo or Launch Banner */}
+              {hasDemo(companionProject.id) && (
+                activeDemoId === companionProject.id ? (
+                  <div className="mt-5 space-y-2" data-no-view-cursor data-no-card-click onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between pb-1 border-b border-outline-variant/40">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-tertiary font-bold flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                        ACTIVE DEMO · {getDemoMeta(companionProject.id).title}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveDemoId(null);
+                        }}
+                        className="text-[11px] text-on-surface-variant hover:text-on-surface font-mono underline cursor-pointer"
+                      >
+                        Hide Demo
+                      </button>
+                    </div>
+                    {renderDemo(companionProject)}
+                  </div>
+                ) : (
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveDemoId(companionProject.id);
+                      }}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl border ${getDemoMeta(companionProject.id).border} ${getDemoMeta(companionProject.id).bg} text-on-surface transition cursor-pointer group shadow-xs`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Sparkles size={14} className={`${getDemoMeta(companionProject.id).accent} animate-pulse`} />
+                        <span className={`text-xs font-bold font-mono ${getDemoMeta(companionProject.id).accent} uppercase tracking-wider`}>
+                          {getDemoMeta(companionProject.id).title}
+                        </span>
+                        <span className="hidden sm:inline-block rounded-md border border-outline-variant bg-surface px-1.5 py-0.5 text-[9px] font-mono text-on-surface-variant">
+                          {getDemoMeta(companionProject.id).badge}
+                        </span>
+                      </div>
+                      <span className={`text-xs font-bold ${getDemoMeta(companionProject.id).accent} flex items-center gap-1 group-hover:translate-x-1 transition-transform`}>
+                        Launch Demo <ArrowRight size={13} />
+                      </span>
+                    </button>
+                  </div>
+                )
+              )}
             </div>
 
             <div className="mt-5 pt-4 border-t border-outline-variant flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -444,7 +911,10 @@ const BentoGridView: React.FC<{
                 )}
                 <button
                   type="button"
-                  onClick={() => onOpenCaseStudy(companionProject)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenCaseStudy(companionProject);
+                  }}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-on-surface hover:text-tertiary transition cursor-pointer"
                 >
                   Explore <ArrowRight size={13} />
@@ -455,104 +925,226 @@ const BentoGridView: React.FC<{
         </motion.div>
       )}
 
-      {/* SECONDARY ROW (3 tiles: 4-cols each on desktop, 6-cols on tablet) */}
-      {secondaryProjects.map((p, idx) => (
-        <motion.div
-          key={p.id}
-          {...revealFast}
-          className="col-span-12 md:col-span-6 lg:col-span-4 flex flex-col"
-        >
-          <TiltCard
-            className="h-full surface-panel shimmer-card group rounded-2xl p-5 border border-outline-variant hover:border-primary/30 transition flex flex-col justify-between"
+      {/* SECONDARY ROW (2-column matrix in left lane) */}
+      {secondaryProjects.map((p, idx) => {
+        const isDemoAvailable = hasDemo(p.id);
+        const isDemoActive = activeDemoId === p.id;
+
+        return (
+          <motion.div
+            key={p.id}
+            {...revealFast}
+            className={`col-span-12 ${isDemoActive ? 'col-span-12' : 'sm:col-span-6'} flex flex-col transition-all duration-300`}
           >
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-label uppercase tracking-widest text-primary-dim">
-                  0{idx + 3} · {p.category}
-                </span>
-                <span className="text-[10px] font-mono text-on-surface-variant/70">
+            <TiltCard
+              role="button"
+              tabIndex={0}
+              aria-label={`Open ${p.title} case study`}
+              data-cursor="view"
+              onClick={(e) => handleCardClick(p, e)}
+              onKeyDown={(e) => handleCardKeyDown(p, e)}
+              className="h-full surface-panel shimmer-card group rounded-2xl p-5 border border-outline-variant hover:border-primary/30 transition flex flex-col justify-between cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-label uppercase tracking-widest text-primary-dim">
+                    0{idx + 3} · {p.category}
+                  </span>
+                  <span className="text-[10px] font-mono text-on-surface-variant/70">
+                    {p.tech.slice(0, 2).join(' · ')}
+                  </span>
+                </div>
+                <h4 className="text-lg font-display font-bold text-on-surface group-hover:text-primary transition-colors">
+                  {p.title}
+                </h4>
+                <p className="mt-2 text-xs leading-5 text-on-surface-variant line-clamp-3">
+                  {p.description}
+                </p>
+
+                {/* Secondary card interactive demo toggle */}
+                {isDemoAvailable && (
+                  isDemoActive ? (
+                    <div className="mt-4 space-y-2" data-no-view-cursor data-no-card-click onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-between pb-1 border-b border-outline-variant/40">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-primary font-bold flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                          ACTIVE DEMO
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveDemoId(null);
+                          }}
+                          className="text-[10px] text-on-surface-variant hover:text-on-surface font-mono underline cursor-pointer"
+                        >
+                          Hide Demo
+                        </button>
+                      </div>
+                      {renderDemo(p)}
+                    </div>
+                  ) : (
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveDemoId(p.id);
+                        }}
+                        className={`w-full flex items-center justify-between p-2.5 rounded-xl border ${getDemoMeta(p.id).border} ${getDemoMeta(p.id).bg} text-on-surface transition cursor-pointer group`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles size={13} className={`${getDemoMeta(p.id).accent} animate-pulse`} />
+                          <span className={`text-[11px] font-bold font-mono ${getDemoMeta(p.id).accent} truncate max-w-[170px]`}>
+                            {getDemoMeta(p.id).title}
+                          </span>
+                        </div>
+                        <span className={`text-[11px] font-bold ${getDemoMeta(p.id).accent} flex items-center gap-0.5 group-hover:translate-x-1 transition-transform`}>
+                          Launch <ArrowRight size={11} />
+                        </span>
+                      </button>
+                    </div>
+                  )
+                )}
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-outline-variant flex items-center justify-between text-xs">
+                {'demo' in p && typeof p.demo === 'string' ? (
+                  <a
+                    href={p.demo}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-primary hover:underline flex items-center gap-1 font-semibold"
+                  >
+                    <Zap size={12} /> Live Demo
+                  </a>
+                ) : 'sourceAccess' in p && p.sourceAccess === 'private' ? (
+                  <span className="text-on-surface-variant flex items-center gap-1 font-semibold">Private source</span>
+                ) : (
+                  <a
+                    href={p.link}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-on-surface-variant hover:text-primary flex items-center gap-1 font-semibold"
+                  >
+                    <Code2 size={12} /> Source
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenCaseStudy(p);
+                  }}
+                  className="text-on-surface-variant hover:text-primary flex items-center gap-1 font-semibold ml-auto transition cursor-pointer"
+                >
+                  Case Study <ArrowRight size={12} />
+                </button>
+              </div>
+            </TiltCard>
+          </motion.div>
+        );
+      })}
+
+      {/* TERTIARY ROW (2-column matrix in left lane) */}
+      {remainingProjects.map((p, idx) => {
+        const isDemoAvailable = hasDemo(p.id);
+        const isDemoActive = activeDemoId === p.id;
+
+        return (
+          <motion.div
+            key={p.id}
+            {...revealFast}
+            className={`col-span-12 ${isDemoActive ? 'col-span-12' : 'sm:col-span-6'} flex flex-col transition-all duration-300`}
+          >
+            <TiltCard
+              role="button"
+              tabIndex={0}
+              aria-label={`Open ${p.title} case study`}
+              data-cursor="view"
+              onClick={(e) => handleCardClick(p, e)}
+              onKeyDown={(e) => handleCardKeyDown(p, e)}
+              className="h-full surface-panel-subtle shimmer-card group rounded-2xl p-4 border border-outline-variant hover:border-primary/30 transition flex flex-col justify-between cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[9px] font-label uppercase tracking-wider text-primary-dim">{String(idx + 6).padStart(2, '0')} · {p.category}</span>
+                </div>
+                <h5 className="text-sm font-display font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-1">
+                  {p.title}
+                </h5>
+                <p className="mt-1 text-[11px] leading-4 text-on-surface-variant line-clamp-2">
+                  {p.description}
+                </p>
+
+                {/* Remaining card interactive demo toggle */}
+                {isDemoAvailable && (
+                  isDemoActive ? (
+                    <div className="mt-3 space-y-2" data-no-view-cursor data-no-card-click onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-between pb-1 border-b border-outline-variant/40">
+                        <span className="text-[9px] font-mono uppercase tracking-wider text-primary font-bold flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                          ACTIVE DEMO
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveDemoId(null);
+                          }}
+                          className="text-[9px] text-on-surface-variant hover:text-on-surface font-mono underline cursor-pointer"
+                        >
+                          Hide Demo
+                        </button>
+                      </div>
+                      {renderDemo(p)}
+                    </div>
+                  ) : (
+                    <div className="mt-2.5">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveDemoId(p.id);
+                        }}
+                        className={`w-full flex items-center justify-between p-2 rounded-lg border ${getDemoMeta(p.id).border} ${getDemoMeta(p.id).bg} text-on-surface transition cursor-pointer group`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles size={11} className={`${getDemoMeta(p.id).accent} animate-pulse`} />
+                          <span className={`text-[10px] font-bold font-mono ${getDemoMeta(p.id).accent} truncate max-w-[150px]`}>
+                            {getDemoMeta(p.id).title}
+                          </span>
+                        </div>
+                        <span className={`text-[10px] font-bold ${getDemoMeta(p.id).accent} flex items-center gap-0.5 group-hover:translate-x-1 transition-transform`}>
+                          Launch <ArrowRight size={10} />
+                        </span>
+                      </button>
+                    </div>
+                  )
+                )}
+              </div>
+
+              <div className="mt-3 pt-2 border-t border-outline-variant/60 flex items-center justify-between text-[11px]">
+                <span className="text-on-surface-variant font-mono text-[10px]">
                   {p.tech.slice(0, 2).join(' · ')}
                 </span>
-              </div>
-              <h4 className="text-lg font-display font-bold text-on-surface group-hover:text-primary transition-colors">
-                {p.title}
-              </h4>
-              <p className="mt-2 text-xs leading-5 text-on-surface-variant line-clamp-3">
-                {p.description}
-              </p>
-            </div>
-            <div className="mt-4 pt-3 border-t border-outline-variant flex items-center justify-between text-xs">
-              {'demo' in p && typeof p.demo === 'string' ? (
-                <a
-                  href={p.demo}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-primary hover:underline flex items-center gap-1 font-semibold"
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenCaseStudy(p);
+                  }}
+                  className="text-primary font-semibold hover:text-primary-dim flex items-center gap-1 transition cursor-pointer"
                 >
-                  <Zap size={12} /> Live Demo
-                </a>
-              ) : 'sourceAccess' in p && p.sourceAccess === 'private' ? (
-                <span className="text-on-surface-variant flex items-center gap-1 font-semibold">Private source</span>
-              ) : (
-                <a
-                  href={p.link}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-on-surface-variant hover:text-primary flex items-center gap-1 font-semibold"
-                >
-                  <Code2 size={12} /> Source
-                </a>
-              )}
-              <button
-                type="button"
-                onClick={() => onOpenCaseStudy(p)}
-                className="text-on-surface-variant hover:text-primary flex items-center gap-1 font-semibold ml-auto transition cursor-pointer"
-              >
-                Case Study <ArrowRight size={12} />
-              </button>
-            </div>
-          </TiltCard>
-        </motion.div>
-      ))}
-
-      {/* TERTIARY ROW (Remaining projects: 3-cols each on desktop, 6-cols on tablet) */}
-      {remainingProjects.map((p, idx) => (
-        <motion.div
-          key={p.id}
-          {...revealFast}
-          className="col-span-12 md:col-span-6 lg:col-span-4 flex flex-col"
-        >
-          <TiltCard
-            className="h-full surface-panel-subtle shimmer-card group rounded-2xl p-4 border border-outline-variant hover:border-primary/30 transition flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[9px] font-label uppercase tracking-wider text-primary-dim">{String(idx + 6).padStart(2, '0')} · {p.category}</span>
+                  Details <ArrowRight size={10} />
+                </button>
               </div>
-              <h5 className="text-sm font-display font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-1">
-                {p.title}
-              </h5>
-              <p className="mt-1 text-[11px] leading-4 text-on-surface-variant line-clamp-2">
-                {p.description}
-              </p>
-            </div>
-            <div className="mt-3 pt-2 border-t border-outline-variant/60 flex items-center justify-between text-[11px]">
-              <span className="text-on-surface-variant font-mono text-[10px]">
-                {p.tech.slice(0, 2).join(' · ')}
-              </span>
-              <button
-                type="button"
-                onClick={() => onOpenCaseStudy(p)}
-                className="text-primary font-semibold hover:text-primary-dim flex items-center gap-1 transition cursor-pointer"
-              >
-                Details <ArrowRight size={10} />
-              </button>
-            </div>
-          </TiltCard>
-        </motion.div>
-      ))}
+            </TiltCard>
+          </motion.div>
+        );
+      })}
     </div>
   );
 });
@@ -591,8 +1183,14 @@ const SkillCard: React.FC<{ group: SkillGroup; index: number }> = React.memo(({ 
 const ContactActions: React.FC<{ email: string }> = ({ email }) => {
   const [copied, setCopied] = useState(false);
   const [isEmailChooserOpen, setIsEmailChooserOpen] = useState(false);
-  const [status, setStatus] = useState('This opens your email app; the site never sends a message without your review.');
+  const [sendState, setSendState] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [statusMessage, setStatusMessage] = useState<string>('');
   const [draft, setDraft] = useState({ name: '', replyTo: '', subject: '', message: '' });
+
+  // Web3Forms access key from environment or portfolioData
+  const accessKey =
+    (import.meta.env.VITE_WEB3FORMS_ACCESS_KEY as string | undefined)?.trim() ||
+    ((portfolioData.personal as { web3formsKey?: string }).web3formsKey || '').trim();
 
   const updateDraft = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = event.currentTarget;
@@ -649,12 +1247,6 @@ const ContactActions: React.FC<{ email: string }> = ({ email }) => {
     return `https://outlook.office.com/mail/deeplink/compose?${params.toString()}`;
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIsEmailChooserOpen(true);
-    setStatus('Choose where you want to prepare this message.');
-  };
-
   const writeClipboard = async (value: string) => {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(value);
@@ -677,129 +1269,249 @@ const ContactActions: React.FC<{ email: string }> = ({ email }) => {
     try {
       await writeClipboard(email);
       setCopied(true);
-      setStatus('Email address copied.');
+      setStatusMessage('Email address copied.');
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
-      setStatus('Copy is unavailable here. Select the email address above to copy it.');
+      setStatusMessage('Copy is unavailable here. Select the email address above to copy it.');
     }
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!draft.name.trim() || !draft.replyTo.trim() || !draft.message.trim()) {
+      setStatusMessage('Please fill out all required fields.');
+      return;
+    }
+
+    // Direct in-page transmission if an access key is configured
+    if (accessKey) {
+      setSendState('sending');
+      setStatusMessage('Transmitting message directly to Ayush...');
+
+      try {
+        const formData = new FormData();
+        formData.append('access_key', accessKey);
+        formData.append('name', draft.name.trim());
+        formData.append('email', draft.replyTo.trim());
+        const userSubject = draft.subject.trim();
+        const formattedSubject = userSubject
+          ? `[Portfolio] ${userSubject} (${draft.name.trim()})`
+          : `[Portfolio Contact] from ${draft.name.trim()}`;
+        formData.append('subject', formattedSubject);
+        formData.append('message', draft.message.trim());
+        formData.append('from_name', `${draft.name.trim()} via Portfolio`);
+        formData.append('replyto', draft.replyTo.trim());
+        formData.append('reply_to', draft.replyTo.trim());
+
+        const response = await fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json().catch(() => null);
+
+        if (response.ok && result?.success) {
+          setSendState('success');
+          setStatusMessage(`Message delivered! Sent directly to ${email}. Ayush can reply directly to ${draft.replyTo}.`);
+          setDraft({ name: '', replyTo: '', subject: '', message: '' });
+          setIsEmailChooserOpen(false);
+        } else {
+          setSendState('error');
+          setStatusMessage(result?.message || 'Direct transmission failed. You can open your email app below or copy the draft.');
+          setIsEmailChooserOpen(true);
+        }
+      } catch {
+        setSendState('error');
+        setStatusMessage('Network connection error. You can open your email app below to send your draft.');
+        setIsEmailChooserOpen(true);
+      }
+      return;
+    }
+
+    // If no access key is configured in .env yet:
+    setSendState('error');
+    setStatusMessage(
+      'To send directly from the website without opening an email app, add your free Web3Forms access key from web3forms.com to .env (VITE_WEB3FORMS_ACCESS_KEY). For now, choose an email app below.'
+    );
+    setIsEmailChooserOpen(true);
   };
 
   return (
     <div className="space-y-4">
-      <form aria-label="Prepare an email message" onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-outline-variant bg-surface/65 p-4 sm:p-5">
-        <p className="text-[10px] font-label font-bold uppercase tracking-[0.20em] text-primary-dim">Quick message</p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="grid gap-1.5 text-xs font-semibold text-on-surface-variant">
-            Your name
-            <input
-              name="name"
-              autoComplete="name"
-              required
-              minLength={2}
-              maxLength={100}
-              value={draft.name}
-              onChange={updateDraft}
-              className="min-w-0 rounded-xl border border-outline-variant bg-surface-container-high px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/60"
-              placeholder="Name"
-            />
-          </label>
-          <label className="grid gap-1.5 text-xs font-semibold text-on-surface-variant">
-            Your email
-            <input
-              name="replyTo"
-              autoComplete="email"
-              type="email"
-              required
-              maxLength={254}
-              value={draft.replyTo}
-              onChange={updateDraft}
-              className="min-w-0 rounded-xl border border-outline-variant bg-surface-container-high px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/60"
-              placeholder="you@example.com"
-            />
-          </label>
-        </div>
-        <label className="grid gap-1.5 text-xs font-semibold text-on-surface-variant">
-          Subject
-          <input
-            name="subject"
-            required
-            maxLength={140}
-            value={draft.subject}
-            onChange={updateDraft}
-            className="min-w-0 rounded-xl border border-outline-variant bg-surface-container-high px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/60"
-            placeholder="What would you like to discuss?"
-          />
-        </label>
-        <label className="grid gap-1.5 text-xs font-semibold text-on-surface-variant">
-          Message
-          <textarea
-            name="message"
-            required
-            minLength={10}
-            maxLength={3000}
-            rows={4}
-            value={draft.message}
-            onChange={updateDraft}
-            className="min-w-0 resize-y rounded-xl border border-outline-variant bg-surface-container-high px-3 py-2.5 text-sm leading-6 text-on-surface placeholder:text-on-surface-variant/60"
-            placeholder="Share a little context so I can get back to you."
-          />
-        </label>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <button
-            type="submit"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-on-primary transition hover:bg-primary-dim focus-visible:outline-offset-2"
-          >
-            <Send size={16} /> Choose email app
-          </button>
+      {sendState === 'success' ? (
+        <div className="rounded-2xl border border-primary/30 bg-primary/10 p-6 text-center space-y-3">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/20 text-primary">
+            <Check size={24} />
+          </div>
+          <h4 className="text-base font-bold text-on-surface">Message Transmitted!</h4>
+          <p className="text-xs leading-5 text-on-surface-variant max-w-md mx-auto">
+            Your message was sent directly to Ayush ({email}). Ayush will reply directly to your email address.
+          </p>
           <button
             type="button"
-            onClick={async () => {
-              try {
-                await writeClipboard(`To: ${email}\nSubject: ${draft.subject || 'Portfolio enquiry'}\n\n${draft.message}\n\nName: ${draft.name}\nReply to: ${draft.replyTo}`);
-                setStatus('Message draft copied.');
-              } catch {
-                setStatus('Copy is unavailable in this browser.');
-              }
+            onClick={() => {
+              setSendState('idle');
+              setStatusMessage('');
             }}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-outline-variant bg-surface-container-high px-4 py-2.5 text-sm font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-on-primary transition hover:bg-primary-dim"
           >
-            <Copy size={16} /> Copy draft
+            Send another message
           </button>
         </div>
-        {isEmailChooserOpen && (
-          <div className="rounded-xl border border-primary/25 bg-primary/5 p-3" role="group" aria-label="Choose email app">
-            <p className="mb-2.5 text-xs font-semibold text-on-surface">Open this draft in:</p>
-            <div className="grid gap-2 sm:grid-cols-3">
-              <a
-                href={getGmailUrl()}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => setStatus('Gmail opened in a new browser tab with your draft.')}
-                className="inline-flex min-h-10 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high px-3 py-2 text-xs font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary"
-              >
-                Gmail
-              </a>
-              <a
-                href={getOutlookUrl()}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => setStatus('Outlook on the web opened in a new browser tab with your draft.')}
-                className="inline-flex min-h-10 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high px-3 py-2 text-xs font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary"
-              >
-                Outlook on the web
-              </a>
-              <a
-                href={getMailtoUrl()}
-                onClick={() => setStatus('Your device will use its configured default email app.')}
-                className="inline-flex min-h-10 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high px-3 py-2 text-xs font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary"
-              >
-                Default email app
-              </a>
-            </div>
+      ) : (
+        <form aria-label="Prepare an email message" onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-outline-variant bg-surface/65 p-4 sm:p-5">
+          <p className="text-[10px] font-label font-bold uppercase tracking-[0.20em] text-primary-dim">Quick message</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1.5 text-xs font-semibold text-on-surface-variant">
+              Your name
+              <input
+                name="name"
+                autoComplete="name"
+                required
+                minLength={2}
+                maxLength={100}
+                value={draft.name}
+                onChange={updateDraft}
+                className="min-w-0 rounded-xl border border-outline-variant bg-surface-container-high px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/60"
+                placeholder="Name"
+              />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-on-surface-variant">
+              Your email
+              <input
+                name="replyTo"
+                autoComplete="email"
+                type="email"
+                required
+                maxLength={254}
+                value={draft.replyTo}
+                onChange={updateDraft}
+                className="min-w-0 rounded-xl border border-outline-variant bg-surface-container-high px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/60"
+                placeholder="you@example.com"
+              />
+            </label>
           </div>
-        )}
-        <p role="status" aria-live="polite" className="text-xs leading-5 text-on-surface-variant">{status}</p>
-      </form>
+          <label className="grid gap-1.5 text-xs font-semibold text-on-surface-variant">
+            Subject
+            <input
+              name="subject"
+              required
+              maxLength={140}
+              value={draft.subject}
+              onChange={updateDraft}
+              className="min-w-0 rounded-xl border border-outline-variant bg-surface-container-high px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/60"
+              placeholder="What would you like to discuss?"
+            />
+          </label>
+          <label className="grid gap-1.5 text-xs font-semibold text-on-surface-variant">
+            Message
+            <textarea
+              name="message"
+              required
+              minLength={10}
+              maxLength={3000}
+              rows={4}
+              value={draft.message}
+              onChange={updateDraft}
+              className="min-w-0 resize-y rounded-xl border border-outline-variant bg-surface-container-high px-3 py-2.5 text-sm leading-6 text-on-surface placeholder:text-on-surface-variant/60"
+              placeholder="Share a little context so I can get back to you."
+            />
+          </label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="submit"
+              disabled={sendState === 'sending'}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-on-primary transition hover:bg-primary-dim disabled:opacity-60 focus-visible:outline-offset-2"
+            >
+              {sendState === 'sending' ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" /> Transmitting...
+                </>
+              ) : (
+                <>
+                  <Send size={16} /> Send message
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await writeClipboard(`To: ${email}\nSubject: ${draft.subject || 'Portfolio enquiry'}\n\n${draft.message}\n\nName: ${draft.name}\nReply to: ${draft.replyTo}`);
+                  setStatusMessage('Message draft copied.');
+                } catch {
+                  setStatusMessage('Copy is unavailable in this browser.');
+                }
+              }}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-outline-variant bg-surface-container-high px-4 py-2.5 text-sm font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary"
+            >
+              <Copy size={16} /> Copy draft
+            </button>
+          </div>
+
+          {isEmailChooserOpen && (
+            <div className="rounded-xl border border-primary/25 bg-primary/5 p-3.5 space-y-2.5" role="group" aria-label="Choose email app">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-on-surface">Or open draft in your email app:</p>
+                <button
+                  type="button"
+                  onClick={() => setIsEmailChooserOpen(false)}
+                  className="rounded p-1 text-on-surface-variant hover:text-on-surface"
+                  aria-label="Close email app options"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <p className="text-[11px] leading-4 text-on-surface-variant">
+                Note: Local email apps (Gmail, Outlook) send from whichever account is currently signed in on your device.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <a
+                  href={getGmailUrl()}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setStatusMessage('Gmail opened in a new tab with your draft.')}
+                  className="inline-flex min-h-10 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high px-3 py-2 text-xs font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary"
+                >
+                  Gmail
+                </a>
+                <a
+                  href={getOutlookUrl()}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setStatusMessage('Outlook opened in a new tab with your draft.')}
+                  className="inline-flex min-h-10 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high px-3 py-2 text-xs font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary"
+                >
+                  Outlook on the web
+                </a>
+                <a
+                  href={getMailtoUrl()}
+                  onClick={() => setStatusMessage('Your device will use its default email client.')}
+                  className="inline-flex min-h-10 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-high px-3 py-2 text-xs font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary"
+                >
+                  Default email app
+                </a>
+              </div>
+            </div>
+          )}
+
+          {statusMessage && (
+            <div
+              role="status"
+              aria-live="polite"
+              className={`flex items-start gap-2 rounded-xl p-3 text-xs leading-5 ${
+                sendState === 'error'
+                  ? 'border border-amber-500/30 bg-amber-500/10 text-amber-200'
+                  : 'border border-primary/25 bg-primary/5 text-on-surface-variant'
+              }`}
+            >
+              {sendState === 'error' && <AlertCircle size={15} className="mt-0.5 shrink-0 text-amber-400" />}
+              <span>{statusMessage}</span>
+            </div>
+          )}
+        </form>
+      )}
 
       <button
         type="button"
@@ -812,6 +1524,7 @@ const ContactActions: React.FC<{ email: string }> = ({ email }) => {
     </div>
   );
 };
+
 
 // ─── ProjectCaseStudy ─────────────────────────────────────────────────────────
 
@@ -986,8 +1699,16 @@ export const SectionGroup: React.FC = () => {
   const overlayRef = useRef<HTMLDivElement>(null);
   const resumeButtonRef = useRef<HTMLAnchorElement>(null);
   const lastScrollProgressRef = useRef(0);
+  const horizontalRailRef = useRef<HTMLDivElement>(null);
+  const railProgressBarRef = useRef<HTMLDivElement>(null);
+  const railCounterRef = useRef<HTMLSpanElement>(null);
+  const visibleProjectsCountRef = useRef(0);
 
   const setScrollProgress = useStore((s) => s.setScrollProgress);
+  const setHorizontalProgress = useStore((s) => s.setHorizontalProgress);
+  const setScrollMode = useStore((s) => s.setScrollMode);
+  const projectViewMode = useStore((s) => s.projectViewMode);
+  const setProjectViewMode = useStore((s) => s.setProjectViewMode);
 
   const [projectFilter, setProjectFilter] = useState('All');
   const [showResumeCue, setShowResumeCue] = useState(false);
@@ -1103,6 +1824,48 @@ export const SectionGroup: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [activeProject, closeCaseStudy]);
 
+  useEffect(() => {
+    visibleProjectsCountRef.current = visibleProjects.length;
+  }, [visibleProjects.length]);
+
+  // Interactive rail navigation
+  const scrollRail = useCallback((direction: number) => {
+    const rail = horizontalRailRef.current;
+    if (!rail) return;
+    const cardWidth = 360;
+    rail.scrollBy({ left: direction * cardWidth, behavior: 'smooth' });
+  }, []);
+
+  const handleRailScroll = useCallback(() => {
+    const rail = horizontalRailRef.current;
+    if (!rail) return;
+    const max = Math.max(1, rail.scrollWidth - rail.clientWidth);
+    const ratio = Math.min(1, Math.max(0, rail.scrollLeft / max));
+    if (railProgressBarRef.current) {
+      railProgressBarRef.current.style.width = `${Math.round(ratio * 100)}%`;
+    }
+    if (railCounterRef.current) {
+      const total = visibleProjectsCountRef.current || 1;
+      const current = Math.min(total, Math.max(1, Math.round(ratio * (total - 1)) + 1));
+      railCounterRef.current.textContent = `${current}/${total}`;
+    }
+    setHorizontalProgress(ratio);
+    setScrollMode('horizontal');
+  }, [setHorizontalProgress, setScrollMode]);
+
+  const handleRailWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    const rail = horizontalRailRef.current;
+    if (!rail) return;
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && Math.abs(e.deltaY) > 8) {
+      const maxScroll = rail.scrollWidth - rail.clientWidth;
+      const canScrollRight = e.deltaY > 0 && rail.scrollLeft < maxScroll - 4;
+      const canScrollLeft = e.deltaY < 0 && rail.scrollLeft > 4;
+      if (canScrollRight || canScrollLeft) {
+        rail.scrollLeft += e.deltaY * 0.8;
+      }
+    }
+  }, []);
+
   // Main scroll handler - pure layout reads from window.scrollY, zero forced reflows
   const updateScrollState = useCallback(() => {
     const scrollTop = window.scrollY || document.documentElement.scrollTop;
@@ -1112,6 +1875,10 @@ export const SectionGroup: React.FC = () => {
     if (Math.abs(progress - lastScrollProgressRef.current) > PROGRESS_UPDATE_THRESHOLD) {
       lastScrollProgressRef.current = progress;
       setScrollProgress(progress);
+      const store = useStore.getState();
+      if (store.scrollMode !== 'vertical') {
+        store.setScrollMode('vertical');
+      }
     }
   }, [setScrollProgress]);
 
@@ -1235,8 +2002,8 @@ export const SectionGroup: React.FC = () => {
             ))}
           </div>
 
-          <div className="mx-auto w-full min-w-0 max-w-screen-xl">
-            <motion.div {...reveal} className="max-w-xl md:max-w-[440px] lg:max-w-[500px] xl:max-w-3xl relative z-10">
+          <div className="mx-auto w-full min-w-0 max-w-screen-2xl">
+            <motion.div {...reveal} className="w-full lg:max-w-[54%] xl:max-w-[50%] 2xl:max-w-[48%] relative z-10">
                 {/* Availability and role focus */}
               <div className="mb-6 flex flex-wrap items-center gap-2.5">
                 <div className="inline-flex items-center gap-2.5 rounded-full border border-primary/30 bg-primary/8 px-4 py-2 text-[11px] font-label font-bold uppercase tracking-[0.20em] text-primary shadow-sm shadow-primary/10">
@@ -1253,7 +2020,7 @@ export const SectionGroup: React.FC = () => {
               </div>
 
               <p className="mb-3 text-xs font-label font-semibold uppercase tracking-[0.23em] text-on-surface-variant">{personal.name} · {personal.title}</p>
-              <h1 className="max-w-3xl text-[2.65rem] font-display font-bold leading-[0.98] tracking-[-0.045em] text-on-surface sm:text-6xl lg:text-7xl xl:text-[5.4rem]">
+              <h1 className="text-[2.65rem] font-display font-bold leading-[0.98] tracking-[-0.045em] text-on-surface sm:text-6xl lg:text-[3.8rem] xl:text-[4.6rem]">
                 Turn complex signals into <span
                   className="bg-clip-text text-transparent"
                   style={{ backgroundImage: 'linear-gradient(120deg, var(--title-gradient-from), var(--title-gradient-via), var(--title-gradient-to))' }}
@@ -1266,7 +2033,7 @@ export const SectionGroup: React.FC = () => {
             </motion.div>
 
             {/* CTAs */}
-            <motion.div {...reveal} className="relative z-10 mt-8 flex flex-col gap-3 sm:flex-row">
+            <motion.div {...reveal} className="relative z-10 mt-8 flex flex-col gap-3 sm:flex-row w-full lg:max-w-[54%] xl:max-w-[50%]">
               <button
                 type="button"
                 onClick={() => scrollToSection('projects')}
@@ -1330,27 +2097,77 @@ export const SectionGroup: React.FC = () => {
           className="px-5 py-20 sm:px-8 lg:px-12 xl:px-16"
         >
           <div className="mx-auto w-full min-w-0 max-w-screen-2xl">
-            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="mb-6 flex flex-col gap-4 w-full lg:max-w-[58%] xl:max-w-[54%] 2xl:max-w-[52%]">
               <SectionHeading
                 eyebrow={sectionCopy.projects.eyebrow}
                 title={sectionCopy.projects.title}
                 copy={sectionCopy.projects.copy}
               />
-              <div className="flex flex-wrap items-center gap-3 self-start lg:self-end">
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                {/* View Mode Toggle: Recruiter Bento Grid (default) vs Cinematic 3D Flow */}
+                <div className="flex items-center gap-1 p-1 rounded-xl border border-outline-variant bg-surface-container-high/65">
+                  <button
+                    type="button"
+                    onClick={() => setProjectViewMode('bento')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      projectViewMode === 'bento'
+                        ? 'bg-primary text-on-primary shadow-sm'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <Grid size={13} />
+                    <span>Bento Grid</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProjectViewMode('cinematic')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      projectViewMode === 'cinematic'
+                        ? 'bg-primary text-on-primary shadow-sm'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <Sparkles size={13} />
+                    <span>Cinematic 3D</span>
+                  </button>
+                </div>
+
+                {/* Arrow navigation buttons for smooth carousel gliding (Cinematic only) */}
+                {projectViewMode === 'cinematic' && (
+                  <div className="hidden sm:flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => scrollRail(-1)}
+                      aria-label="Previous projects"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-high/65 text-on-surface-variant transition hover:border-primary/40 hover:text-primary active:scale-95 cursor-pointer"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => scrollRail(1)}
+                      aria-label="Next projects"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-high/65 text-on-surface-variant transition hover:border-primary/40 hover:text-primary active:scale-95 cursor-pointer"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+
                 <a
                   href="https://github.com/AyushBajaj7"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-xl border border-outline-variant bg-surface-container-high/65 px-5 py-2.5 text-sm font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary"
+                  className="inline-flex items-center gap-2 rounded-xl border border-outline-variant bg-surface-container-high/65 px-4 py-2 text-xs font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary"
                 >
-                  <Code2 size={16} />
+                  <Code2 size={15} />
                   GitHub
                 </a>
               </div>
             </div>
 
             {/* Filter projects by their main discipline */}
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-4 w-full lg:max-w-[58%] xl:max-w-[54%] 2xl:max-w-[52%]">
               <div className="flex flex-wrap gap-2">
                 {projectFilters.map((filter) => (
                   <button
@@ -1368,15 +2185,114 @@ export const SectionGroup: React.FC = () => {
                 ))}
               </div>
 
+              {projectViewMode === 'cinematic' && (
+                <div className="hidden sm:flex items-center gap-4 text-[11px] font-label uppercase tracking-[0.18em] text-on-surface-variant">
+                  <span ref={railCounterRef}>1/{visibleProjects.length}</span>
+                  <div className="h-1.5 w-36 overflow-hidden rounded-full bg-surface-container-high">
+                    <div
+                      ref={railProgressBarRef}
+                      className="h-full rounded-full bg-gradient-to-r from-primary to-tertiary transition-all duration-150"
+                      style={{ width: `${Math.round((1 / Math.max(1, visibleProjects.length)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            <BentoGridView projects={visibleProjects} onOpenCaseStudy={openCaseStudy} />
+            {/* View Mode Switching: Recruiter Bento Grid vs Cinematic 3D Flow */}
+            {projectViewMode === 'bento' ? (
+              <div className="w-full lg:max-w-[58%] xl:max-w-[54%] 2xl:max-w-[52%]">
+                <BentoGridView projects={visibleProjects} onOpenCaseStudy={openCaseStudy} />
+              </div>
+            ) : (
+              <>
+                {/* Desktop horizontal rail with smooth native momentum and 3D tilt */}
+                <div className="hidden lg:block relative cinematic-stage">
+                  <div
+                    ref={horizontalRailRef}
+                    onScroll={handleRailScroll}
+                    onWheel={handleRailWheel}
+                    className="project-rail-scroll flex w-full gap-5 overflow-x-auto overflow-y-hidden py-3"
+                  >
+                    {/* Intro card */}
+                    <div className="project-rail-item surface-panel shimmer-card flex h-[21rem] w-[20rem] flex-none flex-col justify-between rounded-2xl p-6 xl:w-[21.5rem]">
+                      <div>
+                        <div className="mb-3 flex items-center gap-2">
+                          <Briefcase size={14} className="text-primary-dim" />
+                          <p className="text-[10px] font-label uppercase tracking-[0.22em] text-primary-dim">Overview</p>
+                        </div>
+                        <h3 className="text-xl font-display font-bold leading-tight text-on-surface">
+                          Real systems with technical context.
+                        </h3>
+                      </div>
+                      <p className="text-sm leading-6 text-on-surface-variant">
+                        {projects.length} production systems with architectural focus, live demos, and source code.
+                      </p>
+                      <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                        <span>Swipe or click arrows</span>
+                        <ArrowRight size={14} />
+                      </div>
+                    </div>
+
+                    {visibleProjects.map((project, index) => (
+                      <div key={project.id} className="project-rail-item flex h-[21rem] w-[20rem] flex-none flex-col xl:w-[21.5rem]">
+                        <ProjectCard project={project} index={index} rail onOpenCaseStudy={openCaseStudy} />
+                      </div>
+                    ))}
+
+                    {/* Continue to profile card */}
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}
+                      className="project-rail-item surface-panel shimmer-card group flex h-[21rem] w-[20rem] flex-none flex-col justify-between rounded-2xl p-6 text-left transition hover:border-primary/35 xl:w-[21.5rem] cursor-pointer"
+                    >
+                      <span className="text-[10px] font-label uppercase tracking-[0.22em] text-primary-dim">Next</span>
+                      <span className="text-xl font-display font-bold leading-tight text-on-surface">Continue to profile.</span>
+                      <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary text-on-primary transition group-hover:translate-x-1.5">
+                        <ArrowRight size={20} />
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Interactive Timeline Filmstrip Scrubber */}
+                  <div className="flex items-center gap-2 mt-4 px-1 py-2 overflow-x-auto hide-scrollbar border-t border-outline-variant/60 pt-4">
+                    <span className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant/70 mr-1 flex items-center gap-1.5 shrink-0">
+                      <SlidersHorizontal size={12} className="text-primary" />
+                      Filmstrip Scrubber:
+                    </span>
+                    {visibleProjects.map((p, idx) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          const rail = horizontalRailRef.current;
+                          if (!rail) return;
+                          const cardWidth = 360;
+                          rail.scrollTo({ left: (idx + 1) * cardWidth, behavior: 'smooth' });
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-high/60 text-[11px] font-mono text-on-surface-variant hover:border-primary/40 hover:text-primary hover:bg-surface-container-highest transition cursor-pointer shrink-0"
+                      >
+                        <span className="text-primary font-bold">{String(idx + 1).padStart(2, '0')}</span>
+                        <span className="truncate max-w-[120px]">{p.title.split(':')[0]}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Mobile/tablet grid */}
+                <div className="grid gap-5 md:grid-cols-2 lg:hidden">
+                  {visibleProjects.map((project, index) => (
+                    <ProjectCard key={project.id} project={project} index={index} onOpenCaseStudy={openCaseStudy} />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </SectionShell>
 
         {/* ── ABOUT ────────────────────────────────────────────────────── */}
         <SectionShell id="about" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-28">
-          <div className="mr-auto max-w-xl md:max-w-[440px] lg:max-w-4xl grid gap-8 sm:gap-10 lg:grid-cols-2 lg:items-start">
+          <div className="mr-auto w-full lg:max-w-[56%] xl:max-w-[52%] 2xl:max-w-[50%] flex flex-col gap-8">
             <SectionHeading
               eyebrow={sectionCopy.about.eyebrow}
               title={sectionCopy.about.title}
@@ -1411,6 +2327,7 @@ export const SectionGroup: React.FC = () => {
                 <div className="grid gap-3 text-sm leading-7 text-on-surface-variant">
                   {[
                     'Prefer implementation that can be explained clearly and maintained without ceremony.',
+                    'Deep interest in financial systems, market data pipelines, and quantitative decision workflows.',
                     'Use interaction and animation to support the content, not compete with it.',
                     'Work across frontend, backend, and ML when the product needs all three.',
                   ].map((text) => (
@@ -1427,13 +2344,13 @@ export const SectionGroup: React.FC = () => {
 
         {/* ── SKILLS ───────────────────────────────────────────────────── */}
         <SectionShell id="skills" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-28">
-          <div className="mr-auto max-w-screen-2xl">
+          <div className="mr-auto w-full lg:max-w-[56%] xl:max-w-[52%] 2xl:max-w-[50%]">
             <SectionHeading
               eyebrow={sectionCopy.skills.eyebrow}
               title={sectionCopy.skills.title}
               copy={sectionCopy.skills.copy}
             />
-            <div className="mt-10 grid max-w-4xl gap-4 md:grid-cols-2">
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
               {skills.map((group, index) => (
                 <SkillCard key={group.category} group={group} index={index} />
               ))}
@@ -1443,7 +2360,7 @@ export const SectionGroup: React.FC = () => {
 
         {/* ── CONTACT ──────────────────────────────────────────────────── */}
         <SectionShell id="contact" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-28">
-          <div className="mr-auto max-w-xl md:max-w-[440px] lg:max-w-[500px] xl:max-w-2xl grid gap-8 sm:gap-10">
+          <div className="mr-auto w-full lg:max-w-[52%] xl:max-w-[48%] 2xl:max-w-[46%] grid gap-8 sm:gap-10">
             <div className="max-w-[240px] sm:max-w-none">
               <SectionHeading
                 eyebrow={sectionCopy.contact.eyebrow}
@@ -1507,14 +2424,15 @@ export const SectionGroup: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsTerminalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-full border border-tertiary/40 bg-surface/90 backdrop-blur-md px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs font-mono font-semibold text-on-surface shadow-2xl hover:border-tertiary hover:text-tertiary hover:shadow-tertiary/20 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-full border border-tertiary/40 bg-surface/90 backdrop-blur-md p-2.5 sm:px-4 sm:py-2.5 text-xs font-mono font-semibold text-on-surface shadow-2xl hover:border-tertiary hover:text-tertiary hover:shadow-tertiary/20 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
             aria-label="Open Developer CLI Terminal"
+            title="Open Developer CLI Terminal (~)"
           >
-            <span className="relative flex h-2 w-2">
+            <span className="relative flex h-2 w-2 shrink-0">
               <span className="relative inline-flex rounded-full h-2 w-2 bg-tertiary" />
             </span>
-            <Terminal size={14} className="text-tertiary" />
-            <span>CLI Terminal</span>
+            <Terminal size={15} className="text-tertiary shrink-0" />
+            <span className="hidden sm:inline">CLI Terminal</span>
             <span className="hidden sm:inline text-[9px] text-tertiary/80 bg-tertiary/10 px-1.5 py-0.5 rounded border border-tertiary/20">
               ~
             </span>

@@ -7,6 +7,7 @@
     "about": "My projects follow one thread: take information that is difficult to act on, connect it to the system around it, and make the next decision clearer. That has led me from microservice impact analysis and operator telemetry to applied AI, cloud media pipelines, and full-stack platforms.",
     "location": "India and Kathmandu, Nepal",
     "email": "ayushbajaj215@gmail.com",
+    "web3formsKey": "",
     "resumeLink": "https://drive.google.com/file/d/1pNRl11o4bRue66-_wy4uAW5yQHv_iHgW/view?usp=drive_link"
   },
   "projects": [
@@ -302,6 +303,7 @@
       "items": [
         "Distributed Systems Design",
         "Microservice Drift & Impact Analysis",
+        "Financial Systems & Ledger Design",
         "Data Structures & Algorithms",
         "System Architecture",
         "Performance Optimization"

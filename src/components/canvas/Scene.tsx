@@ -47,109 +47,258 @@ interface TimelineMilestone {
 /**
  * Curated expression & spatial placement choreography.
  * Maps exact page scroll progress to the avatar's most expressive and contextual frames,
- * aligning the character adjacent to the content of each section.
+ * aligning the character on the right stage adjacent to the left editorial lane.
  *
- * Choreography Flow:
- * 1. Hero (p: 0.00 -> 0.14): Awakening (0) -> head lifts (32) -> charismatic greeting smile (60) looking across at the name/title.
- * 2. Projects (p: 0.14 -> 0.52): Confident technical smirk (82) -> head scans systems and architectures (120 -> 142).
- * 3. About (p: 0.52 -> 0.72): Contemplative turn (168) -> DIRECT EYE CONTACT TO LEFT (195) looking right at the philosophy and principles cards!
- * 4. Skills (p: 0.72 -> 0.86): Sharp technical analysis (218) looking left at the skill pills -> prepares for finale (255).
- * 5. Contact (p: 0.86 -> 1.00): Face centers -> SIGNATURE WINK & SMIRK (284) -> warm finale smile (299) beside the contact card!
+ * Dedicated timing & poses for Bento Grid vs. Cinematic Flow:
+ * - Bento Grid: Taller page (~8,500px), projects take 12%-66% of vertical scroll.
+ * - Cinematic: Shorter page (~4,800px), projects take 18%-42% of vertical scroll + interactive horizontal gliding.
  */
-const SCROLL_MILESTONES: readonly TimelineMilestone[] = [
+const BENTO_SCROLL_MILESTONES: readonly TimelineMilestone[] = [
   {
     progress: 0.00,
     frame: 0, // Intro rest / eyes closed
-    desktop: { x: 17, y: 0, scale: 0.80, opacity: 0.82 },
-    tablet:  { x: 13, y: 0, scale: 0.72, opacity: 0.82 },
-    mobile:  { x: 0,  y: 0, scale: 0.80, opacity: 0.34 },
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 0,  y: 0, scale: 0.86, opacity: 0.22 },
   },
   {
-    progress: 0.06,
-    frame: 35, // Head lifts smoothly, eyes open
-    desktop: { x: 17, y: 0, scale: 0.80, opacity: 0.82 },
-    tablet:  { x: 13, y: 0, scale: 0.72, opacity: 0.82 },
-    mobile:  { x: 0,  y: 0, scale: 0.80, opacity: 0.34 },
+    progress: 0.04,
+    frame: 35, // Head lifts smoothly, opening eyes
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 0,  y: 0, scale: 0.86, opacity: 0.22 },
   },
   {
-    progress: 0.14,
-    frame: 60, // Warm charismatic smile, head tilted towards Hero title & bio
-    desktop: { x: 17, y: 0, scale: 0.80, opacity: 0.82 },
-    tablet:  { x: 13, y: 0, scale: 0.72, opacity: 0.82 },
-    mobile:  { x: 0,  y: 0, scale: 0.80, opacity: 0.32 },
+    progress: 0.08,
+    frame: 68, // Warm charismatic greeting smile centered at Hero tagline
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 0,  y: 0, scale: 0.86, opacity: 0.20 },
   },
   {
-    progress: 0.22,
-    frame: 82, // Confident technical smirk, entering Projects
-    desktop: { x: 18, y: 0, scale: 0.79, opacity: 0.64 },
-    tablet:  { x: 15, y: 0, scale: 0.70, opacity: 0.70 },
-    mobile:  { x: 2,  y: 2, scale: 0.74, opacity: 0.24 },
+    progress: 0.12,
+    frame: 88, // Transitions smoothly out of Hero, head begins turning left
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 1,  y: 0, scale: 0.85, opacity: 0.14 },
   },
   {
-    progress: 0.35,
-    frame: 120, // Head turned right, scanning architecture bento & system diagrams
-    desktop: { x: 19, y: 0, scale: 0.78, opacity: 0.60 },
-    tablet:  { x: 16, y: 0, scale: 0.70, opacity: 0.68 },
-    mobile:  { x: 2,  y: 2, scale: 0.72, opacity: 0.22 },
+    progress: 0.17,
+    frame: 94, // Confident smirk, turning head towards Featured Hero Project (MDT)
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.10 },
   },
   {
-    progress: 0.46,
-    frame: 142, // Thoughtful glance across platforms
-    desktop: { x: 18, y: 0, scale: 0.79, opacity: 0.64 },
-    tablet:  { x: 15, y: 1, scale: 0.70, opacity: 0.70 },
-    mobile:  { x: 3,  y: 2, scale: 0.74, opacity: 0.24 },
+    progress: 0.28,
+    frame: 118, // Scanning AST simulator & Cat-X telemetry
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.10 },
   },
   {
-    progress: 0.53,
-    frame: 168, // Smooth rotation turning left toward About section
-    desktop: { x: 18, y: 1, scale: 0.80, opacity: 0.72 },
-    tablet:  { x: 14, y: 1, scale: 0.71, opacity: 0.76 },
-    mobile:  { x: 4,  y: 0, scale: 0.76, opacity: 0.28 },
+    progress: 0.40,
+    frame: 136, // Scanning Traders ERP engine & 3D architecture viewport
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.10 },
   },
   {
-    progress: 0.62,
-    frame: 195, // PEAK GAZE TO THE LEFT at About bio & principles cards!
-    desktop: { x: 19, y: 1, scale: 0.80, opacity: 0.74 },
-    tablet:  { x: 15, y: 1, scale: 0.72, opacity: 0.78 },
-    mobile:  { x: 4,  y: 0, scale: 0.76, opacity: 0.30 },
+    progress: 0.51,
+    frame: 154, // Thoughtful scan across remaining projects, easing toward profile
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.10 },
   },
   {
-    progress: 0.74,
-    frame: 228, // Eyes wide open with piercing technical focus, looking left at skills
-    desktop: { x: 18, y: 1, scale: 0.79, opacity: 0.70 },
-    tablet:  { x: 14, y: 1, scale: 0.71, opacity: 0.76 },
-    mobile:  { x: 4,  y: 0, scale: 0.76, opacity: 0.27 },
+    progress: 0.56,
+    frame: 172, // Enters About section: head smoothly swivels to direct left orientation
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.12 },
   },
   {
-    progress: 0.84,
-    frame: 252, // Head returning toward center, welcoming connection
-    desktop: { x: 16, y: 1, scale: 0.80, opacity: 0.76 },
-    tablet:  { x: 14, y: 1, scale: 0.72, opacity: 0.78 },
-    mobile:  { x: 5,  y: 1, scale: 0.78, opacity: 0.32 },
+    progress: 0.63,
+    frame: 195, // PEAK DIRECT EYE CONTACT TO LEFT at About bio & principles cards!
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.12 },
   },
   {
-    progress: 0.93,
-    frame: 284, // THE SIGNATURE CHARMING WINK & GRIN beside Contact card!
-    desktop: { x: 15, y: 1, scale: 0.82, opacity: 0.80 },
-    tablet:  { x: 13, y: 1, scale: 0.73, opacity: 0.80 },
-    mobile:  { x: 6,  y: 1, scale: 0.80, opacity: 0.36 },
+    progress: 0.70,
+    frame: 212, // Grounded focus finishing About principles
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.12 },
+  },
+  {
+    progress: 0.73,
+    frame: 224, // Enters Skills: sharp technical focus looking across distributed systems & AI pills
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.10 },
+  },
+  {
+    progress: 0.82,
+    frame: 236, // Analytical focus across full stack, 3D, and DevOps skill matrices
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.10 },
+  },
+  {
+    progress: 0.89,
+    frame: 254, // Smoothly easing out of analytical focus, turning back towards center
+    desktop: { x: 25, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 17, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.85, opacity: 0.10 },
+  },
+  {
+    progress: 0.94,
+    frame: 268, // Enters Contact: head returning toward center, warm welcoming posture
+    desktop: { x: 25, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 17, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.85, opacity: 0.12 },
+  },
+  {
+    progress: 0.97,
+    frame: 284, // THE SIGNATURE CHARMING WINK & GRIN beside Contact card & Send button!
+    desktop: { x: 25, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 17, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.86, opacity: 0.14 },
   },
   {
     progress: 1.00,
-    frame: 299, // Confident finale smile
-    desktop: { x: 15, y: 1, scale: 0.82, opacity: 0.80 },
-    tablet:  { x: 13, y: 1, scale: 0.73, opacity: 0.80 },
-    mobile:  { x: 6,  y: 1, scale: 0.80, opacity: 0.36 },
+    frame: 299, // Confident finale smile beside socials & footer
+    desktop: { x: 25, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 17, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.86, opacity: 0.14 },
+  },
+];
+
+const CINEMATIC_SCROLL_MILESTONES: readonly TimelineMilestone[] = [
+  {
+    progress: 0.00,
+    frame: 0, // Intro rest / eyes closed
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 0,  y: 0, scale: 0.86, opacity: 0.22 },
+  },
+  {
+    progress: 0.06,
+    frame: 35, // Head lifts smoothly, opening eyes
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 0,  y: 0, scale: 0.86, opacity: 0.22 },
+  },
+  {
+    progress: 0.11,
+    frame: 68, // Warm charismatic greeting smile centered at Hero tagline
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 0,  y: 0, scale: 0.86, opacity: 0.20 },
+  },
+  {
+    progress: 0.16,
+    frame: 88, // Enters horizontal rail, head turns left to meet the project stage
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 1,  y: 0, scale: 0.85, opacity: 0.14 },
+  },
+  {
+    progress: 0.22,
+    frame: 96, // Tracking initial projects in horizontal flow
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.10 },
+  },
+  {
+    progress: 0.29,
+    frame: 120, // Mid-rail scan across horizontal cards
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.10 },
+  },
+  {
+    progress: 0.35,
+    frame: 144, // Reaching end of rail / "Continue to profile" card
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.10 },
+  },
+  {
+    progress: 0.37,
+    frame: 168, // Enters About section: smoothly swivels to direct left orientation
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.12 },
+  },
+  {
+    progress: 0.47,
+    frame: 195, // PEAK DIRECT EYE CONTACT TO LEFT at About bio & principles cards!
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.12 },
+  },
+  {
+    progress: 0.56,
+    frame: 212, // Grounded focus finishing About principles
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.12 },
+  },
+  {
+    progress: 0.60,
+    frame: 224, // Enters Skills: sharp technical focus looking across technical strengths
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.10 },
+  },
+  {
+    progress: 0.74,
+    frame: 236, // Analytical focus across all skill pillars
+    desktop: { x: 26, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 18, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.84, opacity: 0.10 },
+  },
+  {
+    progress: 0.87,
+    frame: 254, // Smoothly easing out of analytical focus, turning back towards center
+    desktop: { x: 25, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 17, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.85, opacity: 0.10 },
+  },
+  {
+    progress: 0.91,
+    frame: 268, // Enters Contact: head returns toward center, warm welcoming posture
+    desktop: { x: 25, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 17, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.85, opacity: 0.12 },
+  },
+  {
+    progress: 0.96,
+    frame: 284, // THE SIGNATURE CHARMING WINK & GRIN beside Contact card & Send button!
+    desktop: { x: 25, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 17, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.86, opacity: 0.14 },
+  },
+  {
+    progress: 1.00,
+    frame: 299, // Confident finale smile beside socials & footer
+    desktop: { x: 25, y: 0, scale: 0.90, opacity: 1 },
+    tablet:  { x: 17, y: 0, scale: 0.82, opacity: 1 },
+    mobile:  { x: 2,  y: 0, scale: 0.86, opacity: 0.14 },
   },
 ];
 
 const getAvatarPose = ({
   horizontalProgress,
+  projectViewMode,
   scrollMode,
   scrollProgress,
   viewportWidth,
 }: {
   horizontalProgress: number;
+  projectViewMode: 'bento' | 'cinematic';
   scrollMode: 'vertical' | 'horizontal';
   scrollProgress: number;
   viewportWidth: number;
@@ -161,41 +310,45 @@ const getAvatarPose = ({
   if (scrollMode === 'horizontal') {
     // In horizontal cinematic project flow, avatar smoothly tracks across cards
     const hp = clamp(horizontalProgress);
-    const hFrame = lerp(85, 138, hp) / (FRAME_COUNT - 1);
+    const hFrame = lerp(92, 148, hp) / (FRAME_COUNT - 1);
     if (tier === 'mobile') {
       return {
         frameProgress: hFrame,
         x: 0,
-        y: lerp(8, 12, hp),
-        scale: lerp(0.80, 0.88, hp) * mobileScale,
-        opacity: 0.42,
+        y: 0,
+        scale: 0.86 * mobileScale,
+        opacity: 0.30,
       };
     }
     if (tier === 'tablet') {
       return {
         frameProgress: hFrame,
-        x: lerp(22, 14, hp),
-        y: lerp(2, 6, hp),
-        scale: lerp(0.66, 0.72, hp),
-        opacity: 0.82,
+        x: 18,
+        y: 0,
+        scale: 0.82,
+        opacity: 1.0,
       };
     }
     return {
       frameProgress: hFrame,
-      x: lerp(28, 18, hp),
-      y: lerp(0, 4, hp),
-      scale: lerp(0.64, 0.70, hp),
-      opacity: 0.80,
+      x: lerp(27, 24, hp),
+      y: 0,
+      scale: 0.90,
+      opacity: 1.0,
     };
   }
 
-  // Find surrounding milestones
+  // Choose the dedicated milestone set based on current projectViewMode
+  const milestones = projectViewMode === 'cinematic'
+    ? CINEMATIC_SCROLL_MILESTONES
+    : BENTO_SCROLL_MILESTONES;
+
   let i = 0;
-  while (i < SCROLL_MILESTONES.length - 1 && p > SCROLL_MILESTONES[i + 1].progress) {
+  while (i < milestones.length - 1 && p > milestones[i + 1].progress) {
     i++;
   }
-  const m1 = SCROLL_MILESTONES[i];
-  const m2 = SCROLL_MILESTONES[Math.min(i + 1, SCROLL_MILESTONES.length - 1)];
+  const m1 = milestones[i];
+  const m2 = milestones[Math.min(i + 1, milestones.length - 1)];
 
   const span = m2.progress - m1.progress;
   const rawT = span > 0 ? clamp((p - m1.progress) / span) : 0;
@@ -236,6 +389,7 @@ const getAvatarPose = ({
 
 /**
  * Pure rendering function: draws image on canvas without querying DOM dimensions.
+ * Bottom-anchors the bust on desktop & tablet displays to eliminate awkward mid-screen floating.
  */
 function renderImageToCanvas(
   img: HTMLImageElement,
@@ -250,13 +404,14 @@ function renderImageToCanvas(
   const containRatio = Math.min(horizontalRatio, verticalRatio);
   const coverRatio = Math.max(horizontalRatio, verticalRatio);
   const scaleRatio = isLargeScreen
-    ? Math.min(coverRatio, containRatio * 1.18)
-    : containRatio * 0.96;
+    ? Math.min(coverRatio, containRatio * 1.20)
+    : containRatio * 0.98;
 
   const drawWidth = img.width * scaleRatio;
   const drawHeight = img.height * scaleRatio;
   const centerShiftX = (width - drawWidth) / 2;
-  const centerShiftY = (height - drawHeight) / 2;
+  // Bottom-anchored on desktop/tablet so the bust rests grounded on the viewport bottom
+  const centerShiftY = isLargeScreen ? height - drawHeight : (height - drawHeight) / 2;
 
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = highQuality ? 'high' : 'medium';
@@ -283,7 +438,7 @@ export const Scene: React.FC = () => {
   const lowResCache = useRef(new Map<number, HTMLImageElement>());
   const lowResLoadingSet = useRef(new Set<number>());
 
-  // High-res PNG frames are only fetched for desktop resting views and kept to five.
+  // High-res WebP frames are only fetched for desktop resting views and kept in a bounded cache.
   const highResCache = useRef(new Map<number, HTMLImageElement>());
   const highResLoadingSet = useRef(new Set<number>());
 
@@ -295,7 +450,6 @@ export const Scene: React.FC = () => {
   const currentRequestedIndexRef = useRef(0);
 
   const theme = useStore((s) => s.theme);
-  const themeRef = useRef(theme);
 
   const setAvatarReady = useStore((s) => s.setAvatarReady);
 
@@ -309,7 +463,7 @@ export const Scene: React.FC = () => {
   const getHighResUrl = useCallback((index: number) => {
     const baseUrl = import.meta.env.BASE_URL || '/';
     const frameNumber = String(index + 1).padStart(4, '0');
-    return `${baseUrl}frames/male${frameNumber}.png`;
+    return `${baseUrl}frames/male${frameNumber}.webp`;
   }, []);
 
   const lowResCallbacks = useRef(new Map<number, Array<(img: HTMLImageElement) => void>>());
@@ -380,7 +534,7 @@ export const Scene: React.FC = () => {
   }, [getLowResUrl, setAvatarReady]);
 
   /**
-   * Loads a high-res 1080p PNG frame with LRU cache eviction to guarantee bounded memory.
+   * Loads a high-quality WebP frame with LRU cache eviction to guarantee bounded memory.
    */
   const requestHighResFrame = useCallback((index: number, onLoaded?: (img: HTMLImageElement) => void) => {
     const safeIndex = Math.min(FRAME_COUNT - 1, Math.max(0, index));
@@ -617,8 +771,7 @@ export const Scene: React.FC = () => {
       drawFrame(frameIndex);
     }
 
-    const visibleOpacity = themeRef.current === 'light' ? Math.min(0.64, pose.opacity * 0.78) : pose.opacity;
-    const nextOpacity = visibleOpacity.toFixed(3);
+    const nextOpacity = pose.opacity.toFixed(3);
     if (nextOpacity !== lastOpacityRef.current) {
       lastOpacityRef.current = nextOpacity;
       canvas.style.opacity = nextOpacity;
@@ -634,7 +787,6 @@ export const Scene: React.FC = () => {
   // canvas on its last low-resolution fallback. Repaint the existing pose and
   // request its sharp source immediately when the theme changes.
   useEffect(() => {
-    themeRef.current = theme;
     const pose = poseRef.current;
     if (!pose) return;
 
@@ -688,6 +840,7 @@ export const Scene: React.FC = () => {
       const state = useStore.getState();
       const nextPose = getAvatarPose({
         horizontalProgress: state.horizontalProgress,
+        projectViewMode: state.projectViewMode,
         scrollMode: state.scrollMode,
         scrollProgress: state.scrollProgress,
         viewportWidth: width,
@@ -806,6 +959,7 @@ export const Scene: React.FC = () => {
     const unsubscribe = useStore.subscribe((state) => {
       const nextTarget = getAvatarPose({
         horizontalProgress: state.horizontalProgress,
+        projectViewMode: state.projectViewMode,
         scrollMode: state.scrollMode,
         scrollProgress: state.scrollProgress,
         viewportWidth: window.innerWidth,
@@ -842,7 +996,7 @@ export const Scene: React.FC = () => {
           height: '100%',
           display: 'block',
           transform: 'translate3d(0, 0, 0) scale(1)',
-          transformOrigin: 'center center',
+          transformOrigin: 'center bottom',
           willChange: 'transform, opacity',
           opacity: 0,
           filter: 'none',

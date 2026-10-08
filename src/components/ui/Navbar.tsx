@@ -5,8 +5,9 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-import { Download, Menu, Moon, Sun, X } from 'lucide-react';
+import { Download, Menu, X } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -41,10 +42,8 @@ export const Navbar: React.FC = () => {
   const [edgeReveal, setEdgeReveal] = useState(false);
   const [navHovered, setNavHovered] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  // Use useShallow to batch these into a single subscription so toggling theme or
-  // changing activeSection doesn't cause an extra re-render when scrollProgress ticks.
-  const { activeSection, theme, toggleTheme } = useStore(
-    useShallow((s) => ({ activeSection: s.activeSection, theme: s.theme, toggleTheme: s.toggleTheme }))
+  const { activeSection } = useStore(
+    useShallow((s) => ({ activeSection: s.activeSection }))
   );
   // Progress bar is updated directly on the DOM element to avoid re-renders on every scroll tick.
   const progressBarRef = useRef<HTMLDivElement>(null);
@@ -209,30 +208,11 @@ export const Navbar: React.FC = () => {
               </div>
             </LayoutGroup>
 
-            {/* Theme toggle */}
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="relative flex h-8 w-14 items-center rounded-full border border-outline-variant bg-surface-container-high p-1 transition-all duration-300 hover:border-primary/40"
-              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-              aria-pressed={theme === 'light'}
-            >
-              <div
-                className={`flex h-6 w-6 items-center justify-center rounded-full shadow-md transition-all duration-300 ${
-                  theme === 'light'
-                    ? 'translate-x-6 bg-primary text-on-primary'
-                    : 'translate-x-0 bg-surface-container-highest text-primary-dim'
-                }`}
-              >
-                {theme === 'light' ? <Moon size={13} /> : <Sun size={13} />}
-              </div>
-            </button>
-
             {/* Resume link */}
             <a
               href={`${import.meta.env.BASE_URL}resume.pdf`}
               download
-              className="hidden xl:flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/8 border border-primary/18 text-primary-dim text-xs font-bold tracking-wider uppercase hover:bg-primary hover:text-on-primary transition-all duration-300"
+              className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/8 border border-primary/18 text-primary-dim text-xs font-bold tracking-wider uppercase hover:bg-primary hover:text-on-primary transition-all duration-300"
             >
               <Download size={15} />
               Resume
@@ -241,15 +221,6 @@ export const Navbar: React.FC = () => {
 
           {/* Mobile controls */}
           <div className="lg:hidden flex items-center gap-2">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-high/80 text-on-surface"
-              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-              aria-pressed={theme === 'light'}
-            >
-              {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
-            </button>
             <button
               type="button"
               className="flex h-9 w-9 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-high/80 text-on-surface"
@@ -271,52 +242,56 @@ export const Navbar: React.FC = () => {
         />
       </div>
 
-      {/* Mobile menu */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            id="mobile-navigation"
-            className="absolute top-[63px] left-0 w-full flex flex-col bg-surface/98 backdrop-blur-md border-b border-outline-variant/30 lg:hidden shadow-xl"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-            style={{ overflow: 'hidden', zIndex: 64 }}
-          >
-            <div className="flex flex-col items-start px-6 py-5 gap-1 w-full">
-              {links.map((link, i) => (
-                <motion.button
-                  key={link.id}
-                  onClick={() => scrollTo(link.id)}
-                  className={`w-full text-left rounded-xl px-4 py-3 text-xl font-display font-semibold transition-colors duration-200 ${
-                    activeSection === link.id
-                      ? 'text-primary bg-primary/8'
-                      : 'text-on-surface hover:text-primary-dim hover:bg-surface-container-high/60'
-                  }`}
-                  initial={{ x: -16, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ duration: 0.24, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  {link.label}
-                </motion.button>
-              ))}
-
-              <div className="w-full h-px bg-outline-variant/30 my-3" />
-
-              <a
-                href={`${import.meta.env.BASE_URL}resume.pdf`}
-                download
-                className="flex items-center gap-2 h-12 px-4 rounded-xl bg-primary border border-primary/20 font-extrabold text-sm w-full justify-center hover:bg-primary-dim transition-all duration-300 mb-2"
-                style={{ color: 'var(--on-primary)' }}
-                aria-label="Download resume"
+      {/* Mobile menu portal */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {mobileOpen && (
+              <motion.div
+                id="mobile-navigation"
+                className="fixed inset-x-0 top-16 bottom-0 flex flex-col bg-background/95 backdrop-blur-xl border-t border-outline-variant/30 lg:hidden shadow-2xl overflow-y-auto"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                style={{ zIndex: 55 }}
               >
-                <Download size={16} />
-                Download Resume
-              </a>
-            </div>
-          </motion.div>
+                <div className="flex flex-col items-start px-6 py-6 gap-2 w-full max-w-lg mx-auto">
+                  {links.map((link, i) => (
+                    <motion.button
+                      key={link.id}
+                      onClick={() => scrollTo(link.id)}
+                      className={`w-full text-left rounded-xl px-4 py-3 text-xl font-display font-semibold transition-colors duration-200 ${
+                        activeSection === link.id
+                          ? 'text-primary bg-primary/8'
+                          : 'text-on-surface hover:text-primary-dim hover:bg-surface-container-high/60'
+                      }`}
+                      initial={{ x: -16, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ duration: 0.24, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      {link.label}
+                    </motion.button>
+                  ))}
+
+                  <div className="w-full h-px bg-outline-variant/30 my-3" />
+
+                  <a
+                    href={`${import.meta.env.BASE_URL}resume.pdf`}
+                    download
+                    className="flex items-center gap-2 h-12 px-4 rounded-xl bg-primary border border-primary/20 font-extrabold text-sm w-full justify-center hover:bg-primary-dim transition-all duration-300 mb-2"
+                    style={{ color: 'var(--on-primary)' }}
+                    aria-label="Download resume"
+                  >
+                    <Download size={16} />
+                    Download Resume
+                  </a>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </nav>
   );
 };

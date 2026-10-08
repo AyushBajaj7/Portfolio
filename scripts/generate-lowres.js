@@ -18,23 +18,23 @@ async function processFrames() {
 
     // Read all files from input directory
     const files = await fs.readdir(INPUT_DIR);
-    const pngFiles = files.filter(file => file.endsWith('.png'));
+    const sourceFiles = files.filter(file => /\.(png|webp)$/i.test(file));
 
-    console.log(`Found ${pngFiles.length} PNG frames. Generating low-res WebPs with transparency...`);
+    console.log(`Found ${sourceFiles.length} source frames. Generating low-res WebPs with transparency...`);
 
     let processed = 0;
-    const total = pngFiles.length;
+    const total = sourceFiles.length;
 
     // Process in batches to avoid memory issues and too many open files
     const BATCH_SIZE = 20;
     
     for (let i = 0; i < total; i += BATCH_SIZE) {
-      const batch = pngFiles.slice(i, i + BATCH_SIZE);
+      const batch = sourceFiles.slice(i, i + BATCH_SIZE);
       
       await Promise.all(batch.map(async (file) => {
         const inputPath = path.join(INPUT_DIR, file);
         // Use .webp extension - supports transparency unlike JPEG
-        const outputFilename = file.replace('.png', '.webp');
+        const outputFilename = file.replace(/\.(png|webp)$/i, '.webp');
         const outputPath = path.join(OUTPUT_DIR, outputFilename);
 
         // Resize to 50% and convert to WebP (supports alpha channel = no black background)
@@ -43,7 +43,7 @@ async function processFrames() {
 
         await sharp(inputPath)
           .resize({ width })
-          .webp({ quality: 50, effort: 4, alphaQuality: 80 })
+          .webp({ quality: 78, effort: 4, alphaQuality: 95 })
           .toFile(outputPath);
 
         processed++;
