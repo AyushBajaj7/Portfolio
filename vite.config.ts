@@ -18,8 +18,10 @@ export default defineConfig(({ command }) => ({
   /** Copy public assets in the post-build script; Vite's build copier hangs on the large frame set on Windows. */
   publicDir: command === 'build' ? false : 'public',
   server: {
+    host: true,
+    port: 5173,
     watch: {
-      ignored: ['**/public/frames/**', '**/public/frames-lowres/**', '**/.git/**', '**/dist/**'],
+      ignored: ['**/public/frames/**', '**/public/frames-lowres/**', '**/public/frames-anchors/**', '**/.git/**', '**/dist/**', '**/artifacts/**'],
     },
   },
   plugins: [

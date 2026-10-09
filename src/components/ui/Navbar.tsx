@@ -1,297 +1,234 @@
-/**
- * @fileoverview Navbar component - Fixed navigation with scroll detection and section highlighting.
- * Provides smooth scroll navigation, mobile menu, and active section indication.
- * @author Ayush Bajaj
- */
-
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { Download, Menu, X } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import { useShallow } from 'zustand/react/shallow';
+import { subscribeScrollTimeline } from '../../lib/scrollTimeline';
 
-/**
- * MagneticButton component - Adds magnetic hover effect to buttons.
- * Button subtly attracts to cursor position on hover for interactive feel.
- */
-const NavButton: React.FC<{ children: React.ReactNode; className?: string; onClick?: () => void }> = ({
-  children,
-  className = '',
-  onClick,
-}) => {
-  return (
-    <button
-      type="button"
-      className={`magnetic-button ${className}`}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-};
+const links = [
+  { id: 'hero', label: 'Home' },
+  { id: 'projects', label: 'Projects' },
+  { id: 'about', label: 'About' },
+  { id: 'skills', label: 'Skills' },
+  { id: 'contact', label: 'Contact' },
+];
 
-/**
- * Navigation bar component with top-edge reveal on desktop and stable mobile/tablet behavior.
- */
+/** A stable navigation landmark. The shared scroll timeline owns section selection. */
 export const Navbar: React.FC = () => {
-  const [scrolled, setScrolled] = useState(false);
-  const [scrollTop, setScrollTop] = useState(0);
-  const [scrollDirection, setScrollDirection] = useState<'up' | 'down'>('up');
-  const lastScrollY = useRef(0);
-  const [edgeReveal, setEdgeReveal] = useState(false);
-  const [navHovered, setNavHovered] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { activeSection } = useStore(
-    useShallow((s) => ({ activeSection: s.activeSection }))
-  );
-  // Progress bar is updated directly on the DOM element to avoid re-renders on every scroll tick.
+  const activeSection = useStore((state) => state.activeSection);
+  const navRef = useRef<HTMLElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => subscribeScrollTimeline(({ scrollY, progress }) => {
+    if (navRef.current) navRef.current.dataset.scrolled = String(scrollY > 24);
+    if (progressBarRef.current) {
+      progressBarRef.current.style.transform = `scaleX(${Math.max(0, Math.min(1, progress))})`;
+    }
+  }), []);
 
   useEffect(() => {
-    const scrollContainer = document.getElementById('scroll-container');
-    if (!scrollContainer) return;
-
-    let scrollTicking = false;
-    const onScroll = () => {
-      if (scrollTicking) return;
-      scrollTicking = true;
-      requestAnimationFrame(() => {
-        scrollTicking = false;
-        const currentScrollY = window.scrollY || (scrollContainer ? scrollContainer.scrollTop : 0);
-        
-        if (currentScrollY > 24) {
-          const newDir = currentScrollY > lastScrollY.current ? 'down' : 'up';
-          setScrollDirection(prev => prev !== newDir ? newDir : prev);
-        }
-        lastScrollY.current = currentScrollY;
-        
-        setScrollTop(prev => {
-          if ((prev > 96 && currentScrollY <= 96) || (prev <= 96 && currentScrollY > 96)) return currentScrollY;
-          if (Math.abs(prev - currentScrollY) > 50) return currentScrollY;
-          return prev;
-        });
-        setScrolled(prev => (currentScrollY > 24) !== prev ? (currentScrollY > 24) : prev);
-      });
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const closeOnDesktop = (event: MediaQueryListEvent) => {
+      if (event.matches) setMobileOpen(false);
     };
-
-    const onResize = () => {
-      if (window.innerWidth < 1024) {
-        setEdgeReveal(false);
-        setNavHovered(false);
-      }
-    };
-
-    const onMouseMove = (event: MouseEvent) => {
-      if (window.innerWidth < 1024) return;
-      const isNearEdge = event.clientY <= 72;
-      // Only call setState when the value actually changes
-      setEdgeReveal(prev => prev !== isNearEdge ? isNearEdge : prev);
-    };
-
-    const onWindowLeave = () => {
-      setEdgeReveal(false);
-    };
-
-    let attached = false;
-    let pollTimer: number;
-
-    const attachScroll = () => {
-      const sc = document.getElementById('scroll-container');
-      if (sc && !attached) {
-        sc.addEventListener('scroll', onScroll, { passive: true });
-        window.addEventListener('scroll', onScroll, { passive: true });
-        attached = true;
-        onScroll();
-        return true;
-      }
-      return false;
-    };
-
-    if (!attachScroll()) {
-      pollTimer = window.setInterval(() => {
-        if (attachScroll()) clearInterval(pollTimer);
-      }, 100);
-    }
-
-    window.addEventListener('resize', onResize);
-    window.addEventListener('mousemove', onMouseMove, { passive: true });
-    window.addEventListener('mouseleave', onWindowLeave);
-    onResize();
-
-    return () => {
-      clearInterval(pollTimer);
-      const sc = document.getElementById('scroll-container');
-      if (sc) sc.removeEventListener('scroll', onScroll);
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onResize);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseleave', onWindowLeave);
-    };
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => desktop.removeEventListener('change', closeOnDesktop);
   }, []);
 
-  // Subscribe to scrollProgress imperatively so the progress bar updates without
-  // triggering a React re-render on every scroll tick (runs at 60fps).
   useEffect(() => {
-    const unsubscribe = useStore.subscribe((state) => {
-      if (progressBarRef.current) {
-        progressBarRef.current.style.width = `${Math.round(state.scrollProgress * 100)}%`;
-      }
+    if (!mobileOpen) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    const appRoot = document.getElementById('root');
+    const previousInert = appRoot?.inert ?? false;
+    if (appRoot) appRoot.inert = true;
+    document.body.style.overflow = 'hidden';
+    const focusFrame = requestAnimationFrame(() => {
+      dialogRef.current?.querySelector<HTMLElement>('[aria-current="location"], a, button')?.focus();
     });
-    return unsubscribe;
-  }, []);
 
-  const scrollTo = (id: string) => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setMobileOpen(false);
+        return;
+      }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const controls = Array.from(dialogRef.current.querySelectorAll<HTMLElement>('a[href], button, [tabindex="0"]'));
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && (document.activeElement === first || !dialogRef.current.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialogRef.current.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousOverflow;
+      if (appRoot) appRoot.inert = previousInert;
+      document.removeEventListener('keydown', onKeyDown);
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
+  }, [mobileOpen]);
+
+  const navigate = useCallback((event: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const element = document.getElementById(id);
-    if (element) {
-      const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
-      element.scrollIntoView({ behavior, block: 'start' });
-    }
+    if (!element) return;
+    event.preventDefault();
     setMobileOpen(false);
-  };
-
-  const links = [
-    { id: 'hero', label: 'Home' },
-    { id: 'projects', label: 'Projects' },
-    { id: 'about', label: 'About' },
-    { id: 'skills', label: 'Skills' },
-    { id: 'contact', label: 'Contact' },
-  ];
-
-  const shouldHide = scrollTop > 96 && scrollDirection === 'down' && !edgeReveal && (!navHovered || window.innerWidth < 1024) && !mobileOpen;
+    requestAnimationFrame(() => {
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      element.scrollIntoView({ behavior: reducedMotion ? 'instant' : 'smooth', block: 'start' });
+      element.setAttribute('tabindex', '-1');
+      element.focus({ preventScroll: true });
+      window.history.replaceState(null, '', `#${id}`);
+    });
+  }, []);
 
   return (
-    <nav
-      aria-label="Primary navigation"
-      onMouseEnter={() => setNavHovered(true)}
-      onMouseLeave={() => setNavHovered(false)}
-      className={`fixed top-0 w-full transition-all duration-500 ${
-        scrolled || mobileOpen ? 'glass-panel shadow-lg border-x-0 border-t-0 rounded-none' : 'bg-transparent'
-      } ${shouldHide ? '-translate-y-[120%]' : 'translate-y-0'}`}
-      style={{ zIndex: 60 }}
-    >
-      <div className="relative z-[65] max-w-screen-2xl mx-auto px-6 lg:px-12 bg-surface/98 backdrop-blur-md lg:bg-transparent lg:backdrop-blur-none">
-        <div className="flex justify-between items-center h-16">
-
-          {/* Logo */}
-          <button
-            className="text-lg font-display font-bold tracking-tight text-on-surface hover:text-primary-dim transition-colors duration-300"
-            onClick={() => scrollTo('hero')}
-          >
-            Ayush Bajaj<span className="text-primary-dim">.</span>
-          </button>
-
-          {/* Desktop nav */}
-          <div className="hidden lg:flex items-center gap-5">
-            <LayoutGroup id="navbar-pill">
-              <div className="flex items-center gap-0.5 rounded-xl border border-outline-variant bg-surface-container-high/40 p-1">
-                {links.map((link) => (
-                  <NavButton
-                    key={link.id}
-                    onClick={() => scrollTo(link.id)}
-                    className={`relative px-3.5 py-1.5 rounded-lg text-sm font-body font-medium transition-colors duration-200 ${
-                      activeSection === link.id
-                        ? 'text-on-surface'
-                        : 'text-on-surface-variant hover:text-on-surface'
-                    }`}
-                  >
-                    {activeSection === link.id && (
-                      <motion.span
-                        layoutId="navbar-active-pill"
-                        className="absolute inset-0 rounded-lg bg-primary/12 border border-primary/20"
-                        transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                      />
-                    )}
-                    <span className="relative z-10">{link.label}</span>
-                  </NavButton>
-                ))}
-              </div>
-            </LayoutGroup>
-
-            {/* Resume link */}
+    <>
+      <nav
+        ref={navRef}
+        aria-label="Primary navigation"
+        className="fixed inset-x-0 top-0 z-[60] border-b border-transparent bg-surface/90 backdrop-blur-md transition-[background-color,border-color,box-shadow] duration-200 data-[scrolled=true]:border-outline-variant data-[scrolled=true]:bg-surface/95 data-[scrolled=true]:shadow-lg"
+      >
+        <div className="relative max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-12">
+          <div className="flex justify-between items-center h-16 gap-4">
             <a
-              href={`${import.meta.env.BASE_URL}resume.pdf`}
-              download
-              className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/8 border border-primary/18 text-primary-dim text-xs font-bold tracking-wider uppercase hover:bg-primary hover:text-on-primary transition-all duration-300"
+              href="#hero"
+              onClick={(event) => navigate(event, 'hero')}
+              className="shrink-0 text-lg font-display font-bold tracking-tight text-on-surface hover:text-primary-dim transition-colors"
+              aria-label="Ayush Bajaj, home"
             >
-              <Download size={15} />
-              Resume
+              Ayush Bajaj<span className="text-primary-dim">.</span>
             </a>
-          </div>
 
-          {/* Mobile controls */}
-          <div className="lg:hidden flex items-center gap-2">
+            <div className="hidden lg:flex items-center gap-5">
+              <LayoutGroup id="navbar-pill">
+                <div className="flex items-center gap-0.5 rounded-xl border border-outline-variant bg-surface-container-high/40 p-1">
+                  {links.map((link) => (
+                    <a
+                      key={link.id}
+                      href={`#${link.id}`}
+                      onClick={(event) => navigate(event, link.id)}
+                      aria-current={activeSection === link.id ? 'location' : undefined}
+                      className={`relative px-3.5 py-2 rounded-lg text-sm font-body font-medium transition-colors ${
+                        activeSection === link.id ? 'text-on-surface' : 'text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      {activeSection === link.id && (
+                        <motion.span
+                          layoutId="navbar-active-pill"
+                          className="absolute inset-0 rounded-lg bg-primary/12 border border-primary/20"
+                          transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                        />
+                      )}
+                      <span className="relative z-10">{link.label}</span>
+                    </a>
+                  ))}
+                </div>
+              </LayoutGroup>
+              <a
+                href={`${import.meta.env.BASE_URL}resume.pdf`}
+                download
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary/8 border border-primary/18 text-primary-dim text-xs font-bold tracking-wider uppercase hover:bg-primary hover:text-on-primary transition-colors"
+              >
+                <Download size={15} aria-hidden="true" />
+                Resume
+              </a>
+            </div>
+
             <button
               type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-high/80 text-on-surface"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+              className="lg:hidden flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-high/80 text-on-surface"
+              onClick={() => setMobileOpen((open) => !open)}
+              aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
               aria-expanded={mobileOpen}
               aria-controls="mobile-navigation"
+              aria-haspopup="dialog"
             >
-              {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+              {mobileOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
             </button>
           </div>
+          <div
+            ref={progressBarRef}
+            aria-hidden="true"
+            className="absolute bottom-0 left-0 h-[2px] w-full origin-left bg-gradient-to-r from-primary to-tertiary"
+            style={{ transform: 'scaleX(0)' }}
+          />
         </div>
+      </nav>
 
-        {/* Scroll progress bar */}
-        <div
-          ref={progressBarRef}
-          className="absolute bottom-0 left-0 h-[1.5px] bg-gradient-to-r from-primary via-tertiary to-primary-dim"
-          style={{ width: '0%' }}
-        />
-      </div>
-
-      {/* Mobile menu portal */}
-      {typeof document !== 'undefined' &&
-        createPortal(
-          <AnimatePresence>
-            {mobileOpen && (
-              <motion.div
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              className="fixed inset-0 z-[70] overflow-y-auto overscroll-contain bg-background/80 px-4 py-5 backdrop-blur-sm lg:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.16 }}
+              onClick={(event) => {
+                if (event.target === event.currentTarget) setMobileOpen(false);
+              }}
+            >
+              <div
+                ref={dialogRef}
                 id="mobile-navigation"
-                className="fixed inset-x-0 top-16 bottom-0 flex flex-col bg-background/95 backdrop-blur-xl border-t border-outline-variant/30 lg:hidden shadow-2xl overflow-y-auto"
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-                style={{ zIndex: 55 }}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="mobile-navigation-title"
+                className="mx-auto w-full max-w-md rounded-2xl border border-outline-variant bg-surface-container p-4 shadow-2xl"
               >
-                <div className="flex flex-col items-start px-6 py-6 gap-2 w-full max-w-lg mx-auto">
-                  {links.map((link, i) => (
-                    <motion.button
+                <div className="flex items-center justify-between gap-4 px-2 pb-4">
+                  <p id="mobile-navigation-title" className="font-display font-semibold text-on-surface">Explore the portfolio</p>
+                  <button
+                    type="button"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-outline-variant text-on-surface hover:bg-surface-container-high"
+                    aria-label="Close navigation menu"
+                  >
+                    <X size={20} aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {links.map((link) => (
+                    <a
                       key={link.id}
-                      onClick={() => scrollTo(link.id)}
-                      className={`w-full text-left rounded-xl px-4 py-3 text-xl font-display font-semibold transition-colors duration-200 ${
-                        activeSection === link.id
-                          ? 'text-primary bg-primary/8'
-                          : 'text-on-surface hover:text-primary-dim hover:bg-surface-container-high/60'
+                      href={`#${link.id}`}
+                      onClick={(event) => navigate(event, link.id)}
+                      aria-current={activeSection === link.id ? 'location' : undefined}
+                      className={`rounded-xl px-4 py-3.5 text-lg font-display font-semibold transition-colors ${
+                        activeSection === link.id ? 'text-primary bg-primary/8' : 'text-on-surface hover:text-primary-dim hover:bg-surface-container-high/60'
                       }`}
-                      initial={{ x: -16, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      transition={{ duration: 0.24, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
                     >
                       {link.label}
-                    </motion.button>
+                    </a>
                   ))}
-
-                  <div className="w-full h-px bg-outline-variant/30 my-3" />
-
-                  <a
-                    href={`${import.meta.env.BASE_URL}resume.pdf`}
-                    download
-                    className="flex items-center gap-2 h-12 px-4 rounded-xl bg-primary border border-primary/20 font-extrabold text-sm w-full justify-center hover:bg-primary-dim transition-all duration-300 mb-2"
-                    style={{ color: 'var(--on-primary)' }}
-                    aria-label="Download resume"
-                  >
-                    <Download size={16} />
-                    Download Resume
-                  </a>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>,
-          document.body
-        )}
-    </nav>
+                <a
+                  href={`${import.meta.env.BASE_URL}resume.pdf`}
+                  download
+                  className="mt-5 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-on-primary hover:bg-primary-dim transition-colors"
+                >
+                  <Download size={16} aria-hidden="true" />
+                  Download Resume
+                </a>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
+    </>
   );
 };

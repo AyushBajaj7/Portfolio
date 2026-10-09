@@ -1,200 +1,120 @@
-/**
- * @fileoverview Magnetic Cursor component - Boy-Coy style with multiple states.
- * Magnetic effect that snaps to elements with liquid distortion states.
- * 
- * Performance: Uses refs + direct DOM manipulation for position updates
- * instead of React state. Only state changes (hover/view/text) trigger re-renders.
- * This keeps cursor movement at 60fps without any React overhead.
- * 
- * @author Ayush Bajaj
- */
-
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { motion, useMotionValue, useSpring } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, useMotionValue } from 'framer-motion';
 import { useStore } from '../../store/useStore';
 
-type CursorState = 'default' | 'hover' | 'view' | 'drag' | 'text';
+type CursorState = 'default' | 'hover' | 'view' | 'text';
+const cursorMedia = '(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)';
 
+/** Pointer feedback is event-driven, with no idle animation or shared cursor state. */
 export const Cursor: React.FC = () => {
+  const [enabled, setEnabled] = useState(() => typeof window !== 'undefined' && window.matchMedia(cursorMedia).matches);
   const [cursorState, setCursorState] = useState<CursorState>('default');
-  const [cursorText, setCursorText] = useState('');
-  const hasMouseRef = useRef(false);
-  const isScrollingRef = useRef(false);
-  const scrollTimeoutRef = useRef<number>(0);
+  const currentStateRef = useRef<CursorState>('default');
+  const cursorRef = useRef<HTMLDivElement>(null);
   const theme = useStore((state) => state.theme);
-
   const cursorX = useMotionValue(-100);
   const cursorY = useMotionValue(-100);
-  
-  const springConfig = { damping: 25, stiffness: 400 };
-  const cursorXSpring = useSpring(cursorX, springConfig);
-  const cursorYSpring = useSpring(cursorY, springConfig);
 
-  // Ref-based visibility — no re-renders for show/hide during movement
-  const dotRef = useRef<HTMLDivElement>(null);
-  const labelRef = useRef<HTMLDivElement>(null);
-
-  const setVisible = useCallback((visible: boolean) => {
-    if (dotRef.current) dotRef.current.style.opacity = visible ? '1' : '0';
-    if (labelRef.current) labelRef.current.style.opacity = visible ? '1' : '0';
+  useEffect(() => {
+    const media = window.matchMedia(cursorMedia);
+    const onChange = (event: MediaQueryListEvent) => setEnabled(event.matches);
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
   }, []);
 
   useEffect(() => {
-    // Touch device bail-out
-    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) return;
+    if (!enabled) return;
+    let frame: number | null = null;
+    let visible = false;
+    let pointer = { x: -100, y: -100, target: null as EventTarget | null };
 
-    const handleScrollStart = () => {
-      isScrollingRef.current = true;
-      setVisible(false);
-      clearTimeout(scrollTimeoutRef.current);
-      scrollTimeoutRef.current = window.setTimeout(() => {
-        isScrollingRef.current = false;
-        if (hasMouseRef.current) setVisible(true);
-      }, 150);
+    const hide = () => {
+      visible = false;
+      if (cursorRef.current) cursorRef.current.style.opacity = '0';
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = null;
     };
 
-    const updateMousePosition = (e: MouseEvent) => {
-      if (isScrollingRef.current) return;
-      
-      // Direct motion value set — zero React re-renders, zero Zustand dispatches
-      cursorX.set(e.clientX);
-      cursorY.set(e.clientY);
-      
-      if (!hasMouseRef.current) {
-        hasMouseRef.current = true;
-        setVisible(true);
+    const update = () => {
+      frame = null;
+      if (!visible) {
+        // Never animate across the page from a stale position after a scroll or tab change.
+        visible = true;
+        if (cursorRef.current) cursorRef.current.style.opacity = '1';
+      }
+
+      const target = pointer.target instanceof Element ? pointer.target : null;
+      const isText = Boolean(target?.closest('input, textarea, [contenteditable="true"]'));
+      const action = target?.closest('a, button, [role="button"]');
+      const isLink = Boolean(action && !action.matches('[data-cursor="view"]'));
+      const isView = !isLink && !isText && !target?.closest('[data-no-view-cursor]') && Boolean(target?.closest('[data-cursor="view"]'));
+      const nextState: CursorState = isText ? 'text' : isLink ? 'hover' : isView ? 'view' : 'default';
+      if (currentStateRef.current !== nextState) {
+        currentStateRef.current = nextState;
+        setCursorState(nextState);
       }
     };
 
-    const handleMouseOver = (e: MouseEvent) => {
-      if (isScrollingRef.current) return;
-      
-      const target = e.target as HTMLElement;
-      const isDemoNoView = target.closest('[data-no-view-cursor]');
-      const isLink = target.tagName === 'A' || target.tagName === 'BUTTON' || Boolean(target.closest('a')) || Boolean(target.closest('button'));
-      const isText = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-      const isProjectCard = !isDemoNoView && !isLink && !isText && Boolean(target.closest('[data-cursor="view"]'));
-      
-      const nextState: CursorState = isText ? 'text' : isLink ? 'hover' : isProjectCard ? 'view' : 'default';
-      const nextText = isProjectCard ? 'VIEW' : '';
-      setCursorState(prev => prev !== nextState ? nextState : prev);
-      setCursorText(prev => prev !== nextText ? nextText : prev);
+    const onMove = (event: PointerEvent) => {
+      if (event.pointerType !== 'mouse') return;
+      cursorX.set(event.clientX);
+      cursorY.set(event.clientY);
+      pointer = { x: event.clientX, y: event.clientY, target: event.target };
+      if (frame === null) frame = requestAnimationFrame(update);
+    };
+    const onVisibility = () => {
+      if (document.hidden) hide();
     };
 
-    const handleMouseLeave = () => {
-      hasMouseRef.current = false;
-      setVisible(false);
-    };
-    const handleMouseEnter = () => {
-      hasMouseRef.current = true;
-      setVisible(true);
-    };
-
-    window.addEventListener('mousemove', updateMousePosition, { passive: true });
-    window.addEventListener('mouseover', handleMouseOver, { passive: true });
-    window.addEventListener('scroll', handleScrollStart, { passive: true });
-    document.addEventListener('mouseleave', handleMouseLeave);
-    document.addEventListener('mouseenter', handleMouseEnter);
-
-    // Also listen on the scroll container
-    const scrollContainer = document.getElementById('scroll-container');
-    if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', handleScrollStart, { passive: true });
-    }
-
+    window.addEventListener('pointermove', onMove, { passive: true });
+    // Capture also covers nested project rails without adding listeners to every card.
+    document.addEventListener('scroll', hide, { passive: true, capture: true });
+    document.addEventListener('pointerleave', hide);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('blur', hide);
     return () => {
-      window.removeEventListener('mousemove', updateMousePosition);
-      window.removeEventListener('mouseover', handleMouseOver);
-      window.removeEventListener('scroll', handleScrollStart);
-      document.removeEventListener('mouseleave', handleMouseLeave);
-      document.removeEventListener('mouseenter', handleMouseEnter);
-      if (scrollContainer) {
-        scrollContainer.removeEventListener('scroll', handleScrollStart);
-      }
-      clearTimeout(scrollTimeoutRef.current);
+      hide();
+      window.removeEventListener('pointermove', onMove);
+      document.removeEventListener('scroll', hide, true);
+      document.removeEventListener('pointerleave', hide);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('blur', hide);
     };
-  }, [cursorX, cursorY, setVisible]);
+  }, [enabled, cursorX, cursorY]);
 
-  // Touch bail — don't render anything
-  if (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
-    return null;
-  }
+  if (!enabled) return null;
 
-  const getCursorSize = () => {
-    switch (cursorState) {
-      case 'hover': return 60;
-      case 'view': return 100;
-      case 'text': return 3;
-      default: return 20;
-    }
-  };
-
-  const getCursorColor = () => {
-    const lightTheme = theme === 'light';
-    switch (cursorState) {
-      case 'hover': return lightTheme ? 'rgba(4, 120, 87, 0.16)' : 'rgba(156, 255, 147, 0.2)';
-      case 'view': return lightTheme ? 'rgba(14, 116, 144, 0.22)' : 'rgba(0, 242, 255, 0.3)';
-      default: return lightTheme ? 'rgba(4, 120, 87, 0.75)' : 'rgba(156, 255, 147, 0.8)';
-    }
-  };
-
-  const size = getCursorSize();
+  const size = cursorState === 'view' ? 72 : cursorState === 'hover' ? 44 : cursorState === 'text' ? 2 : 14;
+  const color = cursorState === 'view'
+    ? theme === 'light' ? 'rgba(14, 116, 144, 0.16)' : 'rgba(138, 242, 255, 0.16)'
+    : cursorState === 'hover'
+      ? theme === 'light' ? 'rgba(4, 120, 87, 0.12)' : 'rgba(156, 255, 147, 0.14)'
+      : theme === 'light' ? 'rgba(4, 120, 87, 0.65)' : 'rgba(156, 255, 147, 0.65)';
 
   return (
-    <>
-      {/* Main cursor dot with magnetic spring */}
+    <motion.div
+      ref={cursorRef}
+      aria-hidden="true"
+      className="fixed left-0 top-0 z-[9999] pointer-events-none"
+      style={{ x: cursorX, y: cursorY, opacity: 0 }}
+    >
       <motion.div
-        ref={dotRef}
-        className="fixed top-0 left-0 pointer-events-none z-[9999] rounded-full"
-        style={{
-          x: cursorXSpring,
-          y: cursorYSpring,
-          width: 48,
-          height: 48,
-          marginLeft: -24,
-          marginTop: -24,
-          opacity: 0,
-          willChange: 'transform',
-        }}
+        className="absolute -left-6 -top-6 h-12 w-12 rounded-full"
         animate={{
-          scale: size / 48,
-          backgroundColor: cursorState === 'text'
-            ? theme === 'dark' ? 'white' : 'var(--on-surface)'
-            : getCursorColor(),
+          scaleX: size / 48,
+          scaleY: cursorState === 'text' ? 22 / 48 : size / 48,
+          backgroundColor: color,
           borderRadius: cursorState === 'text' ? '0%' : '50%',
         }}
         transition={{ type: 'spring', mass: 0.4, stiffness: 450, damping: 28 }}
       />
-      
-      {/* Cursor label for special states */}
-      {(cursorState === 'view') && (
-        <motion.div
-          ref={labelRef}
-          className="fixed top-0 left-0 pointer-events-none z-[10000]"
-          style={{
-            x: cursorXSpring,
-            y: cursorYSpring,
-            marginLeft: -size / 2,
-            marginTop: -size / 2,
-            opacity: 0,
-            willChange: 'transform',
-          }}
-          initial={{ scale: 0.8 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 0.15 }}
-        >
-          <span 
-            className="absolute text-[10px] font-label tracking-widest text-on-surface font-bold whitespace-nowrap"
-            style={{
-              left: '50%',
-              top: '50%',
-              transform: 'translate(-50%, -50%)',
-            }}
-          >
-            {cursorText}
-          </span>
-        </motion.div>
-      )}
-    </>
+      <motion.span
+        className="absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 text-[9px] font-label font-bold tracking-widest text-on-surface"
+        animate={{ opacity: cursorState === 'view' ? 1 : 0 }}
+        transition={{ duration: 0.12 }}
+      >
+        VIEW
+      </motion.span>
+    </motion.div>
   );
 };

@@ -5,9 +5,10 @@
  * @author Ayush Bajaj
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useMotionPreference } from '../../lib/useMotionPreference';
 import {
   AlertCircle,
   ArrowRight,
@@ -37,12 +38,14 @@ import {
 } from 'lucide-react';
 import portfolioData from '../../data/portfolio.json';
 import { useStore } from '../../store/useStore';
-import { TerminalModal } from './TerminalModal';
 import { TiltCard } from './TiltCard';
-import { BlastRadiusSimulator } from './BlastRadiusSimulator';
-import { CatXTelemetryWidget } from './CatXTelemetryWidget';
-import { TradersErpSimulator } from './TradersErpSimulator';
-import { ArchitectureViewer3D } from './ArchitectureViewer3D';
+import { ProjectEvidence, SelectedWorkLinks } from './ProjectEvidence';
+
+const TerminalModal = lazy(() => import('./TerminalModal').then((module) => ({ default: module.TerminalModal })));
+const BlastRadiusSimulator = lazy(() => import('./BlastRadiusSimulator').then((module) => ({ default: module.BlastRadiusSimulator })));
+const CatXTelemetryWidget = lazy(() => import('./CatXTelemetryWidget').then((module) => ({ default: module.CatXTelemetryWidget })));
+const TradersErpSimulator = lazy(() => import('./TradersErpSimulator').then((module) => ({ default: module.TradersErpSimulator })));
+const ArchitectureViewer3D = lazy(() => import('./ArchitectureViewer3D').then((module) => ({ default: module.ArchitectureViewer3D })));
 
 type Project = (typeof portfolioData.projects)[number];
 type SkillGroup = (typeof portfolioData.skills)[number];
@@ -59,7 +62,6 @@ type ResumeCueGeometry = {
 
 // Constants for scroll and animation thresholds
 const SECTION_VIEWPORT_THRESHOLD = 0.14;
-const PROGRESS_UPDATE_THRESHOLD = 0.00075;
 
 const reveal = {
   initial: { opacity: 0, y: 28 },
@@ -86,23 +88,23 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const sectionCopy = {
   projects: {
-    eyebrow: 'Work',
-    title: 'From signal to decision',
-    copy: 'Follow a code change through a service graph, then explore how operator signals become a safety decision.',
+    eyebrow: 'Selected work / 01',
+    title: 'The engineering behind the interface.',
+    copy: 'Explore the problem, implementation and source. Start with distributed systems, operator intelligence and transactional workflows.',
   },
   about: {
-    eyebrow: 'Profile',
-    title: 'About',
+    eyebrow: 'Experience & education / 02',
+    title: 'A builder across the stack.',
   },
   skills: {
-    eyebrow: 'Skills',
-    title: 'Skills',
-    copy: 'Technical strengths and engineering fundamentals behind the work.',
+    eyebrow: 'Technical toolkit / 03',
+    title: 'Tools with a purpose.',
+    copy: 'Backend and applied AI at the core. Frontend and delivery skills to carry a system through to a usable product.',
   },
   contact: {
-    eyebrow: 'Contact',
-    title: 'Contact',
-    copy: 'Open to software roles and focused collaboration.',
+    eyebrow: 'Get in touch / 04',
+    title: 'Let’s build something useful.',
+    copy: 'Hiring for software engineering, backend or applied-AI work? I’d like to hear about your team.',
   },
 };
 
@@ -116,16 +118,6 @@ const capabilitySummaries: Record<string, string> = {
   'Applied AI':                    'Model workflows, evaluation, and production-minded ML usage.',
   'Deployment & Media':            'Cloud delivery, media processing, and 3D asset workflows.',
 };
-
-const heroDots = [
-  { id: 1, x: '8%',  y: '22%', size: 14, opacity: 0.18 },
-  { id: 2, x: '27%', y: '17%', size: 4,  opacity: 0.24 },
-  { id: 3, x: '66%', y: '29%', size: 8,  opacity: 0.10 },
-  { id: 4, x: '84%', y: '13%', size: 3,  opacity: 0.16 },
-  { id: 5, x: '72%', y: '72%', size: 5,  opacity: 0.10 },
-];
-
-// ─── Pure helpers ─────────────────────────────────────────────────────────────
 
 const getProjectCategory = (project: Project) => {
   if ('category' in project && typeof project.category === 'string') {
@@ -159,19 +151,14 @@ const scrollToSection = (id: string) => {
   section.scrollIntoView({ behavior, block: 'start' });
 };
 
-const getImplementationFocus = (project: Project) => {
-  const s = `${project.title} ${project.subtitle} ${project.tech.join(' ')}`.toLowerCase();
-  if (s.includes('mdt') || s.includes('drift') || s.includes('microservice')) return 'Cross-service blast-radius & graph engine';
-  if (s.includes('cat-x') || s.includes('trajectory') || s.includes('twin')) return 'Telemetry and trajectory simulation';
-  if (s.includes('ppt') || s.includes('avatar') || s.includes('wav2lip') || s.includes('flan')) return 'Deep Learning Lip-Sync & Media Pipeline';
-  if (s.includes('luxon') || s.includes('razorpay') || s.includes('flask')) return 'Transactional flows and SQL aggregation';
-  if (s.includes('disease') || s.includes('microarray') || s.includes('scikit')) return 'Gene expression classifier & cross-validation';
-  if (s.includes('weather') || s.includes('vision') || s.includes('atmospheric')) return 'Zero-dependency telemetry proxy & AQI engine';
-  if (s.includes('agriconnect') || s.includes('express') || s.includes('mongo')) return 'Centralized agricultural data schema';
-  if (s.includes('3d') || s.includes('unity') || s.includes('opengl')) return 'Real-time 3D walkthrough & rendering loop';
-  if (s.includes('summary') || s.includes('gemini') || s.includes('document')) return 'Multimodal extraction & LLM summarization';
-  return 'Implementation snapshot';
-};
+const getImplementationFocus = (project: Project) => ({
+  1: 'AST analysis & dependency graphs', 2: 'Telemetry & trajectory simulation',
+  10: 'Transactional stock & ledger updates', 7: 'Agricultural data integration',
+  3: 'Presentation-to-video pipeline', 4: 'Commerce & SQL aggregation',
+  6: 'Weather data proxy & visualization', 9: 'Multimodal document summarization',
+  5: 'Gene-expression classification', 11: 'Email features & NLP classification',
+  8: 'Interactive 3D walkthrough',
+} as Record<number, string>)[project.id] ?? 'Implementation snapshot';
 
 const getProjectScopeNotes = (project: Project) => [
   { label: 'Scope',    value: project.subtitle },
@@ -204,21 +191,11 @@ const SectionShell: React.FC<{
   id: string;
   children: React.ReactNode;
   className?: string;
-}> = ({ id, children, className = '' }) => {
-  const ref = useRef<HTMLElement>(null);
-  const isInView = useInView(ref, { margin: '-20% 0px -40% 0px' });
-  const setActiveSection = useStore.getState().setActiveSection;
-
-  useEffect(() => {
-    if (isInView) setActiveSection(id);
-  }, [id, isInView, setActiveSection]);
-
-  return (
-    <section id={id} ref={ref} className={`section-snap relative ${className}`}>
-      {children}
-    </section>
-  );
-};
+}> = ({ id, children, className = '' }) => (
+  <section id={id} aria-label={id === 'hero' ? 'Introduction' : id[0].toUpperCase() + id.slice(1)} className={`portfolio-section relative ${className}`}>
+    {children}
+  </section>
+);
 
 const SectionHeading: React.FC<{
   eyebrow: string;
@@ -230,31 +207,16 @@ const SectionHeading: React.FC<{
     <p className="mb-3 text-[11px] font-label font-semibold uppercase tracking-[0.26em] text-primary-dim">
       {eyebrow}
     </p>
-    <h2 className="text-2xl font-display font-bold leading-tight text-on-surface sm:text-3xl lg:text-4xl">
+    <h2 className="text-3xl font-display font-bold leading-tight tracking-[-0.025em] text-on-surface sm:text-4xl [text-wrap:balance]">
       {title}
     </h2>
     {copy && (
-      <p className="mt-4 text-base leading-8 text-on-surface-variant sm:text-lg">
+      <p className="mt-4 max-w-[62ch] text-base leading-7 text-on-surface-variant sm:text-lg sm:leading-8">
         {copy}
       </p>
     )}
   </motion.div>
 ));
-
-const Metric: React.FC<{ value: string; label: string; accent?: boolean }> = React.memo(
-  ({ value, label, accent }) => (
-    <div className={`surface-panel shimmer-card rounded-2xl p-4 sm:p-5 transition-all duration-300 hover:-translate-y-0.5 ${accent ? 'border-primary/20' : ''}`}>
-      <div className={`text-2xl font-display font-bold ${accent ? 'text-primary-dim' : 'text-on-surface'}`}>
-        {value}
-      </div>
-      <div className="mt-1 text-[11px] font-label uppercase tracking-[0.18em] text-on-surface-variant">
-        {label}
-      </div>
-    </div>
-  )
-);
-
-// ─── ProjectCard ──────────────────────────────────────────────────────────────
 
 const ProjectCard: React.FC<{
   project: Project;
@@ -262,47 +224,6 @@ const ProjectCard: React.FC<{
   rail?: boolean;
   onOpenCaseStudy?: (project: Project) => void;
 }> = React.memo(({ project, index, rail = false, onOpenCaseStudy }) => {
-  const cardRef = useRef<HTMLElement>(null);
-  const [tiltStyle, setTiltStyle] = useState<{
-    transform: string;
-    glareX: number;
-    glareY: number;
-    isHovered: boolean;
-  }>({
-    transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
-    glareX: 50,
-    glareY: 50,
-    isHovered: false,
-  });
-
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
-    if (window.innerWidth < 1024) return;
-    const card = cardRef.current;
-    if (!card) return;
-    const rect = card.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const xPct = x / rect.width;
-    const yPct = y / rect.height;
-    const rotateX = (yPct - 0.5) * -8;
-    const rotateY = (xPct - 0.5) * 8;
-    setTiltStyle({
-      transform: `perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.02, 1.02, 1.02)`,
-      glareX: xPct * 100,
-      glareY: yPct * 100,
-      isHovered: true,
-    });
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    setTiltStyle({
-      transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
-      glareX: 50,
-      glareY: 50,
-      isHovered: false,
-    });
-  }, []);
-
   const previewLines = project.codePreview ? getCodePreviewLines(project.codePreview, rail ? 1 : 4) : [];
   const totalLines = project.codePreview ? getCodePreviewLineCount(project.codePreview) : 0;
   const slug = getProjectSlug(project);
@@ -318,21 +239,11 @@ const ProjectCard: React.FC<{
     onOpenCaseStudy?.(project);
   };
 
-  const glareSheen = (
-    <div
-      className="tilt-glare"
-      style={{
-        background: `radial-gradient(circle at ${tiltStyle.glareX}% ${tiltStyle.glareY}%, rgba(156, 255, 147, 0.12), transparent 60%)`,
-        opacity: tiltStyle.isHovered ? 1 : 0,
-      }}
-    />
-  );
-
   const cardContent = (
     <div className={`flex h-full flex-col relative z-10 ${rail ? 'p-4' : 'p-5 lg:p-6'}`}>
       {/* Header row */}
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-outline-variant bg-surface/50 px-2.5 py-0.5 text-[10px] font-label font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
             {String(index + 1).padStart(2, '0')}
           </span>
@@ -351,7 +262,7 @@ const ProjectCard: React.FC<{
             >
               <FileText size={14} />
             </a>
-            <a
+            {!('sourceAccess' in project && project.sourceAccess === 'private') && (<a
               href={project.link}
               target="_blank"
               rel="noreferrer"
@@ -360,7 +271,7 @@ const ProjectCard: React.FC<{
               className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-outline-variant bg-surface/50 text-on-surface-variant transition hover:border-primary/40 hover:text-primary"
             >
               <ExternalLink size={14} />
-            </a>
+            </a>)}
             {demo && (
               <a
                 href={demo}
@@ -381,10 +292,10 @@ const ProjectCard: React.FC<{
       <p className={`${rail ? 'text-[10px]' : 'text-[11px]'} font-label uppercase tracking-[0.20em] text-primary-dim`}>
         {project.subtitle}
       </p>
-      <h3 className={`${rail ? 'mt-1.5 text-[15px]' : 'mt-2.5 text-xl'} font-display font-bold leading-tight text-on-surface`}>
+      <h3 className="mt-2.5 text-xl font-display font-bold leading-tight text-on-surface">
         {project.title}
       </h3>
-      <p className={`${rail ? 'mt-2 text-[12px] leading-5 project-description-rail' : 'mt-3 text-sm leading-6'} flex-1 text-on-surface-variant`}>
+      <p className="mt-3 flex-1 text-sm leading-6 text-on-surface-variant">
         {project.description}
       </p>
 
@@ -434,7 +345,7 @@ const ProjectCard: React.FC<{
               </span>
             ))}
           </div>
-          <div className="mt-5 flex items-center justify-end gap-3">
+          <div className="mt-5 flex flex-wrap items-center gap-2">
             {demo && (
               <a
                 href={demo}
@@ -456,7 +367,7 @@ const ProjectCard: React.FC<{
               Case study
               <FileText size={14} />
             </a>
-            <a
+            {!('sourceAccess' in project && project.sourceAccess === 'private') && (<a
               href={project.link}
               target="_blank"
               rel="noreferrer"
@@ -465,54 +376,55 @@ const ProjectCard: React.FC<{
             >
               Source
               <ExternalLink size={14} />
-            </a>
+            </a>)}
           </div>
         </>
       )}
     </div>
   );
 
-  if (rail) {
-    return (
-      <article
-        ref={cardRef as React.Ref<HTMLElement>}
-        tabIndex={0}
-        role="button"
-        aria-label={`Open ${project.title} case study`}
-        data-cursor="view"
-        onClick={openFromCard}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        style={{ transform: tiltStyle.transform }}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openFromCard(e); }}
-        className="project-card tilt-card shimmer-card group grid cursor-pointer overflow-hidden rounded-2xl border border-outline-variant transition-all duration-200 hover:border-primary/35 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary h-full min-h-0 relative"
-      >
-        {glareSheen}
-        {cardContent}
-      </article>
-    );
-  }
-
-  return (
-    <motion.article
-      {...reveal}
-      ref={cardRef as React.Ref<HTMLElement>}
+  const card = (
+    <TiltCard
       tabIndex={0}
       role="button"
       aria-label={`Open ${project.title} case study`}
       data-cursor="view"
       onClick={openFromCard}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{ transform: tiltStyle.transform }}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openFromCard(e); }}
-      className="project-card tilt-card shimmer-card group grid cursor-pointer overflow-hidden rounded-2xl border border-outline-variant transition-all duration-200 hover:border-primary/35 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary min-h-[20rem] relative"
+      className={`project-card group grid h-full min-w-0 cursor-pointer overflow-hidden rounded-2xl border border-outline-variant transition-colors duration-200 hover:border-primary/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary relative ${rail ? 'min-h-0' : 'min-h-[20rem]'}`}
     >
-      {glareSheen}
       {cardContent}
-    </motion.article>
+    </TiltCard>
   );
+  return rail ? <article className="h-full min-w-0">{card}</article> : <motion.article {...reveal} className="min-w-0">{card}</motion.article>;
 });
+
+const DemoPlaceholder = () => (
+  <div className="flex min-h-[20rem] items-center justify-center gap-2 rounded-xl border border-outline-variant bg-surface/60 p-5 text-sm text-on-surface-variant" role="status">
+    <Loader2 size={16} className="animate-spin" aria-hidden="true" /> Loading interactive demo…
+  </div>
+);
+
+/** Load interactive engines only when their panel approaches the viewport. */
+const DeferredDemo: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const panel = ref.current;
+    if (!panel) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setReady(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '240px' });
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, []);
+
+  return <div ref={ref} className="min-w-0 min-h-[20rem]">{ready ? <Suspense fallback={<DemoPlaceholder />}>{children}</Suspense> : <DemoPlaceholder />}</div>;
+};
 
 // ─── BentoGridView: High-Density Recruiter Matrix ────────────────────────────
 
@@ -531,12 +443,11 @@ const BentoGridView: React.FC<{
   const [userSelectedDemoId, setUserSelectedDemoId] = useState<number | null | 'hidden'>(null);
 
   // Unconditionally derive the active demo ID directly during render without useEffect / cascading renders
-  const defaultDemoProject = projects.find((p) => hasDemo(p.id));
   const activeDemoId = userSelectedDemoId === 'hidden'
     ? null
     : (userSelectedDemoId !== null && projects.some((p) => p.id === userSelectedDemoId))
       ? userSelectedDemoId
-      : (defaultDemoProject?.id ?? null);
+      : null;
 
   const setActiveDemoId = (id: number | null) => {
     setUserSelectedDemoId(id === null ? 'hidden' : id);
@@ -598,13 +509,13 @@ const BentoGridView: React.FC<{
   const renderDemo = (project: Project) => {
     switch (project.id) {
       case 1:
-        return <BlastRadiusSimulator onExploreMore={() => onOpenCaseStudy(project)} />;
+        return <DeferredDemo><BlastRadiusSimulator onExploreMore={() => onOpenCaseStudy(project)} /></DeferredDemo>;
       case 2:
-        return <CatXTelemetryWidget />;
+        return <DeferredDemo><CatXTelemetryWidget /></DeferredDemo>;
       case 10:
-        return <TradersErpSimulator onExploreMore={() => onOpenCaseStudy(project)} />;
+        return <DeferredDemo><TradersErpSimulator onExploreMore={() => onOpenCaseStudy(project)} /></DeferredDemo>;
       case 8:
-        return <ArchitectureViewer3D onExploreMore={() => onOpenCaseStudy(project)} />;
+        return <DeferredDemo><ArchitectureViewer3D onExploreMore={() => onOpenCaseStudy(project)} /></DeferredDemo>;
       default:
         return null;
     }
@@ -625,7 +536,7 @@ const BentoGridView: React.FC<{
 
   const handleCardKeyDown = (project: Project, e: React.KeyboardEvent<HTMLElement>) => {
     const target = e.target as HTMLElement;
-    if (target.closest('a, button, input, textarea, select')) return;
+    if (target.closest('a, button, input, textarea, select, canvas, [data-no-card-click]')) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       onOpenCaseStudy(project);
@@ -650,15 +561,15 @@ const BentoGridView: React.FC<{
         >
           <div>
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-primary/15 border border-primary/40 px-3 py-1 text-[11px] font-label font-bold uppercase tracking-[0.2em] text-primary">
-                  ★ 01 · FEATURED PROJECT
+                  <span className="inline-flex items-center gap-1.5"><Sparkles size={12} aria-hidden="true" /> 01 · Featured project</span>
                 </span>
                 <span className="rounded-full border border-tertiary/30 bg-tertiary/10 px-2.5 py-0.5 text-[10px] font-label uppercase tracking-[0.16em] text-tertiary">
                   {heroProject.category}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-xs text-on-surface-variant font-mono">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs leading-5 text-on-surface-variant font-mono">
                 <span>{heroProject.tech.slice(0, 3).join(' · ')}</span>
               </div>
             </div>
@@ -674,13 +585,15 @@ const BentoGridView: React.FC<{
               {heroProject.description}
             </p>
 
+            <ProjectEvidence id={heroProject.id} />
+
             {/* Interactive Demo or Launch Banner */}
             {hasDemo(heroProject.id) ? (
               activeDemoId === heroProject.id ? (
                 <div className="mt-5 space-y-2" data-no-view-cursor data-no-card-click onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-between pb-1 border-b border-outline-variant/40">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-outline-variant/40">
                     <span className="text-[10px] font-mono uppercase tracking-wider text-primary font-bold flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
                       ACTIVE DEMO · {getDemoMeta(heroProject.id).title}
                     </span>
                     <button
@@ -706,17 +619,17 @@ const BentoGridView: React.FC<{
                     }}
                     className={`w-full flex items-center justify-between p-3.5 rounded-xl border ${getDemoMeta(heroProject.id).border} ${getDemoMeta(heroProject.id).bg} text-on-surface transition cursor-pointer group shadow-xs`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <Sparkles size={15} className={`${getDemoMeta(heroProject.id).accent} animate-pulse`} />
-                      <span className={`text-xs font-bold font-mono ${getDemoMeta(heroProject.id).accent} uppercase tracking-wider`}>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <Sparkles size={15} className={`${getDemoMeta(heroProject.id).accent} shrink-0`} />
+                      <span className={`text-xs font-bold leading-5 font-mono ${getDemoMeta(heroProject.id).accent}`}>
                         {getDemoMeta(heroProject.id).title}
                       </span>
                       <span className="hidden sm:inline-block rounded-md border border-outline-variant bg-surface px-1.5 py-0.5 text-[9px] font-mono text-on-surface-variant">
                         {getDemoMeta(heroProject.id).badge}
                       </span>
                     </div>
-                    <span className={`text-xs font-bold ${getDemoMeta(heroProject.id).accent} flex items-center gap-1 group-hover:translate-x-1 transition-transform`}>
-                      Launch Demo <ArrowRight size={13} />
+                    <span className={`text-xs font-bold ${getDemoMeta(heroProject.id).accent} flex shrink-0 items-center gap-1`}>
+                      <span className="hidden sm:inline">Launch demo</span><ArrowRight size={15} />
                     </span>
                   </button>
                 </div>
@@ -746,7 +659,7 @@ const BentoGridView: React.FC<{
                 </span>
               ))}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {'sourceAccess' in heroProject && heroProject.sourceAccess === 'private' ? (
                 <span className="text-xs font-semibold text-on-surface-variant">Private source</span>
               ) : (
@@ -804,7 +717,7 @@ const BentoGridView: React.FC<{
             <div>
               <div className="flex items-center justify-between gap-2 mb-3">
                 <span className="rounded-full bg-tertiary/15 border border-tertiary/40 px-2.5 py-0.5 text-[10px] font-label font-bold uppercase tracking-[0.18em] text-tertiary">
-                  ★ 02 · {companionProject.category}
+                  02 · {companionProject.category}
                 </span>
                 {'demo' in companionProject && (
                   <span className="text-[10px] text-primary-dim font-mono flex items-center gap-1">
@@ -825,13 +738,15 @@ const BentoGridView: React.FC<{
                 {companionProject.description}
               </p>
 
+              <ProjectEvidence id={companionProject.id} />
+
               {/* Companion Interactive Demo or Launch Banner */}
               {hasDemo(companionProject.id) && (
                 activeDemoId === companionProject.id ? (
                   <div className="mt-5 space-y-2" data-no-view-cursor data-no-card-click onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-between pb-1 border-b border-outline-variant/40">
                       <span className="text-[10px] font-mono uppercase tracking-wider text-tertiary font-bold flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
                         ACTIVE DEMO · {getDemoMeta(companionProject.id).title}
                       </span>
                       <button
@@ -858,7 +773,7 @@ const BentoGridView: React.FC<{
                       className={`w-full flex items-center justify-between p-3 rounded-xl border ${getDemoMeta(companionProject.id).border} ${getDemoMeta(companionProject.id).bg} text-on-surface transition cursor-pointer group shadow-xs`}
                     >
                       <div className="flex items-center gap-2">
-                        <Sparkles size={14} className={`${getDemoMeta(companionProject.id).accent} animate-pulse`} />
+                        <Sparkles size={14} className={`${getDemoMeta(companionProject.id).accent}`} />
                         <span className={`text-xs font-bold font-mono ${getDemoMeta(companionProject.id).accent} uppercase tracking-wider`}>
                           {getDemoMeta(companionProject.id).title}
                         </span>
@@ -954,12 +869,14 @@ const BentoGridView: React.FC<{
                     {p.tech.slice(0, 2).join(' · ')}
                   </span>
                 </div>
-                <h4 className="text-lg font-display font-bold text-on-surface group-hover:text-primary transition-colors">
+                <h3 className="text-lg font-display font-bold leading-6 text-on-surface group-hover:text-primary transition-colors">
                   {p.title}
-                </h4>
-                <p className="mt-2 text-xs leading-5 text-on-surface-variant line-clamp-3">
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-on-surface-variant">
                   {p.description}
                 </p>
+
+                <ProjectEvidence id={p.id} />
 
                 {/* Secondary card interactive demo toggle */}
                 {isDemoAvailable && (
@@ -967,7 +884,7 @@ const BentoGridView: React.FC<{
                     <div className="mt-4 space-y-2" data-no-view-cursor data-no-card-click onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-between pb-1 border-b border-outline-variant/40">
                         <span className="text-[10px] font-mono uppercase tracking-wider text-primary font-bold flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                           ACTIVE DEMO
                         </span>
                         <button
@@ -994,7 +911,7 @@ const BentoGridView: React.FC<{
                         className={`w-full flex items-center justify-between p-2.5 rounded-xl border ${getDemoMeta(p.id).border} ${getDemoMeta(p.id).bg} text-on-surface transition cursor-pointer group`}
                       >
                         <div className="flex items-center gap-1.5">
-                          <Sparkles size={13} className={`${getDemoMeta(p.id).accent} animate-pulse`} />
+                          <Sparkles size={13} className={`${getDemoMeta(p.id).accent}`} />
                           <span className={`text-[11px] font-bold font-mono ${getDemoMeta(p.id).accent} truncate max-w-[170px]`}>
                             {getDemoMeta(p.id).title}
                           </span>
@@ -1066,16 +983,16 @@ const BentoGridView: React.FC<{
               data-cursor="view"
               onClick={(e) => handleCardClick(p, e)}
               onKeyDown={(e) => handleCardKeyDown(p, e)}
-              className="h-full surface-panel-subtle shimmer-card group rounded-2xl p-4 border border-outline-variant hover:border-primary/30 transition flex flex-col justify-between cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="h-full min-w-0 surface-panel-subtle group rounded-2xl p-5 border border-outline-variant hover:border-primary/30 transition-colors flex flex-col justify-between cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[9px] font-label uppercase tracking-wider text-primary-dim">{String(idx + 6).padStart(2, '0')} · {p.category}</span>
                 </div>
-                <h5 className="text-sm font-display font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-1">
+                <h3 className="mt-2 text-lg font-display font-bold leading-6 text-on-surface group-hover:text-primary transition-colors">
                   {p.title}
-                </h5>
-                <p className="mt-1 text-[11px] leading-4 text-on-surface-variant line-clamp-2">
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-on-surface-variant">
                   {p.description}
                 </p>
 
@@ -1085,7 +1002,7 @@ const BentoGridView: React.FC<{
                     <div className="mt-3 space-y-2" data-no-view-cursor data-no-card-click onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-between pb-1 border-b border-outline-variant/40">
                         <span className="text-[9px] font-mono uppercase tracking-wider text-primary font-bold flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                           ACTIVE DEMO
                         </span>
                         <button
@@ -1112,7 +1029,7 @@ const BentoGridView: React.FC<{
                         className={`w-full flex items-center justify-between p-2 rounded-lg border ${getDemoMeta(p.id).border} ${getDemoMeta(p.id).bg} text-on-surface transition cursor-pointer group`}
                       >
                         <div className="flex items-center gap-1.5">
-                          <Sparkles size={11} className={`${getDemoMeta(p.id).accent} animate-pulse`} />
+                          <Sparkles size={11} className={`${getDemoMeta(p.id).accent}`} />
                           <span className={`text-[10px] font-bold font-mono ${getDemoMeta(p.id).accent} truncate max-w-[150px]`}>
                             {getDemoMeta(p.id).title}
                           </span>
@@ -1126,8 +1043,8 @@ const BentoGridView: React.FC<{
                 )}
               </div>
 
-              <div className="mt-3 pt-2 border-t border-outline-variant/60 flex items-center justify-between text-[11px]">
-                <span className="text-on-surface-variant font-mono text-[10px]">
+              <div className="mt-4 pt-3 border-t border-outline-variant/60 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <span className="text-on-surface-variant font-mono text-[11px]">
                   {p.tech.slice(0, 2).join(' · ')}
                 </span>
                 <button
@@ -1151,7 +1068,7 @@ const BentoGridView: React.FC<{
 
 // ─── SkillCard ────────────────────────────────────────────────────────────────
 
-const SkillCard: React.FC<{ group: SkillGroup; index: number }> = React.memo(({ group, index }) => {
+const SkillCard: React.FC<{ group: SkillGroup; index: number; onSelect: (id: number) => void }> = React.memo(({ group, index, onSelect }) => {
   const Icon = skillIcons[index % skillIcons.length];
   return (
     <motion.div
@@ -1174,6 +1091,9 @@ const SkillCard: React.FC<{ group: SkillGroup; index: number }> = React.memo(({ 
           <span key={item} className="skill-pill">{item}</span>
         ))}
       </div>
+      <button type="button" onClick={() => onSelect([1, 2, 10, 3, 1][index] ?? 1)} className="mt-5 inline-flex items-center gap-2 border-t border-outline-variant pt-4 text-xs font-semibold text-primary hover:text-on-surface">
+        See it in {['MDT', 'Cat-X', 'Traders ERP', 'the video pipeline', 'MDT'][index] ?? 'selected work'} <ArrowRight size={13} />
+      </button>
     </motion.div>
   );
 });
@@ -1186,6 +1106,13 @@ const ContactActions: React.FC<{ email: string }> = ({ email }) => {
   const [sendState, setSendState] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [draft, setDraft] = useState({ name: '', replyTo: '', subject: '', message: '' });
+  const sendControllerRef = useRef<AbortController | null>(null);
+  const copiedTimerRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => {
+    window.clearTimeout(copiedTimerRef.current);
+    sendControllerRef.current?.abort();
+  }, []);
 
   // Web3Forms access key from environment or portfolioData
   const accessKey =
@@ -1249,8 +1176,12 @@ const ContactActions: React.FC<{ email: string }> = ({ email }) => {
 
   const writeClipboard = async (value: string) => {
     if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(value);
-      return;
+      try {
+        await navigator.clipboard.writeText(value);
+        return;
+      } catch {
+        // Some browsers expose Clipboard API but deny access; try selection copy.
+      }
     }
 
     const fallback = document.createElement('textarea');
@@ -1270,7 +1201,8 @@ const ContactActions: React.FC<{ email: string }> = ({ email }) => {
       await writeClipboard(email);
       setCopied(true);
       setStatusMessage('Email address copied.');
-      window.setTimeout(() => setCopied(false), 1600);
+      window.clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = window.setTimeout(() => setCopied(false), 1600);
     } catch {
       setStatusMessage('Copy is unavailable here. Select the email address above to copy it.');
     }
@@ -1278,6 +1210,7 @@ const ContactActions: React.FC<{ email: string }> = ({ email }) => {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (sendControllerRef.current) return;
 
     if (!draft.name.trim() || !draft.replyTo.trim() || !draft.message.trim()) {
       setStatusMessage('Please fill out all required fields.');
@@ -1286,54 +1219,60 @@ const ContactActions: React.FC<{ email: string }> = ({ email }) => {
 
     // Direct in-page transmission if an access key is configured
     if (accessKey) {
+      const controller = new AbortController();
+      sendControllerRef.current = controller;
+      const timeout = window.setTimeout(() => controller.abort(), 15000);
       setSendState('sending');
       setStatusMessage('Transmitting message directly to Ayush...');
 
       try {
-        const formData = new FormData();
-        formData.append('access_key', accessKey);
-        formData.append('name', draft.name.trim());
-        formData.append('email', draft.replyTo.trim());
-        const userSubject = draft.subject.trim();
-        const formattedSubject = userSubject
-          ? `[Portfolio] ${userSubject} (${draft.name.trim()})`
-          : `[Portfolio Contact] from ${draft.name.trim()}`;
-        formData.append('subject', formattedSubject);
-        formData.append('message', draft.message.trim());
-        formData.append('from_name', `${draft.name.trim()} via Portfolio`);
-        formData.append('replyto', draft.replyTo.trim());
-        formData.append('reply_to', draft.replyTo.trim());
+        const formattedSubject = `[Portfolio] ${draft.subject.trim() || 'New enquiry'} (${draft.name.trim()})`;
+        const payload = {
+          access_key: accessKey,
+          name: draft.name.trim(),
+          email: draft.replyTo.trim(),
+          subject: formattedSubject,
+          message: draft.message.trim(),
+          from_name: `${draft.name.trim()} via Portfolio`,
+          replyto: draft.replyTo.trim(),
+        };
 
         const response = await fetch('https://api.web3forms.com/submit', {
           method: 'POST',
-          body: formData,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          signal: controller.signal,
+          body: JSON.stringify(payload),
         });
 
         const result = await response.json().catch(() => null);
 
         if (response.ok && result?.success) {
           setSendState('success');
-          setStatusMessage(`Message delivered! Sent directly to ${email}. Ayush can reply directly to ${draft.replyTo}.`);
+          setStatusMessage(`Message accepted by the email service for ${email}. Ayush can reply directly to ${draft.replyTo}.`);
           setDraft({ name: '', replyTo: '', subject: '', message: '' });
           setIsEmailChooserOpen(false);
         } else {
           setSendState('error');
-          setStatusMessage(result?.message || 'Direct transmission failed. You can open your email app below or copy the draft.');
+          setStatusMessage('The email service could not accept your message. Your draft is safe: choose an email app below or copy it.');
           setIsEmailChooserOpen(true);
         }
       } catch {
         setSendState('error');
-        setStatusMessage('Network connection error. You can open your email app below to send your draft.');
+        setStatusMessage('We could not confirm sending. Your draft is saved here. Check your connection, or use an email app below.');
         setIsEmailChooserOpen(true);
+      } finally {
+        window.clearTimeout(timeout);
+        sendControllerRef.current = null;
       }
       return;
     }
 
-    // If no access key is configured in .env yet:
-    setSendState('error');
-    setStatusMessage(
-      'To send directly from the website without opening an email app, add your free Web3Forms access key from web3forms.com to .env (VITE_WEB3FORMS_ACCESS_KEY). For now, choose an email app below.'
-    );
+    // A configured provider sends in-page; otherwise preserve the draft in the visitor's email app.
+    setSendState('idle');
+    setStatusMessage('Your draft is ready. Choose an email app below to send it.');
     setIsEmailChooserOpen(true);
   };
 
@@ -1344,9 +1283,9 @@ const ContactActions: React.FC<{ email: string }> = ({ email }) => {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/20 text-primary">
             <Check size={24} />
           </div>
-          <h4 className="text-base font-bold text-on-surface">Message Transmitted!</h4>
+          <h4 className="text-base font-bold text-on-surface">Message submitted</h4>
           <p className="text-xs leading-5 text-on-surface-variant max-w-md mx-auto">
-            Your message was sent directly to Ayush ({email}). Ayush will reply directly to your email address.
+            The email service accepted your message for Ayush ({email}). Your email address is included so he can reply.
           </p>
           <button
             type="button"
@@ -1430,7 +1369,7 @@ const ContactActions: React.FC<{ email: string }> = ({ email }) => {
                 </>
               ) : (
                 <>
-                  <Send size={16} /> Send message
+                  <Send size={16} /> {accessKey ? 'Send message' : 'Continue in email'}
                 </>
               )}
             </button>
@@ -1453,7 +1392,7 @@ const ContactActions: React.FC<{ email: string }> = ({ email }) => {
           {isEmailChooserOpen && (
             <div className="rounded-xl border border-primary/25 bg-primary/5 p-3.5 space-y-2.5" role="group" aria-label="Choose email app">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-on-surface">Or open draft in your email app:</p>
+                <p className="text-xs font-semibold text-on-surface">Send your draft using:</p>
                 <button
                   type="button"
                   onClick={() => setIsEmailChooserOpen(false)}
@@ -1464,7 +1403,7 @@ const ContactActions: React.FC<{ email: string }> = ({ email }) => {
                 </button>
               </div>
               <p className="text-[11px] leading-4 text-on-surface-variant">
-                Note: Local email apps (Gmail, Outlook) send from whichever account is currently signed in on your device.
+                Note: Choose your account in Gmail or Outlook, review the draft, then press Send. Your reply address stays in the message.
               </p>
               <div className="grid gap-2 sm:grid-cols-3">
                 <a
@@ -1529,10 +1468,52 @@ const ContactActions: React.FC<{ email: string }> = ({ email }) => {
 // ─── ProjectCaseStudy ─────────────────────────────────────────────────────────
 
 const ProjectCaseStudy: React.FC<{ project: Project; onClose: () => void; reduceMotion: boolean }> = React.memo(({ project, onClose, reduceMotion }) => {
+  const dialogRef = useRef<HTMLElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const lines = useMemo(() => project.codePreview ? getCodePreviewLines(project.codePreview, 8) : [], [project.codePreview]);
   const notes = useMemo(() => getProjectScopeNotes(project), [project]);
   const demo = useMemo(() => getProjectDemo(project), [project]);
   const story = 'story' in project ? project.story : null;
+
+  useEffect(() => {
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const appRoot = document.getElementById('root');
+    const previousInert = appRoot?.inert ?? false;
+    const previousOverflow = document.body.style.overflow;
+    const previousPadding = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`;
+    if (appRoot) appRoot.inert = true;
+    closeButtonRef.current?.focus({ preventScroll: true });
+
+    const containFocus = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const elements = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex="0"]') ?? [])
+        .filter((element) => element.getClientRects().length > 0);
+      const first = elements[0];
+      const last = elements[elements.length - 1];
+      if (!first || !last) { event.preventDefault(); return; }
+      if (event.shiftKey && (document.activeElement === first || !dialogRef.current?.contains(document.activeElement))) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialogRef.current?.contains(document.activeElement))) {
+        event.preventDefault(); first.focus();
+      }
+    };
+    document.addEventListener('keydown', containFocus);
+    return () => {
+      document.removeEventListener('keydown', containFocus);
+      document.body.style.overflow = previousOverflow;
+      document.body.style.paddingRight = previousPadding;
+      if (appRoot) appRoot.inert = previousInert;
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
+  }, [onClose]);
 
   if (typeof document === 'undefined') return null;
 
@@ -1549,11 +1530,13 @@ const ProjectCaseStudy: React.FC<{ project: Project; onClose: () => void; reduce
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <motion.article
+        ref={dialogRef}
+        tabIndex={-1}
         className="case-study-dialog bg-surface/98 backdrop-blur-2xl border border-outline-variant max-h-[min(90dvh,820px)] w-full max-w-5xl overflow-y-auto rounded-2xl shadow-2xl"
-        initial={{ opacity: 0, scale: 0.96, y: 10 }}
+        initial={reduceMotion ? false : { opacity: 0, scale: 0.96, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: 10 }}
-        transition={{ duration: 0.18, ease: 'easeOut' }}
+        exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 10 }}
+        transition={{ duration: reduceMotion ? 0 : 0.18, ease: 'easeOut' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1575,6 +1558,7 @@ const ProjectCaseStudy: React.FC<{ project: Project; onClose: () => void; reduce
             </p>
           </div>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}
             aria-label="Close case study"
@@ -1618,6 +1602,7 @@ const ProjectCaseStudy: React.FC<{ project: Project; onClose: () => void; reduce
         <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="space-y-5">
             <p className="text-base leading-8 text-on-surface-variant">{project.description}</p>
+            <ProjectEvidence id={project.id} />
 
             <div className="grid gap-3 sm:grid-cols-3">
               {notes.map((note) => (
@@ -1695,18 +1680,14 @@ const ProjectCaseStudy: React.FC<{ project: Project; onClose: () => void; reduce
 
 export const SectionGroup: React.FC = () => {
   const { personal, projects, skills, socials } = portfolioData;
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useMotionPreference();
   const overlayRef = useRef<HTMLDivElement>(null);
   const resumeButtonRef = useRef<HTMLAnchorElement>(null);
-  const lastScrollProgressRef = useRef(0);
   const horizontalRailRef = useRef<HTMLDivElement>(null);
   const railProgressBarRef = useRef<HTMLDivElement>(null);
   const railCounterRef = useRef<HTMLSpanElement>(null);
   const visibleProjectsCountRef = useRef(0);
 
-  const setScrollProgress = useStore((s) => s.setScrollProgress);
-  const setHorizontalProgress = useStore((s) => s.setHorizontalProgress);
-  const setScrollMode = useStore((s) => s.setScrollMode);
   const projectViewMode = useStore((s) => s.projectViewMode);
   const setProjectViewMode = useStore((s) => s.setProjectViewMode);
 
@@ -1715,14 +1696,17 @@ export const SectionGroup: React.FC = () => {
   const [resumeCueGeometry, setResumeCueGeometry] = useState<ResumeCueGeometry | null>(null);
   const [activeProjectSlug, setActiveProjectSlug] = useState<string | null>(null);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+  const [hasOpenedTerminal, setHasOpenedTerminal] = useState(false);
 
   // Global shortcut (tilde/backtick) to toggle Developer CLI Terminal
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === '`' || e.key === '~') {
         const activeElem = document.activeElement;
-        if (activeElem && ['INPUT', 'TEXTAREA'].includes(activeElem.tagName)) return;
+        if (activeElem && (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElem.tagName) || (activeElem as HTMLElement).isContentEditable)) return;
+        if (document.querySelector('.case-study-backdrop')) return;
         e.preventDefault();
+        setHasOpenedTerminal(true);
         setIsTerminalOpen((prev) => !prev);
       }
     };
@@ -1752,11 +1736,13 @@ export const SectionGroup: React.FC = () => {
 
   // Resume cue animation - localized directional indicator
   useEffect(() => {
+    if (reduceMotion || window.scrollY > 8 || window.location.hash || document.hidden) return;
+    let dismissed = false;
     const measureCue = () => {
       const btn = resumeButtonRef.current;
       if (!btn) return;
       const rect = btn.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return;
+      if (rect.width <= 0 || rect.height <= 0 || rect.top < 100 || rect.bottom > window.innerHeight) return;
       const endX = rect.left + rect.width / 2;
       const endY = rect.top - 8;
       const startX = endX - 52;
@@ -1773,23 +1759,33 @@ export const SectionGroup: React.FC = () => {
       });
     };
     const showTimer = window.setTimeout(() => {
+      if (dismissed || document.hidden || window.scrollY > 8) return;
+      const rect = resumeButtonRef.current?.getBoundingClientRect();
+      if (!rect || rect.top < 100 || rect.bottom > window.innerHeight) return;
       measureCue();
-      if (resumeButtonRef.current?.getBoundingClientRect().width) setShowResumeCue(true);
+      setShowResumeCue(true);
     }, 700);
     const hideTimer = window.setTimeout(() => setShowResumeCue(false), 3600);
-    const dismiss = () => setShowResumeCue(false);
-    const sc = document.getElementById('scroll-container');
+    const dismiss = () => {
+      dismissed = true;
+      window.clearTimeout(showTimer);
+      setShowResumeCue(false);
+    };
     window.addEventListener('keydown', dismiss, { once: true });
-    window.addEventListener('resize', measureCue, { passive: true });
-    sc?.addEventListener('scroll', dismiss, { once: true, passive: true });
+    window.addEventListener('resize', dismiss, { passive: true });
+    window.addEventListener('pointerdown', dismiss, { once: true });
+    document.addEventListener('visibilitychange', dismiss);
+    window.addEventListener('scroll', dismiss, { once: true, passive: true });
     return () => {
       window.clearTimeout(showTimer);
       window.clearTimeout(hideTimer);
       window.removeEventListener('keydown', dismiss);
-      window.removeEventListener('resize', measureCue);
-      sc?.removeEventListener('scroll', dismiss);
+      window.removeEventListener('resize', dismiss);
+      window.removeEventListener('pointerdown', dismiss);
+      document.removeEventListener('visibilitychange', dismiss);
+      window.removeEventListener('scroll', dismiss);
     };
-  }, []);
+  }, [reduceMotion]);
 
   const projectFilters = useMemo(
     () => ['All', ...Array.from(new Set(projects.map(getProjectCategory)))],
@@ -1818,23 +1814,20 @@ export const SectionGroup: React.FC = () => {
   }, [projects]);
 
   useEffect(() => {
-    if (!activeProject) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeCaseStudy(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [activeProject, closeCaseStudy]);
-
-  useEffect(() => {
     visibleProjectsCountRef.current = visibleProjects.length;
-  }, [visibleProjects.length]);
+    horizontalRailRef.current?.scrollTo({ left: 0, behavior: 'instant' });
+    if (railCounterRef.current) railCounterRef.current.textContent = `1/${visibleProjects.length}`;
+    if (railProgressBarRef.current) railProgressBarRef.current.style.width = '0%';
+  }, [visibleProjects.length, projectFilter, projectViewMode]);
 
   // Interactive rail navigation
   const scrollRail = useCallback((direction: number) => {
     const rail = horizontalRailRef.current;
     if (!rail) return;
-    const cardWidth = 360;
-    rail.scrollBy({ left: direction * cardWidth, behavior: 'smooth' });
-  }, []);
+    const firstCard = rail.firstElementChild as HTMLElement | null;
+    const cardWidth = firstCard ? firstCard.offsetWidth + parseFloat(getComputedStyle(rail).columnGap || '0') : rail.clientWidth * 0.8;
+    rail.scrollBy({ left: direction * cardWidth, behavior: reduceMotion ? 'auto' : 'smooth' });
+  }, [reduceMotion]);
 
   const handleRailScroll = useCallback(() => {
     const rail = horizontalRailRef.current;
@@ -1849,64 +1842,7 @@ export const SectionGroup: React.FC = () => {
       const current = Math.min(total, Math.max(1, Math.round(ratio * (total - 1)) + 1));
       railCounterRef.current.textContent = `${current}/${total}`;
     }
-    setHorizontalProgress(ratio);
-    setScrollMode('horizontal');
-  }, [setHorizontalProgress, setScrollMode]);
-
-  const handleRailWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    const rail = horizontalRailRef.current;
-    if (!rail) return;
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && Math.abs(e.deltaY) > 8) {
-      const maxScroll = rail.scrollWidth - rail.clientWidth;
-      const canScrollRight = e.deltaY > 0 && rail.scrollLeft < maxScroll - 4;
-      const canScrollLeft = e.deltaY < 0 && rail.scrollLeft > 4;
-      if (canScrollRight || canScrollLeft) {
-        rail.scrollLeft += e.deltaY * 0.8;
-      }
-    }
   }, []);
-
-  // Main scroll handler - pure layout reads from window.scrollY, zero forced reflows
-  const updateScrollState = useCallback(() => {
-    const scrollTop = window.scrollY || document.documentElement.scrollTop;
-    const scrollHeight = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-    const progress = Math.min(1, Math.max(0, scrollTop / scrollHeight));
-
-    if (Math.abs(progress - lastScrollProgressRef.current) > PROGRESS_UPDATE_THRESHOLD) {
-      lastScrollProgressRef.current = progress;
-      setScrollProgress(progress);
-      const store = useStore.getState();
-      if (store.scrollMode !== 'vertical') {
-        store.setScrollMode('vertical');
-      }
-    }
-  }, [setScrollProgress]);
-
-  // Scroll event binding for native window scroll
-  useEffect(() => {
-    let frame = 0;
-    let scheduled = false;
-
-    const scheduleUpdate = () => {
-      if (!scheduled) {
-        scheduled = true;
-        frame = window.requestAnimationFrame(() => {
-          scheduled = false;
-          updateScrollState();
-        });
-      }
-    };
-
-    updateScrollState();
-    window.addEventListener('scroll', scheduleUpdate, { passive: true });
-    window.addEventListener('resize', scheduleUpdate, { passive: true });
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', scheduleUpdate);
-      window.removeEventListener('resize', scheduleUpdate);
-    };
-  }, [updateScrollState]);
 
   // ─── Render ──────────────────────────────────────────────────────────────
 
@@ -1919,7 +1855,7 @@ export const SectionGroup: React.FC = () => {
         aria-hidden="true"
       />
 
-      <main className="relative z-10">
+      <main id="main-content" tabIndex={-1} className="relative z-10">
         <AnimatePresence>
           {activeProject && (
             <ProjectCaseStudy key={`cs-${activeProject.id}`} project={activeProject} onClose={closeCaseStudy} reduceMotion={Boolean(reduceMotion)} />
@@ -1933,7 +1869,7 @@ export const SectionGroup: React.FC = () => {
               className="pointer-events-none fixed inset-0 z-40"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              exit={{ opacity: 0, transition: { duration: 0 } }}
               transition={{ duration: 0.35, ease: 'easeOut' }}
             >
               <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
@@ -1989,21 +1925,10 @@ export const SectionGroup: React.FC = () => {
         {/* ── HERO ─────────────────────────────────────────────────────── */}
         <SectionShell
           id="hero"
-          className="flex min-h-[100svh] flex-col justify-center overflow-hidden px-5 pb-10 pt-24 sm:px-8 lg:px-12 xl:px-16"
+          className="hero-section flex min-h-[100svh] flex-col justify-center overflow-hidden px-5 pb-10 pt-24 sm:px-8 lg:px-12 xl:px-16"
         >
-          {/* Decorative dots */}
-          <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-            {heroDots.map((dot) => (
-              <span
-                key={dot.id}
-                className="absolute rounded-full bg-primary"
-                style={{ left: dot.x, top: dot.y, width: dot.size, height: dot.size, opacity: dot.opacity }}
-              />
-            ))}
-          </div>
-
           <div className="mx-auto w-full min-w-0 max-w-screen-2xl">
-            <motion.div {...reveal} className="w-full lg:max-w-[54%] xl:max-w-[50%] 2xl:max-w-[48%] relative z-10">
+            <div className="content-lane relative z-10 hero-intro">
                 {/* Availability and role focus */}
               <div className="mb-6 flex flex-wrap items-center gap-2.5">
                 <div className="inline-flex items-center gap-2.5 rounded-full border border-primary/30 bg-primary/8 px-4 py-2 text-[11px] font-label font-bold uppercase tracking-[0.20em] text-primary shadow-sm shadow-primary/10">
@@ -2013,38 +1938,34 @@ export const SectionGroup: React.FC = () => {
                   Available for software roles
                 </div>
 
-                <span className="inline-flex items-center gap-2 px-1 text-[10px] font-label font-semibold uppercase tracking-[0.19em] text-on-surface-variant">
-                  Backend systems <span className="text-primary">/</span> Applied AI
-                </span>
+
 
               </div>
 
-              <p className="mb-3 text-xs font-label font-semibold uppercase tracking-[0.23em] text-on-surface-variant">{personal.name} · {personal.title}</p>
-              <h1 className="text-[2.65rem] font-display font-bold leading-[0.98] tracking-[-0.045em] text-on-surface sm:text-6xl lg:text-[3.8rem] xl:text-[4.6rem]">
-                Turn complex signals into <span
-                  className="bg-clip-text text-transparent"
-                  style={{ backgroundImage: 'linear-gradient(120deg, var(--title-gradient-from), var(--title-gradient-via), var(--title-gradient-to))' }}
-                >clear decisions.</span>
-              </h1>
-
-              <p className="mt-6 max-w-2xl text-base leading-7 text-on-surface-variant sm:text-lg sm:leading-8">
-                {personal.bio}
-              </p>
-            </motion.div>
+              <p className="hero-role">Software developer</p>
+              <h1 className="hero-name">{personal.name}<span className="text-primary">.</span></h1>
+              <p className="hero-statement">Backend systems.<br /><span>Applied intelligence.</span></p>
+              <p className="hero-description">{personal.bio}</p>
+              <div className="hero-credentials">
+                <span>VIT Vellore / Computer Science '27</span>
+                <span>Software Developer Intern / KuppiSmart, 2025</span>
+              </div>
+            </div>
 
             {/* CTAs */}
-            <motion.div {...reveal} className="relative z-10 mt-8 flex flex-col gap-3 sm:flex-row w-full lg:max-w-[54%] xl:max-w-[50%]">
+            <div className="content-lane relative z-10 mt-7 flex flex-wrap gap-3 hero-actions">
               <button
                 type="button"
                 onClick={() => scrollToSection('projects')}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-bold text-on-primary transition hover:bg-primary-dim active:scale-[0.98]"
               >
-                View projects
+                Explore selected work
                 <ArrowRight size={17} />
               </button>
               <a
                 ref={resumeButtonRef}
                 href={`${import.meta.env.BASE_URL}resume.pdf`}
+                download="Ayush-Bajaj-Resume.pdf"
                 className={`relative inline-flex items-center justify-center gap-2 rounded-xl border px-6 py-3.5 text-sm font-semibold transition active:scale-[0.98] ${
                   showResumeCue
                     ? 'z-50 border-tertiary/40 bg-surface-container-high text-tertiary shadow-2xl shadow-tertiary/10 ring-1 ring-tertiary/25'
@@ -2054,22 +1975,19 @@ export const SectionGroup: React.FC = () => {
                 <Download size={17} />
                 Resume
               </a>
-              <a
-                href={personal.resumeLink}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-semibold text-on-surface-variant transition hover:text-primary"
-              >
-                Drive copy <ExternalLink size={15} />
-              </a>
-            </motion.div>
+
+              <button type="button" onClick={() => scrollToSection('contact')} className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-on-surface-variant hover:text-primary">Let’s talk <ArrowRight size={15} /></button>
+            </div>
+            <div className="content-lane relative z-10 mt-8">
+              <SelectedWorkLinks onSelect={(id) => { const project = projects.find(item => item.id === id); if (project) openCaseStudy(project); }} />
+            </div>
 
             {/* Interactive Scroll-Down Cue */}
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.9, duration: 0.6 }}
-              className="relative z-10 mt-10 hidden sm:flex items-center gap-3 text-[11px] font-label uppercase tracking-[0.22em] text-on-surface-variant/75"
+              className="relative z-10 mt-5 hidden sm:flex items-center gap-3 text-[11px] font-label uppercase tracking-[0.22em] text-on-surface-variant/75"
             >
               <button
                 type="button"
@@ -2079,8 +1997,8 @@ export const SectionGroup: React.FC = () => {
               >
                 <div className="flex h-7 w-4.5 items-start justify-center rounded-full border border-outline-variant group-hover:border-primary/50 transition p-1">
                   <motion.div
-                    animate={reduceMotion ? { y: 0 } : { y: [0, 5, 0] }}
-                    transition={reduceMotion ? { duration: 0 } : { duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                    animate={{ y: 0 }}
+                    transition={{ duration: 0 }}
                     className="h-1.5 w-1 rounded-full bg-primary"
                   />
                 </div>
@@ -2094,10 +2012,10 @@ export const SectionGroup: React.FC = () => {
         {/* ── PROJECTS ─────────────────────────────────────────────────── */}
         <SectionShell
           id="projects"
-          className="px-5 py-20 sm:px-8 lg:px-12 xl:px-16"
+          className="px-5 py-16 sm:px-8 sm:py-20 lg:px-12 xl:px-16"
         >
           <div className="mx-auto w-full min-w-0 max-w-screen-2xl">
-            <div className="mb-6 flex flex-col gap-4 w-full lg:max-w-[58%] xl:max-w-[54%] 2xl:max-w-[52%]">
+            <div className="content-lane mb-6 flex flex-col gap-5">
               <SectionHeading
                 eyebrow={sectionCopy.projects.eyebrow}
                 title={sectionCopy.projects.title}
@@ -2105,11 +2023,12 @@ export const SectionGroup: React.FC = () => {
               />
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 {/* View Mode Toggle: Recruiter Bento Grid (default) vs Cinematic 3D Flow */}
-                <div className="flex items-center gap-1 p-1 rounded-xl border border-outline-variant bg-surface-container-high/65">
+                <div role="group" aria-label="Project layout" className="flex items-center gap-1 p-1 rounded-xl border border-outline-variant bg-surface-container-high/65">
                   <button
                     type="button"
+                    aria-pressed={projectViewMode === 'bento'}
                     onClick={() => setProjectViewMode('bento')}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    className={`inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
                       projectViewMode === 'bento'
                         ? 'bg-primary text-on-primary shadow-sm'
                         : 'text-on-surface-variant hover:text-on-surface'
@@ -2120,21 +2039,22 @@ export const SectionGroup: React.FC = () => {
                   </button>
                   <button
                     type="button"
+                    aria-pressed={projectViewMode === 'cinematic'}
                     onClick={() => setProjectViewMode('cinematic')}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    className={`inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
                       projectViewMode === 'cinematic'
                         ? 'bg-primary text-on-primary shadow-sm'
                         : 'text-on-surface-variant hover:text-on-surface'
                     }`}
                   >
                     <Sparkles size={13} />
-                    <span>Cinematic 3D</span>
+                    <span>Cinematic</span>
                   </button>
                 </div>
 
                 {/* Arrow navigation buttons for smooth carousel gliding (Cinematic only) */}
                 {projectViewMode === 'cinematic' && (
-                  <div className="hidden sm:flex items-center gap-2">
+                  <div className="hidden lg:flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => scrollRail(-1)}
@@ -2167,14 +2087,15 @@ export const SectionGroup: React.FC = () => {
             </div>
 
             {/* Filter projects by their main discipline */}
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4 w-full lg:max-w-[58%] xl:max-w-[54%] 2xl:max-w-[52%]">
-              <div className="flex flex-wrap gap-2">
+            <div className="content-lane mb-7 flex flex-wrap items-center justify-between gap-4">
+              <div role="group" aria-label="Filter projects by discipline" className="flex flex-wrap gap-2">
                 {projectFilters.map((filter) => (
                   <button
                     key={filter}
                     type="button"
+                    aria-pressed={projectFilter === filter}
                     onClick={() => setProjectFilter(filter)}
-                    className={`rounded-xl border px-4 py-2 text-sm font-semibold transition cursor-pointer ${
+                    className={`min-h-11 rounded-xl border px-3.5 py-2 text-sm font-semibold transition cursor-pointer ${
                       projectFilter === filter
                         ? 'border-primary bg-primary text-on-primary'
                         : 'border-outline-variant bg-surface-container-high/60 text-on-surface-variant hover:border-primary/40 hover:text-primary'
@@ -2185,8 +2106,10 @@ export const SectionGroup: React.FC = () => {
                 ))}
               </div>
 
+              <p className="text-xs text-on-surface-variant" role="status" aria-live="polite">{visibleProjects.length} {visibleProjects.length === 1 ? 'project' : 'projects'}</p>
+
               {projectViewMode === 'cinematic' && (
-                <div className="hidden sm:flex items-center gap-4 text-[11px] font-label uppercase tracking-[0.18em] text-on-surface-variant">
+                <div className="hidden lg:flex items-center gap-4 text-[11px] font-label uppercase tracking-[0.18em] text-on-surface-variant" aria-hidden="true">
                   <span ref={railCounterRef}>1/{visibleProjects.length}</span>
                   <div className="h-1.5 w-36 overflow-hidden rounded-full bg-surface-container-high">
                     <div
@@ -2201,7 +2124,7 @@ export const SectionGroup: React.FC = () => {
 
             {/* View Mode Switching: Recruiter Bento Grid vs Cinematic 3D Flow */}
             {projectViewMode === 'bento' ? (
-              <div className="w-full lg:max-w-[58%] xl:max-w-[54%] 2xl:max-w-[52%]">
+              <div className="content-lane">
                 <BentoGridView projects={visibleProjects} onOpenCaseStudy={openCaseStudy} />
               </div>
             ) : (
@@ -2211,11 +2134,20 @@ export const SectionGroup: React.FC = () => {
                   <div
                     ref={horizontalRailRef}
                     onScroll={handleRailScroll}
-                    onWheel={handleRailWheel}
-                    className="project-rail-scroll flex w-full gap-5 overflow-x-auto overflow-y-hidden py-3"
+                    tabIndex={0}
+                    role="region"
+                    aria-label="Cinematic projects. Use Left and Right arrow keys to browse."
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                      event.preventDefault();
+                      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') scrollRail(event.key === 'ArrowLeft' ? -1 : 1);
+                      else event.currentTarget.scrollTo({ left: event.key === 'Home' ? 0 : event.currentTarget.scrollWidth, behavior: reduceMotion ? 'auto' : 'smooth' });
+                    }}
+                    id="project-rail"
+                    className="project-rail-scroll flex w-full items-stretch gap-5 overflow-x-auto overflow-y-hidden py-3"
                   >
                     {/* Intro card */}
-                    <div className="project-rail-item surface-panel shimmer-card flex h-[21rem] w-[20rem] flex-none flex-col justify-between rounded-2xl p-6 xl:w-[21.5rem]">
+                    <div className="project-rail-item surface-panel flex min-h-[27rem] w-[21rem] flex-none flex-col justify-between rounded-2xl p-6 xl:w-[23rem]">
                       <div>
                         <div className="mb-3 flex items-center gap-2">
                           <Briefcase size={14} className="text-primary-dim" />
@@ -2226,7 +2158,7 @@ export const SectionGroup: React.FC = () => {
                         </h3>
                       </div>
                       <p className="text-sm leading-6 text-on-surface-variant">
-                        {projects.length} production systems with architectural focus, live demos, and source code.
+                        {visibleProjects.length} projects with architectural context, interactive demos, and source details.
                       </p>
                       <div className="flex items-center gap-2 text-xs font-semibold text-primary">
                         <span>Swipe or click arrows</span>
@@ -2235,7 +2167,7 @@ export const SectionGroup: React.FC = () => {
                     </div>
 
                     {visibleProjects.map((project, index) => (
-                      <div key={project.id} className="project-rail-item flex h-[21rem] w-[20rem] flex-none flex-col xl:w-[21.5rem]">
+                      <div key={project.id} className="project-rail-item flex min-h-[27rem] w-[21rem] flex-none flex-col xl:w-[23rem]">
                         <ProjectCard project={project} index={index} rail onOpenCaseStudy={openCaseStudy} />
                       </div>
                     ))}
@@ -2243,8 +2175,8 @@ export const SectionGroup: React.FC = () => {
                     {/* Continue to profile card */}
                     <button
                       type="button"
-                      onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}
-                      className="project-rail-item surface-panel shimmer-card group flex h-[21rem] w-[20rem] flex-none flex-col justify-between rounded-2xl p-6 text-left transition hover:border-primary/35 xl:w-[21.5rem] cursor-pointer"
+                      onClick={() => scrollToSection('about')}
+                      className="project-rail-item surface-panel group flex min-h-[27rem] w-[21rem] flex-none flex-col justify-between rounded-2xl p-6 text-left transition-colors hover:border-primary/35 xl:w-[23rem] cursor-pointer"
                     >
                       <span className="text-[10px] font-label uppercase tracking-[0.22em] text-primary-dim">Next</span>
                       <span className="text-xl font-display font-bold leading-tight text-on-surface">Continue to profile.</span>
@@ -2267,8 +2199,8 @@ export const SectionGroup: React.FC = () => {
                         onClick={() => {
                           const rail = horizontalRailRef.current;
                           if (!rail) return;
-                          const cardWidth = 360;
-                          rail.scrollTo({ left: (idx + 1) * cardWidth, behavior: 'smooth' });
+                          const card = rail.children[idx + 1] as HTMLElement | undefined;
+                          if (card) rail.scrollTo({ left: card.offsetLeft - (rail.firstElementChild as HTMLElement).offsetLeft, behavior: reduceMotion ? 'auto' : 'smooth' });
                         }}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-high/60 text-[11px] font-mono text-on-surface-variant hover:border-primary/40 hover:text-primary hover:bg-surface-container-highest transition cursor-pointer shrink-0"
                       >
@@ -2291,8 +2223,8 @@ export const SectionGroup: React.FC = () => {
         </SectionShell>
 
         {/* ── ABOUT ────────────────────────────────────────────────────── */}
-        <SectionShell id="about" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-28">
-          <div className="mr-auto w-full lg:max-w-[56%] xl:max-w-[52%] 2xl:max-w-[50%] flex flex-col gap-8">
+        <SectionShell id="about" className="px-5 py-16 sm:px-8 sm:py-20 lg:px-12 xl:px-16 lg:py-24">
+          <div className="content-lane flex flex-col gap-8">
             <SectionHeading
               eyebrow={sectionCopy.about.eyebrow}
               title={sectionCopy.about.title}
@@ -2311,11 +2243,18 @@ export const SectionGroup: React.FC = () => {
                 </p>
               </div>
 
-              {/* The problem spaces I build for */}
-              <div className="grid grid-cols-3 gap-3">
-                <Metric value="AI" label="Pipelines" accent />
-                <Metric value="Web" label="Platforms" />
-                <Metric value="3D" label="Systems" />
+              <div className="experience-card surface-panel rounded-2xl p-6">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div><p className="evidence-label">Professional experience</p><h3 className="mt-2 text-xl font-display font-bold">{personal.experience.role}</h3><p className="mt-1 text-sm text-primary">{personal.experience.company}</p></div>
+                  <span className="text-xs font-mono text-on-surface-variant">{personal.experience.period}</span>
+                </div>
+                <ul className="mt-5 space-y-3 text-sm leading-6 text-on-surface-variant">{personal.experience.highlights.map(item => <li key={item} className="flex gap-3"><Check size={15} className="mt-1 shrink-0 text-primary" /><span>{item}</span></li>)}</ul>
+              </div>
+              <div className="surface-panel rounded-2xl p-6">
+                <p className="evidence-label">Education</p>
+                <h3 className="mt-2 text-xl font-display font-bold">{personal.education.institution}</h3>
+                <p className="mt-2 text-sm text-on-surface-variant">{personal.education.degree} / {personal.education.period}</p>
+                <p className="mt-3 text-sm text-primary">CGPA {personal.education.cgpa}</p>
               </div>
 
               {/* Principles */}
@@ -2343,8 +2282,8 @@ export const SectionGroup: React.FC = () => {
         </SectionShell>
 
         {/* ── SKILLS ───────────────────────────────────────────────────── */}
-        <SectionShell id="skills" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-28">
-          <div className="mr-auto w-full lg:max-w-[56%] xl:max-w-[52%] 2xl:max-w-[50%]">
+        <SectionShell id="skills" className="px-5 py-16 sm:px-8 sm:py-20 lg:px-12 xl:px-16 lg:py-24">
+          <div className="content-lane">
             <SectionHeading
               eyebrow={sectionCopy.skills.eyebrow}
               title={sectionCopy.skills.title}
@@ -2352,16 +2291,16 @@ export const SectionGroup: React.FC = () => {
             />
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               {skills.map((group, index) => (
-                <SkillCard key={group.category} group={group} index={index} />
+                <SkillCard key={group.category} group={group} index={index} onSelect={(id) => { const project = projects.find(item => item.id === id); if (project) openCaseStudy(project); }} />
               ))}
             </div>
           </div>
         </SectionShell>
 
         {/* ── CONTACT ──────────────────────────────────────────────────── */}
-        <SectionShell id="contact" className="px-5 py-24 sm:px-8 lg:px-16 lg:py-28">
-          <div className="mr-auto w-full lg:max-w-[52%] xl:max-w-[48%] 2xl:max-w-[46%] grid gap-8 sm:gap-10">
-            <div className="max-w-[240px] sm:max-w-none">
+        <SectionShell id="contact" className="px-5 py-16 sm:px-8 sm:py-20 lg:px-12 xl:px-16 lg:py-24">
+          <div className="content-lane grid gap-8">
+            <div>
               <SectionHeading
                 eyebrow={sectionCopy.contact.eyebrow}
                 title={sectionCopy.contact.title}
@@ -2369,7 +2308,7 @@ export const SectionGroup: React.FC = () => {
               />
             </div>
 
-            <motion.div {...reveal} className="surface-panel shimmer-card rounded-2xl p-6 sm:p-8">
+            <motion.div {...reveal} className="surface-panel rounded-2xl p-5 sm:p-7">
               {/* Availability badge */}
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/6 px-3 py-1.5 text-[11px] font-label uppercase tracking-[0.18em] text-primary-dim">
                 <span className="status-dot h-1.5 w-1.5 rounded-full bg-primary-dim" />
@@ -2380,7 +2319,7 @@ export const SectionGroup: React.FC = () => {
                 <p className="text-[10px] font-label uppercase tracking-[0.22em] text-on-surface-variant mb-2">Email</p>
                 <a
                   href={`mailto:${personal.email}`}
-                  className="text-xl font-display font-bold text-on-surface transition hover:text-primary sm:text-2xl"
+                  className="break-all text-lg font-display font-bold leading-8 text-on-surface transition hover:text-primary sm:text-2xl"
                 >
                   {personal.email}
                 </a>
@@ -2404,6 +2343,7 @@ export const SectionGroup: React.FC = () => {
                     </a>
                   );
                 })}
+                <a href={personal.resumeLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-outline-variant px-4 py-2.5 text-sm font-semibold text-on-surface-variant hover:text-primary">Drive copy <ExternalLink size={15} /></a>
                 <a
                   href={`${import.meta.env.BASE_URL}resume.pdf`}
                   target="_blank"
@@ -2423,7 +2363,7 @@ export const SectionGroup: React.FC = () => {
         <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40">
           <button
             type="button"
-            onClick={() => setIsTerminalOpen(true)}
+            onClick={() => { setHasOpenedTerminal(true); setIsTerminalOpen(true); }}
             className="inline-flex items-center gap-2 rounded-full border border-tertiary/40 bg-surface/90 backdrop-blur-md p-2.5 sm:px-4 sm:py-2.5 text-xs font-mono font-semibold text-on-surface shadow-2xl hover:border-tertiary hover:text-tertiary hover:shadow-tertiary/20 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
             aria-label="Open Developer CLI Terminal"
             title="Open Developer CLI Terminal (~)"
@@ -2441,11 +2381,11 @@ export const SectionGroup: React.FC = () => {
       )}
 
       {/* Developer CLI Terminal Modal */}
-      <TerminalModal
-        isOpen={isTerminalOpen}
-        onClose={() => setIsTerminalOpen(false)}
-        onOpenCaseStudy={openCaseStudyFromTerminal}
-      />
+      {hasOpenedTerminal && (
+        <Suspense fallback={isTerminalOpen ? <div className="fixed bottom-20 right-5 z-50 rounded-xl border border-outline-variant bg-surface px-4 py-3 text-sm text-on-surface" role="status">Loading terminal…</div> : null}>
+          <TerminalModal isOpen={isTerminalOpen} onClose={() => setIsTerminalOpen(false)} onOpenCaseStudy={openCaseStudyFromTerminal} />
+        </Suspense>
+      )}
     </div>
   );
 };

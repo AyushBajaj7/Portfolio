@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play,
@@ -77,28 +77,42 @@ export const BlastRadiusSimulator: React.FC<{ onExploreMore?: () => void }> = ({
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationStage, setSimulationStage] = useState<'idle' | 'ast' | 'graph' | 'rag' | 'complete'>('idle');
   const [hasRun, setHasRun] = useState(false);
+  const timersRef = useRef<number[]>([]);
+
+  const cancelSimulation = useCallback(() => {
+    timersRef.current.forEach(timer => window.clearTimeout(timer));
+    timersRef.current = [];
+  }, []);
+
+  useEffect(() => cancelSimulation, [cancelSimulation]);
+
+  const resetSimulation = () => {
+    cancelSimulation();
+    setIsSimulating(false);
+    setSimulationStage('idle');
+    setHasRun(false);
+  };
 
   const runSimulation = useCallback(() => {
+    cancelSimulation();
     setIsSimulating(true);
     setHasRun(true);
     setSimulationStage('ast');
 
-    setTimeout(() => {
-      setSimulationStage('graph');
-      setTimeout(() => {
-        setSimulationStage('rag');
-        setTimeout(() => {
-          setSimulationStage('complete');
-          setIsSimulating(false);
-        }, 320);
-      }, 300);
-    }, 280);
-  }, []);
+    timersRef.current = [
+      window.setTimeout(() => setSimulationStage('graph'), 280),
+      window.setTimeout(() => setSimulationStage('rag'), 580),
+      window.setTimeout(() => {
+        setSimulationStage('complete');
+        setIsSimulating(false);
+        timersRef.current = [];
+      }, 900),
+    ];
+  }, [cancelSimulation]);
 
   const handleSelectScenario = (scenario: Scenario) => {
     setSelectedScenario(scenario);
-    setSimulationStage('idle');
-    setHasRun(false);
+    resetSimulation();
   };
 
   const isImpacted = (nodeId: string) => {
@@ -163,10 +177,7 @@ export const BlastRadiusSimulator: React.FC<{ onExploreMore?: () => void }> = ({
           {hasRun && (
             <button
               type="button"
-              onClick={() => {
-                setHasRun(false);
-                setSimulationStage('idle');
-              }}
+              onClick={resetSimulation}
               title="Reset simulator"
               className="p-1.5 rounded-lg border border-outline-variant hover:border-primary/40 text-on-surface-variant hover:text-primary transition cursor-pointer"
             >

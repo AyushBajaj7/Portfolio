@@ -1,6 +1,6 @@
 import React, { useRef, useCallback, useEffect } from 'react';
 
-interface TiltCardProps {
+interface TiltCardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
   maxTilt?: number;
@@ -12,119 +12,102 @@ interface TiltCardProps {
   role?: string;
 }
 
+const tiltMedia = '(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)';
+
+/** Pointer-only tilt. A card owns work and scroll listeners only while hovered. */
 export const TiltCard: React.FC<TiltCardProps> = ({
   children,
   className = '',
-  maxTilt = 6,
+  maxTilt = 4,
   glareOpacity = 0.14,
   glareColor = '156, 255, 147',
   onClick,
   onKeyDown,
   tabIndex,
   role,
+  ...attributes
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const glareRef = useRef<HTMLDivElement>(null);
-  const rectRef = useRef<{ left: number; top: number; width: number; height: number } | null>(null);
-  const rafIdRef = useRef<number | null>(null);
-  const isTouchRef = useRef(false);
-  const isHoveredRef = useRef(false);
+  const rectRef = useRef<DOMRect | null>(null);
+  const pointerRef = useRef({ x: 0, y: 0 });
+  const frameRef = useRef<number | null>(null);
+  const mediaRef = useRef<MediaQueryList | null>(null);
+  const hoveredRef = useRef(false);
 
-  useEffect(() => {
-    isTouchRef.current =
-      window.matchMedia('(pointer: coarse)').matches ||
-      !window.matchMedia('(hover: hover)').matches;
-
-    // Reset tilt on scroll to avoid GPU compositing contention
-    const handleScroll = () => {
-      if (isHoveredRef.current && cardRef.current) {
-        cardRef.current.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
-        cardRef.current.style.willChange = 'auto';
-        if (glareRef.current) glareRef.current.style.opacity = '0';
-        rectRef.current = null;
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-      }
-    };
-  }, []);
-
-  const handleMouseEnter = useCallback(() => {
-    if (isTouchRef.current || !cardRef.current) return;
-    isHoveredRef.current = true;
-    cardRef.current.style.willChange = 'transform';
-    const r = cardRef.current.getBoundingClientRect();
-    rectRef.current = { left: r.left, top: r.top, width: r.width, height: r.height };
-    cardRef.current.style.transition = 'transform 0.1s cubic-bezier(0.2, 0, 0, 1)';
-  }, []);
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (isTouchRef.current || !isHoveredRef.current || !cardRef.current) return;
-      cardRef.current.style.willChange = 'transform';
-
-      // Lazy cache rect if not set
-      if (!rectRef.current) {
-        const r = cardRef.current.getBoundingClientRect();
-        rectRef.current = { left: r.left, top: r.top, width: r.width, height: r.height };
-      }
-
-      const rect = rectRef.current;
-      if (rect.width <= 0 || rect.height <= 0) return;
-
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-
-      const percentX = Math.min(1, Math.max(0, mouseX / rect.width));
-      const percentY = Math.min(1, Math.max(0, mouseY / rect.height));
-
-      const rotateX = ((percentY - 0.5) * -maxTilt).toFixed(2);
-      const rotateY = ((percentX - 0.5) * maxTilt).toFixed(2);
-
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-      }
-
-      rafIdRef.current = requestAnimationFrame(() => {
-        if (!cardRef.current) return;
-        cardRef.current.style.transform = `perspective(900px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.01, 1.01, 1.01)`;
-        if (glareRef.current) {
-          glareRef.current.style.opacity = `${glareOpacity}`;
-          glareRef.current.style.background = `radial-gradient(circle 380px at ${(percentX * 100).toFixed(1)}% ${(percentY * 100).toFixed(1)}%, rgba(${glareColor}, 0.22), transparent 70%)`;
-        }
-      });
-    },
-    [maxTilt, glareOpacity, glareColor]
-  );
-
-  const handleMouseLeave = useCallback(() => {
-    if (isTouchRef.current || !cardRef.current) return;
-    isHoveredRef.current = false;
+  const reset = useCallback(function resetTilt() {
+    hoveredRef.current = false;
     rectRef.current = null;
-    cardRef.current.style.willChange = 'auto';
-    if (rafIdRef.current !== null) {
-      cancelAnimationFrame(rafIdRef.current);
-      rafIdRef.current = null;
+    if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    frameRef.current = null;
+    if (cardRef.current) {
+      cardRef.current.style.transition = 'transform 0.28s cubic-bezier(0.2, 1, 0.36, 1)';
+      cardRef.current.style.transform = '';
+      cardRef.current.style.willChange = 'auto';
     }
-    cardRef.current.style.transition = 'transform 0.4s cubic-bezier(0.2, 1, 0.36, 1)';
-    cardRef.current.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
     if (glareRef.current) {
       glareRef.current.style.opacity = '0';
+      glareRef.current.style.willChange = 'auto';
     }
+    document.removeEventListener('scroll', resetTilt, true);
+    window.removeEventListener('resize', resetTilt);
+    window.removeEventListener('blur', resetTilt);
+    mediaRef.current?.removeEventListener('change', resetTilt);
+    mediaRef.current = null;
   }, []);
+
+  useEffect(() => reset, [reset]);
+
+  const handleMouseEnter = useCallback(() => {
+    const media = window.matchMedia(tiltMedia);
+    if (!media.matches || !cardRef.current) return;
+    hoveredRef.current = true;
+    // Read once before applying any transform, then invalidate on any scroll or resize.
+    rectRef.current = cardRef.current.getBoundingClientRect();
+    cardRef.current.style.willChange = 'transform';
+    cardRef.current.style.transition = 'transform 0.1s ease-out';
+    if (glareRef.current) glareRef.current.style.willChange = 'transform, opacity';
+    mediaRef.current = media;
+    media.addEventListener('change', reset);
+    document.addEventListener('scroll', reset, { passive: true, capture: true });
+    window.addEventListener('resize', reset, { passive: true });
+    window.addEventListener('blur', reset);
+  }, [reset]);
+
+  const handleMouseMove = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (!hoveredRef.current || !rectRef.current || !cardRef.current) return;
+    pointerRef.current = { x: event.clientX, y: event.clientY };
+    if (frameRef.current !== null) return;
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null;
+      const rect = rectRef.current;
+      const card = cardRef.current;
+      if (!hoveredRef.current || !rect || !card || rect.width <= 0 || rect.height <= 0) return;
+      const x = Math.max(0, Math.min(rect.width, pointerRef.current.x - rect.left));
+      const y = Math.max(0, Math.min(rect.height, pointerRef.current.y - rect.top));
+      const rotateX = (0.5 - y / rect.height) * maxTilt;
+      const rotateY = (x / rect.width - 0.5) * maxTilt;
+      card.style.transform = `perspective(900px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.005, 1.005, 1.005)`;
+      if (glareRef.current) {
+        glareRef.current.style.opacity = String(glareOpacity);
+        // Move a reusable gradient texture; don't rebuild a radial gradient on every move.
+        glareRef.current.style.transform = `translate3d(${(x - 190).toFixed(1)}px, ${(y - 190).toFixed(1)}px, 0)`;
+      }
+    });
+  }, [maxTilt, glareOpacity]);
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
     if (role === 'button' && event.key === ' ') event.preventDefault();
-    onKeyDown?.(event);
+    if (onKeyDown) onKeyDown(event);
+    else if (role === 'button' && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      event.currentTarget.click();
+    }
   }, [onKeyDown, role]);
 
   return (
     <div
+      {...attributes}
       ref={cardRef}
       role={role}
       tabIndex={tabIndex}
@@ -132,16 +115,13 @@ export const TiltCard: React.FC<TiltCardProps> = ({
       onKeyDown={handleKeyDown}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      style={{
-        transform: 'perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
-      }}
+      onMouseLeave={reset}
       className={`relative overflow-hidden ${className}`}
     >
-      {/* Specular Holographic Glare Layer - Updated directly via ref */}
       <div
         ref={glareRef}
-        className="pointer-events-none absolute -inset-px rounded-[inherit] transition-opacity duration-300 z-10 opacity-0"
+        className="pointer-events-none absolute left-0 top-0 z-10 h-[380px] w-[380px] rounded-full opacity-0 transition-opacity duration-200"
+        style={{ background: `radial-gradient(circle closest-side, rgba(${glareColor}, 0.22), transparent 100%)` }}
         aria-hidden="true"
       />
       {children}

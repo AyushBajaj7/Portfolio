@@ -1,6 +1,6 @@
 /**
  * @fileoverview Root application component.
- * Assembles the main layout: PageLoader, Cursor, Navbar, Scene (canvas), and content Sections.
+ * Assembles navigation, scroll-driven canvas, and the original portfolio sections.
  * @author Ayush Bajaj
  */
 
@@ -17,6 +17,7 @@ import { MotionConfig } from 'framer-motion';
 function App() {
   return (
     <MotionConfig reducedMotion="user">
+      <a className="skip-link" href="#main-content">Skip to content</a>
       <Cursor />
       <Navbar />
       <Scene />

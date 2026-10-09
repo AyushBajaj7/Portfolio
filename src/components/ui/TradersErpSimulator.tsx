@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Boxes,
   ArrowRight,
@@ -85,22 +85,33 @@ export const TradersErpSimulator: React.FC<{
 }> = ({ onExploreMore }) => {
   const [activeScenarioId, setActiveScenarioId] = useState<string>('sale-tmt');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const processingTimerRef = useRef<number | null>(null);
+
+  const cancelProcessing = useCallback(() => {
+    if (processingTimerRef.current !== null) window.clearTimeout(processingTimerRef.current);
+    processingTimerRef.current = null;
+  }, []);
+
+  useEffect(() => cancelProcessing, [cancelProcessing]);
+
+  const startProcessing = (duration: number) => {
+    cancelProcessing();
+    setIsProcessing(true);
+    processingTimerRef.current = window.setTimeout(() => {
+      processingTimerRef.current = null;
+      setIsProcessing(false);
+    }, duration);
+  };
 
   const scenario = SCENARIOS.find((s) => s.id === activeScenarioId) || SCENARIOS[0];
 
   const handleExecute = () => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-    }, 450);
+    startProcessing(450);
   };
 
   const handleScenarioChange = (id: string) => {
     setActiveScenarioId(id);
-    setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-    }, 300);
+    startProcessing(300);
   };
 
   return (

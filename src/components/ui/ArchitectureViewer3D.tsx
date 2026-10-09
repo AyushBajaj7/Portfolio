@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useSyncExternalStore } from 'react';
 import {
   Rotate3d,
   Compass,
@@ -12,6 +12,14 @@ import {
 
 type RenderMode = 'shaded' | 'blueprint' | 'clay';
 type CameraAngle = 'iso' | 'front' | 'top';
+
+const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
+const subscribeReducedMotion = (notify: () => void) => {
+  const media = window.matchMedia(reducedMotionQuery);
+  media.addEventListener('change', notify);
+  return () => media.removeEventListener('change', notify);
+};
+const getReducedMotion = () => window.matchMedia(reducedMotionQuery).matches;
 
 interface Point3D {
   x: number;
@@ -159,6 +167,8 @@ export const ArchitectureViewer3D: React.FC<{
   const [renderMode, setRenderMode] = useState<RenderMode>('shaded');
   const [isAutoRotate, setIsAutoRotate] = useState<boolean>(true);
   const [cameraAngle, setCameraAngle] = useState<CameraAngle>('iso');
+  const reducedMotion = useSyncExternalStore(subscribeReducedMotion, getReducedMotion, () => true);
+  const isAutoRotating = isAutoRotate && !reducedMotion;
 
   // Rotation angles in radians
   const rotX = useRef<number>(0.42);
@@ -166,6 +176,8 @@ export const ArchitectureViewer3D: React.FC<{
   const isDragging = useRef<boolean>(false);
   const lastMousePos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const animFrameId = useRef<number | null>(null);
+  const dimensionsRef = useRef({ width: 640, height: 320 });
+  const requestDrawRef = useRef<() => void>(() => {});
 
   // Set camera angle preset
   const setCameraPreset = (angle: CameraAngle) => {
@@ -181,6 +193,7 @@ export const ArchitectureViewer3D: React.FC<{
       rotX.current = 1.35;
       rotY.current = 0.0;
     }
+    requestDrawRef.current();
   };
 
   const drawScene = useCallback(() => {
@@ -189,14 +202,8 @@ export const ArchitectureViewer3D: React.FC<{
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+    const { width, height } = dimensionsRef.current;
     ctx.clearRect(0, 0, width, height);
-
-    // Auto rotate if enabled
-    if (isAutoRotate && !isDragging.current) {
-      rotY.current += 0.0075;
-    }
 
     const rx = rotX.current;
     const ry = rotY.current;
@@ -346,27 +353,86 @@ export const ArchitectureViewer3D: React.FC<{
       ctx.fillText('SPAN: 18.5m', 16, height - 20);
       ctx.fillText('ELEVATION: +7.2m', 16, height - 34);
     }
-  }, [renderMode, isAutoRotate]);
+  }, [renderMode]);
 
   useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     let active = true;
-    const loop = () => {
-      if (!active) return;
-      drawScene();
-      animFrameId.current = requestAnimationFrame(loop);
+    let visible = !('IntersectionObserver' in window);
+    let previousTime: number | null = null;
+    const shouldRotate = () => isAutoRotating && !isDragging.current;
+    const stop = () => {
+      if (animFrameId.current !== null) cancelAnimationFrame(animFrameId.current);
+      animFrameId.current = null;
+      previousTime = null;
     };
-    loop();
+    const loop = (time: number) => {
+      animFrameId.current = null;
+      if (!active || !visible || document.hidden) return;
+      if (shouldRotate()) {
+        // Match the original 60 Hz orbit speed at every refresh rate. Clamp a
+        // delayed frame so returning to the tab cannot jump the camera.
+        const elapsed = previousTime === null ? 0 : Math.min(64, time - previousTime);
+        rotY.current += elapsed * 0.00045;
+      }
+      previousTime = time;
+      drawScene();
+      if (shouldRotate()) animFrameId.current = requestAnimationFrame(loop);
+      else previousTime = null;
+    };
+    const requestDraw = () => {
+      if (active && visible && !document.hidden && animFrameId.current === null) {
+        animFrameId.current = requestAnimationFrame(loop);
+      }
+    };
+    requestDrawRef.current = requestDraw;
+
+    const resize = () => {
+      const bounds = canvas.getBoundingClientRect();
+      const width = Math.max(1, bounds.width);
+      const height = Math.max(1, bounds.height);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dimensionsRef.current = { width, height };
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      canvas.getContext('2d')?.setTransform(dpr, 0, 0, dpr, 0, 0);
+      requestDraw();
+    };
+    const intersection = 'IntersectionObserver' in window
+      ? new IntersectionObserver(([entry]) => {
+          visible = entry.isIntersecting;
+          if (visible) requestDraw();
+          else stop();
+        })
+      : null;
+    intersection?.observe(canvas);
+    const resizeObserver = new ResizeObserver(resize);
+    resizeObserver.observe(canvas);
+    const handleVisibility = () => {
+      if (document.hidden) stop();
+      else requestDraw();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('resize', resize, { passive: true });
+    resize();
     return () => {
       active = false;
-      if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
+      stop();
+      requestDrawRef.current = () => {};
+      intersection?.disconnect();
+      resizeObserver.disconnect();
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('resize', resize);
     };
-  }, [drawScene]);
+  }, [drawScene, isAutoRotating]);
 
   // Pointer / Mouse Orbit handlers
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     isDragging.current = true;
     lastMousePos.current = { x: e.clientX, y: e.clientY };
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    requestDrawRef.current();
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -377,6 +443,7 @@ export const ArchitectureViewer3D: React.FC<{
 
     rotY.current += dx * 0.009;
     rotX.current = Math.max(-0.2, Math.min(1.4, rotX.current + dy * 0.009));
+    requestDrawRef.current();
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -386,6 +453,26 @@ export const ArchitectureViewer3D: React.FC<{
     } catch {
       // ignore
     }
+    requestDrawRef.current();
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLCanvasElement>) => {
+    const moves: Record<string, [number, number]> = {
+      ArrowLeft: [-0.12, 0], ArrowRight: [0.12, 0],
+      ArrowUp: [0, -0.12], ArrowDown: [0, 0.12],
+    };
+    if (event.key === 'Home') {
+      event.preventDefault();
+      setCameraPreset('iso');
+      return;
+    }
+    const move = moves[event.key];
+    if (!move) return;
+    event.preventDefault();
+    setIsAutoRotate(false);
+    rotY.current += move[0];
+    rotX.current = Math.max(-0.2, Math.min(1.4, rotX.current + move[1]));
+    requestDrawRef.current();
   };
 
   return (
@@ -402,11 +489,11 @@ export const ArchitectureViewer3D: React.FC<{
                 INTERACTIVE 3D ARCHITECTURAL VIEWPORT
               </span>
               <span className="rounded-md border border-outline-variant/60 bg-surface/80 px-1.5 py-0.5 text-[9px] font-mono text-on-surface-variant">
-                WebGL / Canvas 3D
+                Canvas 3D
               </span>
             </div>
             <p className="text-[11px] text-on-surface-variant line-clamp-1">
-              Drag to orbit 3D pavilion model · Real-time shader modes & camera angles
+              Drag or use arrow keys to orbit · Shading modes & camera angles
             </p>
           </div>
         </div>
@@ -416,14 +503,17 @@ export const ArchitectureViewer3D: React.FC<{
           <button
             type="button"
             onClick={() => setIsAutoRotate(!isAutoRotate)}
+            aria-pressed={Boolean(isAutoRotating)}
+            disabled={Boolean(reducedMotion)}
+            title={reducedMotion ? 'Automatic orbit follows your reduced motion preference; drag or use arrow keys to explore.' : 'Toggle automatic orbit'}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-              isAutoRotate
+              isAutoRotating
                 ? 'bg-primary/15 border-primary/40 text-primary'
                 : 'bg-surface border-outline-variant text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            {isAutoRotate ? <Pause size={12} /> : <Play size={12} />}
-            <span>{isAutoRotate ? 'Orbiting' : 'Paused'}</span>
+            {isAutoRotating ? <Pause size={12} /> : <Play size={12} />}
+            <span>{reducedMotion ? 'Manual orbit' : isAutoRotating ? 'Orbiting' : 'Paused'}</span>
           </button>
         </div>
       </div>
@@ -442,7 +532,7 @@ export const ArchitectureViewer3D: React.FC<{
             }`}
           >
             <Sun size={12} />
-            <span>Shaded PBR</span>
+            <span>Shaded</span>
           </button>
           <button
             type="button"
@@ -466,7 +556,7 @@ export const ArchitectureViewer3D: React.FC<{
             }`}
           >
             <Palette size={12} />
-            <span>Clay AO</span>
+            <span>Clay</span>
           </button>
         </div>
 
@@ -518,8 +608,11 @@ export const ArchitectureViewer3D: React.FC<{
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          className="w-full h-full object-cover touch-none"
-        />
+          onKeyDown={handleKeyDown}
+          tabIndex={0}
+          aria-label="Interactive 3D pavilion. Drag or use arrow keys to orbit. Press Home to reset the camera."
+          className="w-full h-full touch-pan-y focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-[-2px]"
+        >Interactive pavilion model with shaded, blueprint, and clay views.</canvas>
 
         {/* Interactive Overlay HUD */}
         <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-[9px] font-mono text-white/80">
@@ -528,11 +621,11 @@ export const ArchitectureViewer3D: React.FC<{
         </div>
 
         <div className="absolute bottom-2.5 right-2.5 flex items-center gap-2 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-[9px] font-mono text-white/70">
-          <span className="text-emerald-400 font-bold">60 FPS</span>
+          <span className="text-emerald-400 font-bold">INTERACTIVE</span>
           <span>·</span>
-          <span>118 FACES</span>
+          <span>{FACES.length} FACES</span>
           <span>·</span>
-          <span>FOV 60°</span>
+          <span>3D PAVILION</span>
         </div>
       </div>
 

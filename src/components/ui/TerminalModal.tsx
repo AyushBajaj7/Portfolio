@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, X, CornerDownLeft, Sparkles, Check, ExternalLink } from 'lucide-react';
 import portfolioData from '../../data/portfolio.json';
@@ -74,33 +75,48 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
   const [pastCommands, setPastCommands] = useState<string[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  // Auto-focus input when opened
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 80);
-    }
-  }, [isOpen]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
-
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    const root = document.getElementById('root');
+    const previousInert = root?.inert ?? false;
+    document.body.style.overflow = 'hidden';
+    if (root) root.inert = true;
+    const focusFrame = requestAnimationFrame(() => inputRef.current?.focus());
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') { event.preventDefault(); onClose(); }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const controls = [...dialogRef.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input, [tabindex="0"]')].filter(element => element.getClientRects().length > 0);
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialogRef.current.contains(document.activeElement))) {
+        event.preventDefault(); last?.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialogRef.current.contains(document.activeElement))) {
+        event.preventDefault(); first?.focus();
+      }
     };
-
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      document.removeEventListener('keydown', closeOnEscape);
+      document.body.style.overflow = previousOverflow;
+      if (root) root.inert = previousInert;
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
   }, [isOpen, onClose]);
 
   // Scroll to bottom on new history output
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [history]);
+    if (!isOpen || !bodyRef.current) return;
+    bodyRef.current.scrollTo({ top: bodyRef.current.scrollHeight, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  }, [history, isOpen]);
 
   const executeCommand = useCallback(
-    (cmdRaw: string) => {
+    async (cmdRaw: string) => {
       const trimmed = cmdRaw.trim();
       const cmd = trimmed.toLowerCase();
       const time = new Date().toLocaleTimeString();
@@ -239,7 +255,7 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
                   GitHub: <a href="https://github.com/AyushBajaj7" target="_blank" rel="noreferrer" className="text-tertiary hover:underline">https://github.com/AyushBajaj7</a>
                 </div>
                 <div>
-                  LinkedIn: <a href="https://www.linkedin.com/in/ayush-bajaj-755517228/" target="_blank" rel="noreferrer" className="text-tertiary hover:underline">linkedin.com/in/ayush-bajaj</a>
+                  LinkedIn: <a href={portfolioData.socials.find(social => social.platform === 'LinkedIn')?.url} target="_blank" rel="noreferrer" className="text-tertiary hover:underline">linkedin.com/in/ayush-bajaj</a>
                 </div>
               </div>
             </div>
@@ -254,7 +270,9 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
         case 'hire-ayush':
         case 'hire ayush':
         case 'hire me':
-          navigator.clipboard?.writeText(portfolioData.personal.email);
+          {
+          let copied = false;
+          try { await navigator.clipboard.writeText(portfolioData.personal.email); copied = true; } catch { /* Email link remains available. */ }
           output = (
             <div className="space-y-2 text-xs font-mono border-2 border-primary/50 bg-primary/10 rounded-lg p-3.5 shadow-lg shadow-primary/10">
               <div className="flex items-center gap-2 text-primary font-bold text-sm">
@@ -266,7 +284,7 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
               </div>
               <div className="flex items-center gap-2 text-primary-dim bg-surface/80 px-2.5 py-1.5 rounded border border-primary/30 text-[11px]">
                 <Check size={14} className="text-primary" />
-                <span>Primary Email ({portfolioData.personal.email}) copied to clipboard!</span>
+                <span>{copied ? 'Email copied:' : 'Email:'} {portfolioData.personal.email}</span>
               </div>
               <div className="pt-1 flex gap-2">
                 <a
@@ -286,6 +304,7 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
             </div>
           );
           break;
+          }
 
         case 'clear':
           setHistory([]);
@@ -346,10 +365,10 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
     }
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-6">
           {/* Backdrop blur */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -361,6 +380,10 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
 
           {/* Terminal Window */}
           <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Developer terminal"
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -378,6 +401,7 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
                   onClick={onClose}
                   className="h-3 w-3 rounded-full bg-rose-500/80 hover:bg-rose-400 transition cursor-pointer"
                   title="Close Terminal"
+                  aria-label="Close terminal"
                 />
                 <div className="h-3 w-3 rounded-full bg-amber-500/80 hover:bg-amber-400 transition" />
                 <div className="h-3 w-3 rounded-full bg-emerald-500/80 hover:bg-emerald-400 transition" />
@@ -412,6 +436,7 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
 
             {/* Terminal Body */}
             <div
+              ref={bodyRef}
               onClick={() => inputRef.current?.focus()}
               className="relative z-10 flex-1 overflow-y-auto terminal-scroll p-4 sm:p-5 font-mono space-y-4 cursor-text"
             >
@@ -432,10 +457,11 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
                 <input
                   ref={inputRef}
                   type="text"
+                  aria-label="Terminal command"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="flex-1 bg-transparent text-on-surface focus:outline-none font-mono text-xs caret-primary"
+                  className="min-w-0 flex-1 bg-transparent text-on-surface focus:outline-none font-mono text-xs caret-primary"
                   placeholder="Type 'help' or 'sudo hire'..."
                   autoComplete="off"
                   spellCheck={false}
@@ -443,13 +469,13 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
                 <button
                   type="button"
                   onClick={() => executeCommand(input)}
+                  aria-label="Run command"
                   className="text-on-surface-variant/60 hover:text-primary p-1 cursor-pointer"
                 >
                   <CornerDownLeft size={13} />
                 </button>
               </div>
 
-              <div ref={bottomRef} />
             </div>
 
             {/* Footer quick suggestions */}
@@ -474,7 +500,7 @@ export const TerminalModal: React.FC<TerminalModalProps> = ({ isOpen, onClose, o
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>, document.body
   );
 };
 

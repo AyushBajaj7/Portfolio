@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import { mkdir, readdir } from 'node:fs/promises';
+import { copyFile, mkdir, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 const root = resolve(process.argv[2] ?? process.cwd());
@@ -16,10 +16,14 @@ for (const frameIndex of frameIndices) {
     throw new Error(`Missing source frame: ${fileName}`);
   }
 
-  await sharp(join(sourceDir, fileName))
-    .resize({ width: 480, height: 270, fit: 'fill' })
-    .webp({ quality: 88, effort: 4, alphaQuality: 95 })
-    .toFile(join(outputDir, fileName));
+  const source = join(sourceDir, fileName);
+  const metadata = await sharp(source).metadata();
+  if (metadata.width !== 960 || metadata.height !== 540 || !metadata.hasAlpha) {
+    throw new Error(`Expected a transparent 960x540 animation frame: ${fileName}`);
+  }
+  // Keep one consistent resolution and avoid another lossy WebP encoding.
+  // Never recreate the old 480x270 thumbnails that soften every fourth frame.
+  await copyFile(source, join(outputDir, fileName));
 }
 
-console.log(`Built ${frameIndices.length} 480x270 scroll-anchor frames.`);
+console.log(`Copied ${frameIndices.length} uniform 960x540 scroll-anchor frames.`);

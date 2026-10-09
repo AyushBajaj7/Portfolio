@@ -13,3 +13,4 @@ raw-assets
 .env.local
 figma design/
 .agents/
+artifacts/

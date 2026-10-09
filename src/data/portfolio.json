@@ -3,12 +3,28 @@
     "name": "Ayush Bajaj",
     "title": "Software Developer",
     "tagline": "I turn complex signals into clear decisions with software.",
-    "bio": "From tracing how a code change can ripple through microservices to surfacing an operator safety signal, I build the systems that turn complex inputs into clear decisions.",
+    "bio": "I build APIs, data workflows and applied-AI tools, from tracing microservice changes to keeping business records consistent.",
     "about": "My projects follow one thread: take information that is difficult to act on, connect it to the system around it, and make the next decision clearer. That has led me from microservice impact analysis and operator telemetry to applied AI, cloud media pipelines, and full-stack platforms.",
     "location": "India and Kathmandu, Nepal",
     "email": "ayushbajaj215@gmail.com",
     "web3formsKey": "",
-    "resumeLink": "https://drive.google.com/file/d/1pNRl11o4bRue66-_wy4uAW5yQHv_iHgW/view?usp=drive_link"
+    "resumeLink": "https://drive.google.com/file/d/1pNRl11o4bRue66-_wy4uAW5yQHv_iHgW/view?usp=drive_link",
+    "education": {
+      "institution": "VIT University, Vellore",
+      "degree": "B.Tech / Computer Science",
+      "period": "2023-2027",
+      "cgpa": "8.76"
+    },
+    "experience": {
+      "company": "KuppiSmart Solutions",
+      "role": "Software Developer Intern",
+      "period": "May-Jul 2025",
+      "highlights": [
+        "Built responsive React interfaces and a reusable component library with Tailwind CSS.",
+        "Integrated Razorpay through REST APIs and contributed iterative feature releases.",
+        "Automated build, test and deployment workflows using GitHub Actions."
+      ]
+    }
   },
   "projects": [
     {
