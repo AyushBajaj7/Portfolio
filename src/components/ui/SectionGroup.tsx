@@ -1704,7 +1704,7 @@ export const SectionGroup: React.FC = () => {
       if (e.key === '`' || e.key === '~') {
         const activeElem = document.activeElement;
         if (activeElem && (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElem.tagName) || (activeElem as HTMLElement).isContentEditable)) return;
-        if (document.querySelector('.case-study-backdrop')) return;
+        if (document.querySelector('[aria-modal="true"]:not(.terminal-window)')) return;
         e.preventDefault();
         setHasOpenedTerminal(true);
         setIsTerminalOpen((prev) => !prev);
@@ -1736,7 +1736,8 @@ export const SectionGroup: React.FC = () => {
 
   // Resume cue animation - localized directional indicator
   useEffect(() => {
-    if (reduceMotion || window.scrollY > 8 || window.location.hash || document.hidden) return;
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (motionPreference.matches || window.scrollY > 8 || window.location.hash || document.hidden) return;
     let dismissed = false;
     const measureCue = () => {
       const btn = resumeButtonRef.current;
@@ -1775,6 +1776,7 @@ export const SectionGroup: React.FC = () => {
     window.addEventListener('resize', dismiss, { passive: true });
     window.addEventListener('pointerdown', dismiss, { once: true });
     document.addEventListener('visibilitychange', dismiss);
+    motionPreference.addEventListener('change', dismiss, { once: true });
     window.addEventListener('scroll', dismiss, { once: true, passive: true });
     return () => {
       window.clearTimeout(showTimer);
@@ -1783,9 +1785,10 @@ export const SectionGroup: React.FC = () => {
       window.removeEventListener('resize', dismiss);
       window.removeEventListener('pointerdown', dismiss);
       document.removeEventListener('visibilitychange', dismiss);
+      motionPreference.removeEventListener('change', dismiss);
       window.removeEventListener('scroll', dismiss);
     };
-  }, [reduceMotion]);
+  }, []);
 
   const projectFilters = useMemo(
     () => ['All', ...Array.from(new Set(projects.map(getProjectCategory)))],
@@ -1862,7 +1865,7 @@ export const SectionGroup: React.FC = () => {
           )}
 
           {/* Elegant Localized Resume Cue */}
-          {showResumeCue && resumeCueGeometry && (
+          {!reduceMotion && showResumeCue && resumeCueGeometry && (
             <motion.div
               key="resume-cue"
               data-resume-cue

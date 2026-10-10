@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local avatar loader benchmark</title>
+    <style>
+      :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #080d13; color: #e8edf4; }
+      body { max-width: 1100px; margin: 0 auto; padding: 28px; }
+      h1 { font-size: clamp(1.5rem, 4vw, 2.2rem); margin: 0 0 12px; }
+      p { color: #b4becc; max-width: 85ch; line-height: 1.55; }
+      label { display: grid; gap: 6px; font-size: 14px; }
+      .controls { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin: 24px 0; }
+      select, input, button { background: #172230; color: inherit; border: 1px solid #3b4d64; border-radius: 8px; min-height: 44px; padding: 9px 14px; font: inherit; }
+      input { width: 90px; }
+      button { cursor: pointer; background: #a1f797; color: #102113; border-color: transparent; font-weight: 650; }
+      button:disabled { opacity: .5; cursor: wait; }
+      #stop { background: #172230; color: #e8edf4; }
+      canvas { display: block; width: min(100%, 640px); aspect-ratio: 16/9; border: 1px solid #29394b; background: #101823; border-radius: 12px; }
+      #progress { white-space: pre-wrap; font-variant-numeric: tabular-nums; line-height: 1.7; }
+      pre { padding: 18px; background: #101823; border: 1px solid #29394b; border-radius: 10px; overflow: auto; font-size: 12px; line-height: 1.5; }
+    </style>
+  </head>
+  <body>
+    <h1>Avatar loader &amp; canvas benchmark</h1>
+    <p>Local QA only. Uses the real loader, actual WebP assets, browser image decoding and canvas. A scheduled playhead tests a cold loader cache, warm forward/reverse traversal and rapid reversals. The browser HTTP cache may already be warm. Added request latency is controlled; bandwidth and CPU are those of this browser. This is not a full-page scroll or hosted-network benchmark.</p>
+    <div class="controls">
+      <label>Cache profile <select id="profile"><option value="desktop">Desktop · 960px / 192 MiB</option><option value="mobile">Constrained · 640px / 64 MiB</option></select></label>
+      <label>Added latency (ms) <input id="latency" type="number" value="120" min="0" max="1000" step="20" /></label>
+      <button id="run" type="button">Run 25-second benchmark</button>
+      <button id="stop" type="button" disabled>Stop</button>
+    </div>
+    <canvas id="avatar" width="640" height="360" aria-label="Avatar benchmark rendering"></canvas>
+    <p id="progress" role="status">Ready. Keep this tab in the foreground during the run.</p>
+    <pre id="results">Results will appear here.</pre>
+    <script type="module" src="./avatar-benchmark.ts"></script>
+  </body>
+</html>

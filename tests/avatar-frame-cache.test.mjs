@@ -39,7 +39,7 @@ function browserMocks(t, { manualDecode = false } = {}) {
     if (signal.aborted) abort();
     request.respond = ({ ok = true, status = 200 } = {}) => {
       assert.ok(finish(), `Frame ${index} transport can resolve only once`);
-      response.resolve({ ok, status, blob: async () => ({ index }) });
+      response.resolve({ ok, status, blob: async () => ({ index, size: 100 }) });
     };
     return response.promise;
   };
@@ -114,17 +114,19 @@ test('prefetch remains bounded while completing a neighborhood of frame requests
   assert.equal(cache.stats.frames, 11);
   assert.equal(cache.stats.inFlight, 0);
   assert.equal(browser.requests.length, 11);
-  assert.ok(browser.requests.every(request => request.url.startsWith('/Portfolio/frames/')));
+  assert.ok(browser.requests.every(request => request.url.startsWith('/Portfolio/frames-lowres/')));
 });
 
-test('a rapid direction change aborts obsolete requests and prioritizes the current target', async t => {
+test('a rapid direction change keeps useful transfers and reprioritizes queued work', async t => {
   const browser = browserMocks(t);
   const { cache } = makeCache(t);
   cache.request(20, 1);
   const obsolete = [...browser.requests];
   cache.request(250, -1);
   await nextTurn();
-  assert.ok(obsolete.every(request => request.signal.aborted));
+  assert.ok(obsolete.every(request => !request.signal.aborted));
+  await browser.respond(20);
+  await browser.respond(21);
   assert.deepEqual(browser.requests.slice(2, 4).map(request => request.index), [250, 249]);
   assert.equal(browser.requests[2].priority, 'high');
   assert.ok(!browser.requests.some(request => request.index === 19), 'Old queued work must never start');
@@ -132,7 +134,7 @@ test('a rapid direction change aborts obsolete requests and prioritizes the curr
   assert.equal(cache.nearest(250)?.index, 250);
 });
 
-test('a stale decode completing after a newer target is closed and cannot replace it', async t => {
+test('a late decode remains reusable without replacing the newer displayed target', async t => {
   const browser = browserMocks(t, { manualDecode: true });
   const result = makeCache(t, { radius: 0 });
   result.cache.request(10, 1);
@@ -142,10 +144,10 @@ test('a stale decode completing after a newer target is closed and cannot replac
   await browser.decode(200);
   assert.equal(result.cache.nearest(200)?.index, 200);
   await browser.decode(10);
-  assert.equal(browser.bitmaps.find(bitmap => bitmap.index === 10).closeCount, 1);
-  assert.equal(result.cache.stats.frames, 1);
-  assert.equal(result.readyCount, 1, 'Obsolete completion must not invalidate the canvas');
-  assert.equal(result.cache.nearest(10, 200)?.index, 200);
+  assert.equal(browser.bitmaps.find(bitmap => bitmap.index === 10).closeCount, 0);
+  assert.equal(result.cache.stats.frames, 2);
+  assert.equal(result.cache.nearest(200, 200)?.index, 200, 'Completion never moves a settled playhead');
+  assert.equal(result.cache.nearest(10, 200)?.index, 10, 'Reverse scrolling can immediately reuse it');
 });
 
 test('the byte budget releases distant bitmaps and retains the current frame', async t => {
@@ -251,7 +253,7 @@ test('presentation never overshoots the playhead or replays a decoded expression
     await browser.respond(target);
   }
   assert.equal(cache.nearest(280, 268)?.index, 268, 'Future wink anchor must not play early');
-  assert.equal(cache.nearest(280), undefined, 'Initial presentation waits for the exact pose');
+  assert.equal(cache.nearest(280)?.index, 268, 'Initial or resized canvas can use an earlier fallback');
   cache.request(280, 1);
   await browser.respond(280);
   assert.equal(cache.nearest(280, 268)?.index, 280);

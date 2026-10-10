@@ -97,6 +97,8 @@ export const TiltCard: React.FC<TiltCardProps> = ({
   }, [maxTilt, glareOpacity]);
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    // Nested buttons and demo controls keep their native keyboard behavior.
+    if (event.target !== event.currentTarget) return;
     if (role === 'button' && event.key === ' ') event.preventDefault();
     if (onKeyDown) onKeyDown(event);
     else if (role === 'button' && (event.key === 'Enter' || event.key === ' ')) {

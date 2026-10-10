@@ -1,22 +1,13 @@
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useRef } from 'react';
 import { AvatarFrameCache } from '../../lib/avatarFrames';
 import { subscribeScrollTimeline } from '../../lib/scrollTimeline';
 import type { ScrollSnapshot } from '../../lib/scrollTimeline';
 import { useStore } from '../../store/useStore';
 
-const compactQuery = '(max-width: 767px)';
-const subscribeViewport = (listener: () => void) => {
-  const media = matchMedia(compactQuery);
-  media.addEventListener('change', listener);
-  return () => media.removeEventListener('change', listener);
-};
-const isCompact = () => matchMedia(compactQuery).matches;
-
 /** Scroll is the playhead. rAF coalesces paints; it never chases a second eased timeline. */
 export function Scene() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const compactViewport = useSyncExternalStore(subscribeViewport, isCompact, () => false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -25,9 +16,10 @@ export function Scene() {
     if (!canvas || !container || !context) return;
     const media = matchMedia('(prefers-reduced-motion: reduce)');
     const device = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
-    const constrained = (device.deviceMemory ?? 8) <= 4 || !!device.connection?.saveData || compactViewport;
-    const decodeWidth = constrained ? 960 : 1280;
-    const budgetBytes = (constrained ? 24 : 64) * 1024 * 1024;
+    // Choose once per visit. Resizing must not throw away a fully prepared timeline.
+    const constrained = (device.deviceMemory ?? 8) <= 4 || !!device.connection?.saveData || window.innerWidth < 768;
+    const decodeWidth = constrained ? 640 : 960;
+    const budgetBytes = (constrained ? 64 : 192) * 1024 * 1024;
     let latest: ScrollSnapshot | undefined;
     let raf = 0;
     let disposed = false;
@@ -35,9 +27,13 @@ export function Scene() {
     let painted = -1;
     let direction = 1;
     let sizeKey = '';
+    let width = container.clientWidth;
+    let height = container.clientHeight;
+    let warm = false;
+    let requestedWarm = false;
+    let requestedStill = false;
+    let warmTimer: ReturnType<typeof setTimeout> | undefined;
     let initialScroll: number | undefined;
-    let hasScrolled = false;
-    let prefetching = false;
 
     const paint = () => {
       raf = 0;
@@ -45,56 +41,67 @@ export function Scene() {
       const next = media.matches ? 68 : Math.round(latest.frame);
       direction = Math.sign(next - target) || direction;
       initialScroll ??= latest.scrollY;
-      hasScrolled ||= Math.abs(latest.scrollY - initialScroll) > 1;
-      const shouldPrefetch = hasScrolled && !media.matches;
-      if (next !== target || shouldPrefetch !== prefetching) {
+      if (!media.matches && Math.abs(latest.scrollY - initialScroll) > 1) warm = true;
+      const shouldWarm = warm && !media.matches;
+      const still = media.matches || !shouldWarm;
+      if (next !== target || shouldWarm !== requestedWarm || still !== requestedStill) {
         target = next;
-        prefetching = shouldPrefetch;
-        frames.request(target, direction, false, !shouldPrefetch);
+        requestedWarm = shouldWarm;
+        requestedStill = still;
+        frames.request(target, direction, shouldWarm, still);
       }
       const tier = latest.width < 768 ? 'mobile' : latest.width < 1024 ? 'tablet' : 'desktop';
-      const width = container.clientWidth;
-      const height = container.clientHeight;
+      // No per-scroll layout reads. ResizeObserver owns geometry; cap the backing store.
       const dpr = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(2_500_000 / Math.max(1, width * height)));
       const nextSizeKey = `${width}:${height}:${dpr}`;
-      if (nextSizeKey !== sizeKey) {
-        sizeKey = nextSizeKey;
-        canvas.width = Math.round(width * dpr);
-        canvas.height = Math.round(height * dpr);
-        context.setTransform(dpr, 0, 0, dpr, 0, 0);
-        context.imageSmoothingEnabled = true;
-        context.imageSmoothingQuality = 'high';
-        painted = -1;
-      }
+      const resized = nextSizeKey !== sizeKey;
       const available = frames.nearest(target, painted);
-      if (available && available.index !== painted) {
-        const improves = painted < 0 || Math.abs(available.index - target) <= Math.abs(painted - target);
-        if (improves) {
-          const image = available.image;
-          const scale = Math.min(width / image.width, height / image.height) * (tier === 'mobile' ? 1 : 1.12);
-          const drawWidth = image.width * scale;
-          const drawHeight = image.height * scale;
-          context.clearRect(0, 0, width, height);
-          context.drawImage(image, (width - drawWidth) / 2, height - drawHeight, drawWidth, drawHeight);
-          painted = available.index;
-          useStore.getState().setAvatarReady(true);
+      // Keep the previous canvas intact until a usable bitmap is available to redraw.
+      if (available && (available.index !== painted || resized)) {
+        if (resized) {
+          sizeKey = nextSizeKey;
+          canvas.width = Math.round(width * dpr);
+          canvas.height = Math.round(height * dpr);
+          context.setTransform(dpr, 0, 0, dpr, 0, 0);
+          context.imageSmoothingEnabled = true;
+          context.imageSmoothingQuality = 'high';
+        }
+        const image = available.image;
+        const scale = Math.min(width / image.width, height / image.height) * (tier === 'mobile' ? 1 : 1.12);
+        const drawWidth = image.width * scale;
+        const drawHeight = image.height * scale;
+        context.clearRect(0, 0, width, height);
+        context.drawImage(image, (width - drawWidth) / 2, height - drawHeight, drawWidth, drawHeight);
+        painted = available.index;
+        useStore.getState().setAvatarReady(true);
+        // Give the first useful paint priority, then prepare the full journey even
+        // if the visitor is reading the hero instead of already scrolling.
+        if (!warm && !media.matches && !warmTimer) {
+          warmTimer = setTimeout(() => { warmTimer = undefined; warm = true; schedulePaint(); }, 250);
         }
       }
       const heroPresence = latest.activeSection === 'hero' ? 1 - latest.sectionProgress : 0;
       canvas.style.opacity = tier === 'mobile' ? String(0.08 + heroPresence * 0.14) : tier === 'tablet' ? '0.18' : '1';
+      const stats = frames.stats;
       canvas.dataset.targetFrame = String(target);
       canvas.dataset.paintedFrame = String(painted);
       canvas.dataset.section = latest.activeSection;
-      canvas.dataset.cacheFrames = String(frames.stats.frames);
-      canvas.dataset.decodedMb = (frames.stats.decodedBytes / 1024 / 1024).toFixed(1);
-      canvas.dataset.inFlight = String(frames.stats.inFlight);
-      canvas.dataset.source = constrained ? 'frames-lowres' : 'frames';
+      canvas.dataset.cacheFrames = String(stats.frames);
+      canvas.dataset.decodedMb = (stats.decodedBytes / 1024 / 1024).toFixed(1);
+      canvas.dataset.compressedFrames = String(stats.compressedFrames);
+      canvas.dataset.anchors = `${stats.anchorFrames}/${stats.anchorTotal}`;
+      canvas.dataset.inFlight = String(stats.inFlight);
+      canvas.dataset.source = 'frames-lowres';
+      canvas.dataset.decodeWidth = String(decodeWidth);
       canvas.dataset.motion = media.matches ? 'reduced' : 'scroll';
     };
     const schedulePaint = () => { if (!raf && !disposed && !document.hidden) raf = requestAnimationFrame(paint); };
     const frames = new AvatarFrameCache({
-      baseUrl: import.meta.env.BASE_URL, sourceDirectory: constrained ? 'frames-lowres' : 'frames', decodeWidth, budgetBytes,
-      concurrency: constrained ? 2 : 3, radius: constrained ? 2 : 4, onReady: schedulePaint,
+      baseUrl: import.meta.env.BASE_URL, sourceDirectory: 'frames-lowres', decodeWidth, budgetBytes,
+      concurrency: constrained ? 3 : 4, decodeConcurrency: constrained ? 1 : 2,
+      radius: constrained ? 8 : 12, coverageStep: constrained ? 8 : 4,
+      prefetchAll: !device.connection?.saveData,
+      onReady: () => { if (painted !== target) schedulePaint(); },
     });
     frames.pause(document.hidden);
     const unsubscribe = subscribeScrollTimeline(value => {
@@ -102,7 +109,11 @@ export function Scene() {
       cancelAnimationFrame(raf);
       paint();
     });
-    const sizeObserver = new ResizeObserver(schedulePaint);
+    const sizeObserver = new ResizeObserver(entries => {
+      const rect = entries[0]?.contentRect;
+      if (rect) { width = rect.width; height = rect.height; }
+      schedulePaint();
+    });
     sizeObserver.observe(container);
     const visibility = () => {
       frames.pause(document.hidden);
@@ -110,10 +121,10 @@ export function Scene() {
       else schedulePaint();
     };
     const motionChange = () => {
-      frames.pause(true);
+      clearTimeout(warmTimer);
+      warmTimer = undefined;
       target = -1;
-      paint();
-      frames.pause(document.hidden);
+      schedulePaint();
     };
     media.addEventListener('change', motionChange);
     document.addEventListener('visibilitychange', visibility);
@@ -121,12 +132,13 @@ export function Scene() {
       disposed = true;
       unsubscribe();
       cancelAnimationFrame(raf);
+      clearTimeout(warmTimer);
       sizeObserver.disconnect();
       media.removeEventListener('change', motionChange);
       document.removeEventListener('visibilitychange', visibility);
       frames.dispose();
     };
-  }, [compactViewport]);
+  }, []);
 
   return <div ref={containerRef} className="canvas-container" aria-hidden="true">
     <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block', opacity: 0 }} />
