@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AvatarFrameCache } from '../../lib/avatarFrames';
+import { AVATAR_CROP, avatarProfile } from '../../lib/avatarProfile';
 import { subscribeScrollTimeline } from '../../lib/scrollTimeline';
 import type { ScrollSnapshot } from '../../lib/scrollTimeline';
 import { useStore } from '../../store/useStore';
@@ -17,9 +18,8 @@ export function Scene() {
     const media = matchMedia('(prefers-reduced-motion: reduce)');
     const device = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
     // Choose once per visit. Resizing must not throw away a fully prepared timeline.
-    const constrained = (device.deviceMemory ?? 8) <= 4 || !!device.connection?.saveData || window.innerWidth < 768;
-    const decodeWidth = constrained ? 640 : 960;
-    const budgetBytes = (constrained ? 64 : 192) * 1024 * 1024;
+    const coarsePointer = matchMedia('(pointer: coarse)').matches;
+    const profile = avatarProfile({ width: window.innerWidth, coarsePointer, memory: device.deviceMemory, saveData: device.connection?.saveData });
     let latest: ScrollSnapshot | undefined;
     let raf = 0;
     let disposed = false;
@@ -50,28 +50,32 @@ export function Scene() {
         requestedStill = still;
         frames.request(target, direction, shouldWarm, still);
       }
-      const tier = latest.width < 768 ? 'mobile' : latest.width < 1024 ? 'tablet' : 'desktop';
+      const tier = latest.width < 768 ? 'mobile' : latest.width < 1024 || coarsePointer ? 'tablet' : 'desktop';
       // No per-scroll layout reads. ResizeObserver owns geometry; cap the backing store.
-      const dpr = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(2_500_000 / Math.max(1, width * height)));
-      const nextSizeKey = `${width}:${height}:${dpr}`;
+      const scale = Math.min(width / AVATAR_CROP.stageWidth, height / AVATAR_CROP.stageHeight) * (tier === 'mobile' ? 1 : 1.12);
+      const drawWidth = AVATAR_CROP.width * scale;
+      const drawHeight = AVATAR_CROP.height * scale;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt((profile.constrained ? 700_000 : 1_400_000) / Math.max(1, drawWidth * drawHeight)));
+      const nextSizeKey = `${width}:${height}:${dpr}:${tier}`;
       const resized = nextSizeKey !== sizeKey;
       const available = frames.nearest(target, painted);
       // Keep the previous canvas intact until a usable bitmap is available to redraw.
       if (available && (available.index !== painted || resized)) {
         if (resized) {
           sizeKey = nextSizeKey;
-          canvas.width = Math.round(width * dpr);
-          canvas.height = Math.round(height * dpr);
+          canvas.width = Math.round(drawWidth * dpr);
+          canvas.height = Math.round(drawHeight * dpr);
+          canvas.style.width = `${drawWidth}px`;
+          canvas.style.height = `${drawHeight}px`;
+          canvas.style.left = `${(width - AVATAR_CROP.stageWidth * scale) / 2 + AVATAR_CROP.x * scale}px`;
+          canvas.style.top = `${height - AVATAR_CROP.stageHeight * scale + AVATAR_CROP.y * scale}px`;
           context.setTransform(dpr, 0, 0, dpr, 0, 0);
           context.imageSmoothingEnabled = true;
           context.imageSmoothingQuality = 'high';
         }
         const image = available.image;
-        const scale = Math.min(width / image.width, height / image.height) * (tier === 'mobile' ? 1 : 1.12);
-        const drawWidth = image.width * scale;
-        const drawHeight = image.height * scale;
-        context.clearRect(0, 0, width, height);
-        context.drawImage(image, (width - drawWidth) / 2, height - drawHeight, drawWidth, drawHeight);
+        context.clearRect(0, 0, drawWidth, drawHeight);
+        context.drawImage(image, 0, 0, drawWidth, drawHeight);
         painted = available.index;
         useStore.getState().setAvatarReady(true);
         // Give the first useful paint priority, then prepare the full journey even
@@ -92,15 +96,12 @@ export function Scene() {
       canvas.dataset.anchors = `${stats.anchorFrames}/${stats.anchorTotal}`;
       canvas.dataset.inFlight = String(stats.inFlight);
       canvas.dataset.source = 'frames-lowres';
-      canvas.dataset.decodeWidth = String(decodeWidth);
+      canvas.dataset.decodeWidth = String(profile.decodeWidth);
       canvas.dataset.motion = media.matches ? 'reduced' : 'scroll';
     };
     const schedulePaint = () => { if (!raf && !disposed && !document.hidden) raf = requestAnimationFrame(paint); };
     const frames = new AvatarFrameCache({
-      baseUrl: import.meta.env.BASE_URL, sourceDirectory: 'frames-lowres', decodeWidth, budgetBytes,
-      concurrency: constrained ? 3 : 4, decodeConcurrency: constrained ? 1 : 2,
-      radius: constrained ? 8 : 12, coverageStep: constrained ? 8 : 4,
-      prefetchAll: !device.connection?.saveData,
+      ...profile, baseUrl: import.meta.env.BASE_URL, sourceDirectory: 'frames-lowres',
       onReady: () => { if (painted !== target) schedulePaint(); },
     });
     frames.pause(document.hidden);
@@ -141,7 +142,7 @@ export function Scene() {
   }, []);
 
   return <div ref={containerRef} className="canvas-container" aria-hidden="true">
-    <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block', opacity: 0 }} />
+    <canvas ref={canvasRef} style={{ position: 'absolute', display: 'block', opacity: 0 }} />
   </div>;
 }
 

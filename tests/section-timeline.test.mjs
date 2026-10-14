@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildSectionBoundaries, sampleSectionTimeline } from '../src/lib/sectionTimeline.ts';
+import { buildSectionBoundaries, sampleSectionTimeline, timelineViewport } from '../src/lib/sectionTimeline.ts';
 
 const geometry = [
   { id: 'hero', top: 0, height: 900 },
@@ -9,6 +9,19 @@ const geometry = [
   { id: 'skills', top: 4000, height: 800 },
   { id: 'contact', top: 4800, height: 900 },
 ];
+
+test('mobile toolbar and keyboard height changes do not move expression boundaries', () => {
+  const initial = { width: 390, height: 760 };
+  const collapsed = timelineViewport(initial, { width: 390, height: 844 }, true);
+  const keyboard = timelineViewport(initial, { width: 390, height: 400 }, true);
+  assert.deepEqual(collapsed, initial);
+  assert.deepEqual(keyboard, initial);
+  assert.deepEqual(timelineViewport(initial, { width: 844, height: 390 }, true), { width: 844, height: 390 });
+  assert.equal(timelineViewport(initial, { width: 390, height: 900 }, false).height, 900);
+  const before = buildSectionBoundaries(geometry, initial.height, 6000 - initial.height);
+  const after = buildSectionBoundaries(geometry, collapsed.height, 6000 - collapsed.height);
+  assert.equal(sampleSectionTimeline(before, 4750).frame, sampleSectionTimeline(after, 4750).frame);
+});
 
 test('real section positions and available Contact space reach verified expression endpoints', () => {
   const boundaries = buildSectionBoundaries(geometry, 900, 4800);

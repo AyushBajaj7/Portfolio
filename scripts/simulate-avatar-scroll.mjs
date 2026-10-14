@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { installAvatarNetwork, sweepAvatar } from '../tests/helpers/avatar-network.mjs';
+import { avatarProfile } from '../src/lib/avatarProfile.ts';
 
 const arg = name => process.argv.find(value => value.startsWith(`--${name}=`))?.slice(name.length + 3);
 const modulePath = resolve(arg('module') ?? 'src/lib/avatarFrames.ts');
@@ -17,8 +18,8 @@ for (const directory of ['frames', 'frames-lowres', 'frames-anchors']) {
 }
 const results = [];
 for (const profile of [
-  { name: 'desktop', decodeWidth: 960, budgetBytes: 192 * 1024 * 1024, concurrency: 4, radius: 12, coverageStep: 4 },
-  { name: 'mobile', decodeWidth: 640, budgetBytes: 64 * 1024 * 1024, concurrency: 3, radius: 8, coverageStep: 8 },
+  { name: 'desktop', ...avatarProfile({ width: 1440, coarsePointer: false }) },
+  { name: 'mobile', ...avatarProfile({ width: 390, coarsePointer: true }) },
 ]) {
   const network = installAvatarNetwork({
     latencyMs: 120,
@@ -31,9 +32,10 @@ for (const profile of [
     },
   });
   const cache = new AvatarFrameCache({
+    ...profile,
     baseUrl: '/Portfolio/', sourceDirectory: 'frames-lowres',
     decodeWidth: profile.decodeWidth, budgetBytes: profile.budgetBytes,
-    concurrency: profile.concurrency, decodeConcurrency: 2, radius: profile.radius,
+    concurrency: profile.concurrency, decodeConcurrency: profile.decodeConcurrency, radius: profile.radius,
     coverageStep: profile.coverageStep,
     onReady: () => {},
   });

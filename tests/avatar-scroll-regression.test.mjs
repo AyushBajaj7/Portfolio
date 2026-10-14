@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { AvatarFrameCache } from '../src/lib/avatarFrames.ts';
+import { AVATAR_CROP, avatarProfile } from '../src/lib/avatarProfile.ts';
 import { installAvatarNetwork, sweepAvatar } from './helpers/avatar-network.mjs';
 
 for (const profile of [
-  { name: 'desktop', decodeWidth: 960, budgetBytes: 192 * 1024 * 1024, concurrency: 4, decodeConcurrency: 2, radius: 12, coverageStep: 4 },
-  { name: 'constrained', decodeWidth: 640, budgetBytes: 64 * 1024 * 1024, concurrency: 3, decodeConcurrency: 1, radius: 8, coverageStep: 8 },
+  { name: 'desktop', ...avatarProfile({ width: 1440, coarsePointer: false }) },
+  { name: 'constrained', ...avatarProfile({ width: 980, coarsePointer: true }) },
 ]) {
   test(`${profile.name}: sustained delayed scrolling makes progress without cancellation starvation`, async () => {
     const network = installAvatarNetwork();
@@ -13,9 +14,10 @@ for (const profile of [
     try {
       cache.request(0, 1, false, true);
       await network.advance(200);
-      const cold = await sweepAvatar({ cache, network, from: 0, to: 299, durationMs: 3000, painted: 0 });
+      const cold = await sweepAvatar({ cache, network, from: 0, to: 299, durationMs: 5000, painted: 0 });
       assert.ok(cold.painted > 270, 'The playhead must keep advancing before scrolling stops');
-      assert.ok(cold.metrics.longestMovingHoldMs < 600, 'No multi-second transport starvation');
+      assert.ok(cold.metrics.longestMovingHoldMs < 250, 'Arrival-position prefetch must prevent long holds');
+      assert.ok(cold.metrics.withinFourFramesPercent > 65, 'Cold prefetch must stay near the real playhead');
       assert.equal(network.metrics.abortedRequests, 0);
       assert.equal(cold.metrics.presentationOvershoots, 0);
       assert.ok(network.metrics.maxConcurrentFetches <= profile.concurrency);
@@ -65,6 +67,16 @@ for (const profile of [
     }
   });
 }
+
+test('desktop-site mode on a phone keeps the touch profile and a proportional crop', () => {
+  const phone = avatarProfile({ width: 1440, coarsePointer: true });
+  const desktop = avatarProfile({ width: 1440, coarsePointer: false });
+  assert.equal(phone.decodeWidth, 640);
+  assert.equal(phone.budgetBytes, 48 * 1024 * 1024);
+  assert.equal(desktop.decodeWidth, 960);
+  assert.equal(AVATAR_CROP.width / AVATAR_CROP.height, 360 / 340);
+  assert.equal(avatarProfile({ width: 768, coarsePointer: false }).constrained, true);
+});
 
 test('data-saving warmup loads only anchors and nearby detail, then becomes idle', async () => {
   const network = installAvatarNetwork();

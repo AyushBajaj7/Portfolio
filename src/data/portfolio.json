@@ -97,7 +97,6 @@
         "Tailwind CSS"
       ],
       "link": "https://github.com/AyushBajaj7/Traders-ERP",
-      "demo": "https://traders-erp.vercel.app",
       "sourceAccess": "private",
       "description": "A full-stack ERP built around hardware-trading workflows: inventory, customer and supplier ledgers, billing, VCTS tracking, and cashbook. PostgreSQL functions keep bill creation, stock movements, and account balances in sync, while the PWA supports installable, offline-aware use.",
       "codePreview": "async function finalizeBill(payload: BillPayload) {\n  return supabase.rpc('sync_bills_atomic', {\n    bills_payload: payload\n  });\n}",

@@ -7,6 +7,7 @@ type FrameOptions = {
   baseUrl: string; sourceDirectory?: 'frames' | 'frames-lowres'; decodeWidth: number;
   budgetBytes: number; concurrency: number; decodeConcurrency?: number; radius: number;
   coverageStep?: number; compressedBudgetBytes?: number; prefetchAll?: boolean; onReady: () => void;
+  crop?: { x: number; y: number; width: number; height: number; stageWidth: number; stageHeight: number };
 };
 export const FRAME_COUNT = 300;
 const release = (image: DecodedFrame) => {
@@ -42,6 +43,9 @@ export class AvatarFrameCache {
   private attempts = new Map<number, number>();
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private wanted: number[] = [];
+  private fetchAhead: number[] = [];
+  private lastRequestAt = 0;
+  private fetchLatency = 120;
   private anchors: number[];
   private anchorSet: Set<number>;
   private allFrames = spread(Array.from({ length: FRAME_COUNT }, (_, i) => i));
@@ -56,11 +60,15 @@ export class AvatarFrameCache {
   private aborts = 0;
   private decodes = 0;
   private maxFrames: number;
+  private imageWidth: number;
+  private imageHeight: number;
   private options: FrameOptions;
 
   constructor(options: FrameOptions) {
     this.options = options;
-    const frameBytes = options.decodeWidth * Math.round(options.decodeWidth * 9 / 16) * 4;
+    this.imageWidth = Math.round(options.decodeWidth * (options.crop ? options.crop.width / options.crop.stageWidth : 1));
+    this.imageHeight = Math.round(options.decodeWidth * (options.crop ? options.crop.height / options.crop.stageWidth : 9 / 16));
+    const frameBytes = this.imageWidth * this.imageHeight * 4;
     this.maxFrames = Math.max(1, Math.floor(options.budgetBytes / frameBytes));
     let step = Math.max(4, Math.ceil((options.coverageStep ?? 4) / 4) * 4);
     // Reserve room for nearby detail; low-memory profiles use fewer same-quality anchors.
@@ -71,7 +79,12 @@ export class AvatarFrameCache {
 
   request(target: number, direction: number, warm = false, still = false) {
     if (this.disposed) return;
-    this.target = Math.min(FRAME_COUNT - 1, Math.max(0, Math.round(target)));
+    const nextTarget = Math.min(FRAME_COUNT - 1, Math.max(0, Math.round(target)));
+    const now = Date.now();
+    const elapsed = now - this.lastRequestAt;
+    const velocity = elapsed > 0 && elapsed < 250 ? (nextTarget - this.target) / elapsed : 0;
+    this.lastRequestAt = now;
+    this.target = nextTarget;
     this.warmed ||= warm;
     this.still = still;
     const requested = [this.target];
@@ -79,6 +92,11 @@ export class AvatarFrameCache {
     const radius = still ? 0 : Math.min(this.options.radius, Math.floor((localSlots - 1) / 2));
     for (let offset = 1; offset <= radius; offset++) requested.push(this.target + offset * (direction || 1), this.target - offset * (direction || 1));
     this.wanted = requested.filter(index => index >= 0 && index < FRAME_COUNT);
+    // Download toward the likely arrival position on a cold connection. This only
+    // changes fetch priority, never the scroll playhead or the presentation guard.
+    const lead = Math.min(36, Math.ceil(Math.abs(velocity) * (this.fetchLatency + 16)));
+    const ahead = this.target + lead * Math.sign(velocity);
+    this.fetchAhead = this.warmed && !still && lead > 1 ? [ahead, ahead + (direction || 1) * 2, ahead - (direction || 1) * 2].filter(index => index >= 0 && index < FRAME_COUNT) : [];
     // Never cancel useful transfers on a scroll update. Queued priorities follow the
     // newest target; completed compressed data remains reusable in either direction.
     this.pump();
@@ -146,9 +164,12 @@ export class AvatarFrameCache {
     const canFetch = (index: number) => !this.blobs.has(index) && !this.pending.has(index) && this.eligible(index);
     while (this.pending.size < this.options.concurrency) {
       const local = this.wanted.find(canFetch);
+      const ahead = this.fetchAhead.find(canFetch);
       const remote = background.find(canFetch);
-      // One out of three slots guarantees coverage even during continuous scrolling.
-      const next = this.fetches % 3 === 2 ? remote ?? local : local ?? remote;
+      // Reserve one in four slots for timeline coverage. While moving, alternate
+      // arrival-position prefetch with exact/nearby work instead of chasing old frames.
+      const slot = this.fetches % 4;
+      const next = slot === 3 ? remote ?? ahead ?? local : slot === 1 || slot === 2 ? ahead ?? local ?? remote : local ?? ahead ?? remote;
       if (next === undefined) break;
       const controller = new AbortController();
       this.pending.set(next, controller);
@@ -178,12 +199,14 @@ export class AvatarFrameCache {
   }
 
   private async fetchFrame(index: number, controller: AbortController) {
+    const started = Date.now();
     try {
       const directory = this.warmed && this.anchorSet.has(index) && this.options.sourceDirectory !== 'frames' ? 'frames-anchors' : this.options.sourceDirectory ?? 'frames-lowres';
       const response = await fetch(`${this.options.baseUrl}${directory}/male${String(index + 1).padStart(4, '0')}.webp`, { signal: controller.signal, priority: index === this.target ? 'high' : 'low' });
       if (!response.ok) throw new Error(`Avatar frame HTTP ${response.status}`);
       const blob = await response.blob();
       if (controller.signal.aborted || this.disposed) return;
+      this.fetchLatency = this.fetchLatency * 0.75 + Math.min(1000, Date.now() - started) * 0.25;
       this.blobs.set(index, blob);
       this.downloaded.add(index);
       this.compressedBytes += blob.size;
@@ -209,7 +232,14 @@ export class AvatarFrameCache {
     let image: DecodedFrame | undefined;
     try {
       if (typeof createImageBitmap === 'function') {
-        try { image = await createImageBitmap(blob, { resizeWidth: this.options.decodeWidth, resizeHeight: Math.round(this.options.decodeWidth * 9 / 16), resizeQuality: 'high' }); }
+        try {
+          const resize = { resizeWidth: this.imageWidth, resizeHeight: this.imageHeight, resizeQuality: 'high' as const };
+          const crop = this.options.crop;
+          if (crop) {
+            const sourceScale = (this.options.sourceDirectory === 'frames' ? 1280 : 960) / crop.stageWidth;
+            image = await createImageBitmap(blob, Math.round(crop.x * sourceScale), Math.round(crop.y * sourceScale), Math.round(crop.width * sourceScale), Math.round(crop.height * sourceScale), resize);
+          } else image = await createImageBitmap(blob, resize);
+        }
         catch { /* Safari versions without bitmap resize support use the same fixed tier below. */ }
       }
       if (!image) {
@@ -220,11 +250,15 @@ export class AvatarFrameCache {
           element.src = url;
           await element.decode();
           const resized = document.createElement('canvas');
-          resized.width = this.options.decodeWidth;
-          resized.height = Math.round(this.options.decodeWidth * 9 / 16);
+          resized.width = this.imageWidth;
+          resized.height = this.imageHeight;
           const context = resized.getContext('2d');
           if (!context) throw new Error('Unable to decode avatar');
-          context.drawImage(element, 0, 0, resized.width, resized.height);
+          const crop = this.options.crop;
+          const scale = crop ? element.naturalWidth / crop.stageWidth : 1;
+          context.drawImage(element, (crop?.x ?? 0) * scale, (crop?.y ?? 0) * scale,
+            crop ? crop.width * scale : element.naturalWidth, crop ? crop.height * scale : element.naturalHeight,
+            0, 0, resized.width, resized.height);
           image = resized;
         } finally { URL.revokeObjectURL(url); }
       }
@@ -249,6 +283,7 @@ export class AvatarFrameCache {
     this.disposed = true;
     this.pause(true);
     this.wanted = [];
+    this.fetchAhead = [];
     for (const entry of this.cache.values()) release(entry.image);
     this.cache.clear();
     this.blobs.clear();

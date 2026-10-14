@@ -74,7 +74,8 @@ export function installAvatarNetwork({
     });
   };
 
-  globalThis.createImageBitmap = (blob, options = {}) => {
+  globalThis.createImageBitmap = (blob, ...args) => {
+    const options = args.at(-1) ?? {};
     openDecodes++;
     maxDecodes = Math.max(maxDecodes, openDecodes);
     const width = options.resizeWidth ?? blob.width;

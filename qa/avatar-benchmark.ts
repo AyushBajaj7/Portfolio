@@ -1,4 +1,5 @@
 import { AvatarFrameCache } from '../src/lib/avatarFrames';
+import { avatarProfile, AVATAR_CROP } from '../src/lib/avatarProfile';
 
 const get = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const runButton = get<HTMLButtonElement>('run');
@@ -29,14 +30,9 @@ runButton.addEventListener('click', () => {
   const constrained = profileControl.value === 'mobile';
   const latencyMs = Math.max(0, Math.min(1000, Number(latencyControl.value) || 0));
   const options = {
+    ...avatarProfile({ width: constrained ? 390 : 1440, coarsePointer: constrained }),
     baseUrl: import.meta.env.BASE_URL,
     sourceDirectory: 'frames-lowres' as const,
-    decodeWidth: constrained ? 640 : 960,
-    budgetBytes: (constrained ? 64 : 192) * 1024 * 1024,
-    concurrency: constrained ? 3 : 4,
-    decodeConcurrency: 2,
-    radius: constrained ? 8 : 12,
-    coverageStep: constrained ? 8 : 4,
     onReady: () => {},
   };
   const phases: Phase[] = [
@@ -130,6 +126,9 @@ runButton.addEventListener('click', () => {
     recordPhase();
     const report = {
       reason, profile: constrained ? 'constrained' : 'desktop', latencyMs,
+      timingNote: Object.values(phaseResults).some(value => (value as PhaseMetrics).rafGapsOver50ms > (value as PhaseMetrics).samples / 5)
+        ? 'Timing is unreliable: the browser was heavily throttled or stalled. Do not interpret this run as an FPS benchmark.'
+        : 'No pervasive long RAF gaps detected. Results still describe this isolated renderer, not the full page or another device.',
       scope: 'Actual browser decode/canvas, scheduled target trajectory, local assets plus added per-request latency. Not a full-page or hosted-network FPS benchmark.',
       elapsedMs: round(performance.now() - started), firstPaintMs: firstPaintMs === null ? null : round(firstPaintMs),
       viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio },
@@ -163,7 +162,11 @@ runButton.addEventListener('click', () => {
     if (available && available.index !== painted) {
       const drawStarted = performance.now();
       context.clearRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(available.image, 0, 0, canvas.width, canvas.height);
+      context.drawImage(available.image,
+        AVATAR_CROP.x / AVATAR_CROP.stageWidth * canvas.width,
+        AVATAR_CROP.y / AVATAR_CROP.stageHeight * canvas.height,
+        AVATAR_CROP.width / AVATAR_CROP.stageWidth * canvas.width,
+        AVATAR_CROP.height / AVATAR_CROP.stageHeight * canvas.height);
       const drawMs = performance.now() - drawStarted;
       phaseMetrics.draws++;
       phaseMetrics.drawMs += drawMs;

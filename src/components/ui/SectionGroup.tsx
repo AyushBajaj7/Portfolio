@@ -40,6 +40,7 @@ import portfolioData from '../../data/portfolio.json';
 import { useStore } from '../../store/useStore';
 import { TiltCard } from './TiltCard';
 import { ProjectEvidence, SelectedWorkLinks } from './ProjectEvidence';
+import { FeatureBoundary } from './FeatureBoundary';
 
 const TerminalModal = lazy(() => import('./TerminalModal').then((module) => ({ default: module.TerminalModal })));
 const BlastRadiusSimulator = lazy(() => import('./BlastRadiusSimulator').then((module) => ({ default: module.BlastRadiusSimulator })));
@@ -48,6 +49,7 @@ const TradersErpSimulator = lazy(() => import('./TradersErpSimulator').then((mod
 const ArchitectureViewer3D = lazy(() => import('./ArchitectureViewer3D').then((module) => ({ default: module.ArchitectureViewer3D })));
 
 type Project = (typeof portfolioData.projects)[number];
+const sourceLabel = (project: Project) => /^https:\/\/github\.com\/[^/]+\/?$/.test(project.link) ? 'GitHub profile' : 'Source';
 type SkillGroup = (typeof portfolioData.skills)[number];
 type ResumeCueGeometry = {
   startX: number;
@@ -267,7 +269,7 @@ const ProjectCard: React.FC<{
               target="_blank"
               rel="noreferrer"
               data-cursor="view"
-              aria-label={`Open ${project.title} source`}
+              aria-label={`Open ${project.title} ${sourceLabel(project).toLowerCase()}`}
               className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-outline-variant bg-surface/50 text-on-surface-variant transition hover:border-primary/40 hover:text-primary"
             >
               <ExternalLink size={14} />
@@ -374,7 +376,7 @@ const ProjectCard: React.FC<{
               data-cursor="view"
               className="inline-flex items-center gap-1.5 rounded-lg border border-outline-variant bg-surface/60 px-4 py-2 text-sm font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary"
             >
-              Source
+              {sourceLabel(project)}
               <ExternalLink size={14} />
             </a>)}
           </div>
@@ -423,7 +425,7 @@ const DeferredDemo: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     return () => observer.disconnect();
   }, []);
 
-  return <div ref={ref} className="min-w-0 min-h-[20rem]">{ready ? <Suspense fallback={<DemoPlaceholder />}>{children}</Suspense> : <DemoPlaceholder />}</div>;
+  return <div ref={ref} className="min-w-0 min-h-[20rem]">{ready ? <FeatureBoundary label="Interactive demo"><Suspense fallback={<DemoPlaceholder />}>{children}</Suspense></FeatureBoundary> : <DemoPlaceholder />}</div>;
 };
 
 // ─── BentoGridView: High-Density Recruiter Matrix ────────────────────────────
@@ -670,7 +672,7 @@ const BentoGridView: React.FC<{
                   onClick={(e) => e.stopPropagation()}
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-on-surface hover:text-primary transition"
                 >
-                  GitHub Source <ExternalLink size={13} />
+                  {sourceLabel(heroProject)} <ExternalLink size={13} />
                 </a>
               )}
               {'demo' in heroProject && typeof heroProject.demo === 'string' && (
@@ -946,7 +948,7 @@ const BentoGridView: React.FC<{
                     onClick={(e) => e.stopPropagation()}
                     className="text-on-surface-variant hover:text-primary flex items-center gap-1 font-semibold"
                   >
-                    <Code2 size={12} /> Source
+                    <Code2 size={12} /> {sourceLabel(p)}
                   </a>
                 )}
                 <button
@@ -1646,7 +1648,7 @@ const ProjectCaseStudy: React.FC<{ project: Project; onClose: () => void; reduce
             <div className="flex flex-col gap-3 border-t border-outline-variant p-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm leading-6 text-on-surface-variant">
                 {'sourceAccess' in project && project.sourceAccess === 'private'
-                  ? 'Explore the live deployment; the source repository is private.'
+                  ? demo ? 'Explore the live deployment; the source repository is private.' : 'The source repository is private. Review the workflow and implementation details above.'
                   : 'Open the live build or review source for implementation details.'}
               </p>
               <div className="flex flex-col gap-2 sm:flex-row">
@@ -1663,7 +1665,7 @@ const ProjectCaseStudy: React.FC<{ project: Project; onClose: () => void; reduce
                 ) : (
                   <a href={project.link} target="_blank" rel="noreferrer"
                     className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-outline-variant bg-surface-container-high/70 px-4 py-2 text-sm font-semibold text-on-surface transition hover:border-primary/40 hover:text-primary">
-                    View source <ExternalLink size={14} />
+                    {sourceLabel(project) === 'Source' ? 'View source' : sourceLabel(project)} <ExternalLink size={14} />
                   </a>
                 )}
               </div>
@@ -1837,12 +1839,17 @@ export const SectionGroup: React.FC = () => {
     if (!rail) return;
     const max = Math.max(1, rail.scrollWidth - rail.clientWidth);
     const ratio = Math.min(1, Math.max(0, rail.scrollLeft / max));
+    const total = visibleProjectsCountRef.current || 1;
+    const intro = rail.children[0] as HTMLElement | undefined;
+    const first = rail.children[1] as HTMLElement | undefined;
+    const second = rail.children[2] as HTMLElement | undefined;
+    const span = first && second ? second.offsetLeft - first.offsetLeft : 1;
+    const offset = first && intro ? first.offsetLeft - intro.offsetLeft : 0;
+    const current = Math.min(total, Math.max(1, Math.round((rail.scrollLeft - offset) / Math.max(1, span)) + 1));
     if (railProgressBarRef.current) {
       railProgressBarRef.current.style.width = `${Math.round(ratio * 100)}%`;
     }
     if (railCounterRef.current) {
-      const total = visibleProjectsCountRef.current || 1;
-      const current = Math.min(total, Math.max(1, Math.round(ratio * (total - 1)) + 1));
       railCounterRef.current.textContent = `${current}/${total}`;
     }
   }, []);
@@ -2215,7 +2222,7 @@ export const SectionGroup: React.FC = () => {
                 </div>
 
                 {/* Mobile/tablet grid */}
-                <div className="grid gap-5 md:grid-cols-2 lg:hidden">
+                <div className="cinematic-touch-grid grid gap-5 md:grid-cols-2 lg:hidden">
                   {visibleProjects.map((project, index) => (
                     <ProjectCard key={project.id} project={project} index={index} onOpenCaseStudy={openCaseStudy} />
                   ))}
@@ -2385,9 +2392,11 @@ export const SectionGroup: React.FC = () => {
 
       {/* Developer CLI Terminal Modal */}
       {hasOpenedTerminal && (
+        <FeatureBoundary label="Developer terminal" active={isTerminalOpen} floating onClose={() => setIsTerminalOpen(false)}>
         <Suspense fallback={isTerminalOpen ? <div className="fixed bottom-20 right-5 z-50 rounded-xl border border-outline-variant bg-surface px-4 py-3 text-sm text-on-surface" role="status">Loading terminal…</div> : null}>
           <TerminalModal isOpen={isTerminalOpen} onClose={() => setIsTerminalOpen(false)} onOpenCaseStudy={openCaseStudyFromTerminal} />
         </Suspense>
+        </FeatureBoundary>
       )}
     </div>
   );

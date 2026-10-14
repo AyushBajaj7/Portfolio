@@ -31,7 +31,7 @@ export const Navbar: React.FC = () => {
   useEffect(() => {
     const desktop = window.matchMedia('(min-width: 1024px)');
     const closeOnDesktop = (event: MediaQueryListEvent) => {
-      if (event.matches) setMobileOpen(false);
+      if (event.matches && !window.matchMedia('(pointer: coarse)').matches) setMobileOpen(false);
     };
     desktop.addEventListener('change', closeOnDesktop);
     return () => desktop.removeEventListener('change', closeOnDesktop);
@@ -112,7 +112,7 @@ export const Navbar: React.FC = () => {
               Ayush Bajaj<span className="text-primary-dim">.</span>
             </a>
 
-            <div className="hidden lg:flex items-center gap-5">
+            <div className="desktop-navigation hidden lg:flex items-center gap-5">
               <LayoutGroup id="navbar-pill">
                 <div className="flex items-center gap-0.5 rounded-xl border border-outline-variant bg-surface-container-high/40 p-1">
                   {links.map((link) => (
@@ -149,7 +149,7 @@ export const Navbar: React.FC = () => {
 
             <button
               type="button"
-              className="lg:hidden flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-high/80 text-on-surface"
+              className="mobile-menu-toggle lg:hidden flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-high/80 text-on-surface"
               onClick={() => setMobileOpen((open) => !open)}
               aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
               aria-expanded={mobileOpen}
@@ -172,7 +172,7 @@ export const Navbar: React.FC = () => {
         <AnimatePresence>
           {mobileOpen && (
             <motion.div
-              className="fixed inset-0 z-[70] overflow-y-auto overscroll-contain bg-background/80 px-4 py-5 backdrop-blur-sm lg:hidden"
+              className="mobile-navigation-layer fixed inset-0 z-[70] overflow-y-auto overscroll-contain bg-background/80 px-4 py-5 backdrop-blur-sm lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

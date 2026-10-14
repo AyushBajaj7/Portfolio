@@ -96,7 +96,7 @@ html {
   --glow-opacity: 0.06;
   --surface-high: #111721;
   --surface-highest: #19212c;
-  --surface-panel: rgba(14, 18, 28, 0.92);
+  --surface-panel: #0e121c;
   --surface-panel-strong: rgba(10, 14, 22, 0.96);
   --ambient-green: rgba(54, 180, 122, 0.10);
   --ambient-cyan: rgba(18, 128, 153, 0.08);
@@ -472,6 +472,7 @@ a {
 .canvas-container canvas {
   pointer-events: none !important;
   backface-visibility: hidden;
+  max-width: none;
 }
 
 /* ─── Scroll Overlay ─────────────────────────────────────────────── */
@@ -736,6 +737,7 @@ section {
 
 /* ─── Mobile ──────────────────────────────────────────────────────── */
 @media (max-width: 1023px) {
+  #contact :is(input, textarea, select) { font-size: 16px; }
   html,
   body,
   #root {
@@ -774,6 +776,23 @@ section {
   .canvas-container { right: -40vw; width: 180vw; height: 70svh; }
   .portfolio-section { scroll-margin-top: 80px; }
   .project-card { box-shadow: 0 8px 24px rgba(0,0,0,0.16); }
+}
+
+/* Touch capability survives a phone's "Desktop site" setting. Keep controls
+   comfortable and avoid an expensive full-opacity portrait beneath the content. */
+@media (pointer: coarse) {
+  .content-lane { width: 100%; }
+  .desktop-navigation, .cinematic-stage { display: none; }
+  .mobile-menu-toggle { display: inline-flex; }
+  .mobile-navigation-layer { display: block; }
+  .cinematic-touch-grid { display: grid; }
+  .portfolio-section :is(button, a) { min-height: 44px; }
+  :is(input, textarea, select) { font-size: 16px; }
+  nav[aria-label="Primary navigation"] { backdrop-filter: none; background: var(--surface); }
+  .canvas-container { right: -30vw; width: 130vw; height: 72svh; }
+}
+@media (pointer: coarse) and (max-width: 767px) {
+  .canvas-container { right: -40vw; width: 180vw; height: 70svh; }
 }
 
 /* Keep browser autofill readable and consistent with the contact form. */

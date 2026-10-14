@@ -1,5 +1,5 @@
 import { useStore } from '../store/useStore';
-import { buildSectionBoundaries, clamp, sampleSectionTimeline, SECTION_IDS } from './sectionTimeline';
+import { buildSectionBoundaries, clamp, sampleSectionTimeline, SECTION_IDS, timelineViewport } from './sectionTimeline';
 import type { SectionBoundary, SectionId } from './sectionTimeline';
 
 export type ScrollSnapshot = {
@@ -22,22 +22,24 @@ function start() {
   let width = 0;
   let height = 0;
   let revision = 0;
+  const touch = matchMedia('(pointer: coarse)').matches;
 
   const update = () => {
     raf = 0;
     if (disposed || document.hidden) return;
     if (geometryDirty) {
       geometryDirty = false;
-      width = window.innerWidth;
-      height = window.innerHeight;
-      maxScroll = Math.max(0, document.documentElement.scrollHeight - height);
+      const viewport = timelineViewport({ width, height }, { width: window.innerWidth, height: window.innerHeight }, touch);
+      width = viewport.width;
+      height = viewport.height;
+      maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
       const sections = SECTION_IDS.flatMap(id => {
         const element = document.getElementById(id);
         if (!element) return [];
         const rect = element.getBoundingClientRect();
         return [{ id, top: rect.top + window.scrollY, height: rect.height }];
       });
-      boundaries = buildSectionBoundaries(sections, height, maxScroll);
+      boundaries = buildSectionBoundaries(sections, height, Math.max(0, document.documentElement.scrollHeight - height));
       readingStarts = sections.map((section, index) => ({ id: section.id, start: index === 0 ? 0 : clamp(section.top - height * 0.35, 0, maxScroll) }));
       revision++;
     }

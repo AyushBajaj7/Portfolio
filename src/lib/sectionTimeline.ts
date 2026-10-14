@@ -10,6 +10,13 @@ export type SectionBoundary = { id: SectionId; start: number; end: number; from:
 export const EXPRESSION_FRAMES = [0, 88, 175, 212, 254, 299] as const;
 export const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
 
+/** Mobile address bars and keyboards change height during a gesture. Keep the
+ * reading line stable until an actual width/orientation change occurs.
+ */
+export function timelineViewport(previous: { width: number; height: number }, next: { width: number; height: number }, touch: boolean) {
+  return { width: next.width, height: touch && previous.height > 0 && previous.width === next.width ? previous.height : next.height };
+}
+
 export function buildSectionBoundaries(sections: SectionGeometry[], viewportHeight: number, maxScroll: number): SectionBoundary[] {
   const readingLine = viewportHeight * 0.35;
   const starts = sections.map((section, index) => index === 0 ? 0 : clamp(section.top - readingLine, 0, maxScroll));

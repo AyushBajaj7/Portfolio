@@ -25,7 +25,7 @@
     <h1>Avatar loader &amp; canvas benchmark</h1>
     <p>Local QA only. Uses the real loader, actual WebP assets, browser image decoding and canvas. A scheduled playhead tests a cold loader cache, warm forward/reverse traversal and rapid reversals. The browser HTTP cache may already be warm. Added request latency is controlled; bandwidth and CPU are those of this browser. This is not a full-page scroll or hosted-network benchmark.</p>
     <div class="controls">
-      <label>Cache profile <select id="profile"><option value="desktop">Desktop · 960px / 192 MiB</option><option value="mobile">Constrained · 640px / 64 MiB</option></select></label>
+      <label>Cache profile <select id="profile"><option value="desktop">Desktop · 960px stage / 112 MiB</option><option value="mobile">Touch · 640px stage / 48 MiB</option></select></label>
       <label>Added latency (ms) <input id="latency" type="number" value="120" min="0" max="1000" step="20" /></label>
       <button id="run" type="button">Run 25-second benchmark</button>
       <button id="stop" type="button" disabled>Stop</button>
