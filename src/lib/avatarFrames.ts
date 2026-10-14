@@ -1,3 +1,5 @@
+import { BOOTSTRAP_INDICES, readAvatarBootstrap } from './avatarBootstrap.ts';
+
 /** Download once, retain a decoded timeline backbone, and decode detail near the playhead.
  * Loading never paints: only the scroll renderer may choose a displayed frame.
  */
@@ -7,6 +9,7 @@ type FrameOptions = {
   baseUrl: string; sourceDirectory?: 'frames' | 'frames-lowres'; decodeWidth: number;
   budgetBytes: number; concurrency: number; decodeConcurrency?: number; radius: number;
   coverageStep?: number; compressedBudgetBytes?: number; prefetchAll?: boolean; onReady: () => void;
+  bootstrapUrl?: string; requestTimeoutMs?: number;
   crop?: { x: number; y: number; width: number; height: number; stageWidth: number; stageHeight: number };
 };
 export const FRAME_COUNT = 300;
@@ -41,6 +44,9 @@ export class AvatarFrameCache {
   private decoding = new Set<number>();
   private failed = new Map<number, number>();
   private attempts = new Map<number, number>();
+  private unavailableAnchors = new Set<number>();
+  private bootstrapState: 'idle' | 'loading' | 'ready' | 'fallback' = 'idle';
+  private timeouts = 0;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private wanted: number[] = [];
   private fetchAhead: number[] = [];
@@ -133,6 +139,7 @@ export class AvatarFrameCache {
       queued: this.disposed ? 0 : this.wanted.filter(index => !this.cache.has(index)).length,
       anchorFrames: this.anchors.filter(index => this.cache.has(index)).length,
       anchorTotal: this.anchors.length, fetches: this.fetches, aborts: this.aborts, decodes: this.decodes,
+      bootstrap: this.bootstrapState, timeouts: this.timeouts,
     };
   }
 
@@ -159,9 +166,11 @@ export class AvatarFrameCache {
 
   private pump() {
     if (this.disposed || this.paused) return;
+    if (this.warmed && !this.still && this.options.bootstrapUrl && this.bootstrapState === 'idle' && this.pending.size < this.options.concurrency) void this.fetchBootstrap();
     const coverage = this.warmed && !this.still ? this.anchors : [];
     const background = coverage.length ? [...coverage, ...(this.options.prefetchAll === false ? [] : this.allFrames)].filter(index => !this.downloaded.has(index)) : [];
-    const canFetch = (index: number) => !this.blobs.has(index) && !this.pending.has(index) && this.eligible(index);
+    const canFetch = (index: number) => !this.blobs.has(index) && !this.pending.has(index) && this.eligible(index)
+      && !(this.bootstrapState === 'loading' && BOOTSTRAP_INDICES.has(index) && index !== this.target);
     while (this.pending.size < this.options.concurrency) {
       const local = this.wanted.find(canFetch);
       const ahead = this.fetchAhead.find(canFetch);
@@ -198,30 +207,88 @@ export class AvatarFrameCache {
     this.attempts.set(index, (this.attempts.get(index) ?? 0) + 1);
   }
 
+  /** Covers headers AND body consumption; cancellation always frees its queue slot. */
+  private async withDeadline<T>(controller: AbortController, operation: () => Promise<T>): Promise<T> {
+    if (controller.signal.aborted) throw controller.signal.reason;
+    let onAbort: () => void = () => {};
+    const cancelled = new Promise<never>((_, reject) => {
+      onAbort = () => reject(controller.signal.reason ?? new DOMException('Aborted', 'AbortError'));
+      controller.signal.addEventListener('abort', onAbort, { once: true });
+    });
+    const timer = setTimeout(() => {
+      this.timeouts++;
+      this.aborts++;
+      controller.abort(new DOMException('Avatar request timed out', 'TimeoutError'));
+    }, this.options.requestTimeoutMs ?? 8000);
+    try { return await Promise.race([operation(), cancelled]); }
+    finally { clearTimeout(timer); controller.signal.removeEventListener('abort', onAbort); }
+  }
+
+  private retainBlob(index: number, blob: Blob) {
+    if (this.blobs.has(index)) return;
+    this.blobs.set(index, blob);
+    this.downloaded.add(index);
+    this.compressedBytes += blob.size;
+    const limit = this.options.compressedBudgetBytes ?? 12 * 1024 * 1024;
+    for (const [victim, data] of this.blobs) {
+      if (this.compressedBytes <= limit) break;
+      if (victim === index || this.decoding.has(victim)) continue;
+      this.blobs.delete(victim);
+      this.compressedBytes -= data.size;
+    }
+  }
+
+  private async fetchBootstrap() {
+    const controller = new AbortController();
+    this.bootstrapState = 'loading';
+    this.pending.set(-1, controller);
+    this.fetches++;
+    try {
+      const buffer = await this.withDeadline(controller, async () => {
+        const response = await fetch(this.options.bootstrapUrl!, { signal: controller.signal, priority: 'high' });
+        if (!response.ok) throw new Error(`Avatar bootstrap HTTP ${response.status}`);
+        return response.arrayBuffer();
+      });
+      if (this.disposed || controller.signal.aborted) return;
+      for (const { index, blob } of readAvatarBootstrap(buffer)) {
+        this.retainBlob(index, blob);
+        this.failed.delete(index);
+        this.attempts.delete(index);
+      }
+      this.bootstrapState = 'ready';
+    } catch {
+      // Older deployments and interrupted connections still have individual frames.
+      this.bootstrapState = !this.disposed && controller.signal.reason?.name === 'AbortError' ? 'idle' : 'fallback';
+    } finally {
+      this.pending.delete(-1);
+      this.pump();
+    }
+  }
+
   private async fetchFrame(index: number, controller: AbortController) {
     const started = Date.now();
     try {
-      const directory = this.warmed && this.anchorSet.has(index) && this.options.sourceDirectory !== 'frames' ? 'frames-anchors' : this.options.sourceDirectory ?? 'frames-lowres';
-      const response = await fetch(`${this.options.baseUrl}${directory}/male${String(index + 1).padStart(4, '0')}.webp`, { signal: controller.signal, priority: index === this.target ? 'high' : 'low' });
-      if (!response.ok) throw new Error(`Avatar frame HTTP ${response.status}`);
-      const blob = await response.blob();
+      const directory = this.warmed && this.anchorSet.has(index) && !this.unavailableAnchors.has(index) && this.options.sourceDirectory !== 'frames' ? 'frames-anchors' : this.options.sourceDirectory ?? 'frames-lowres';
+      const blob = await this.withDeadline(controller, async () => {
+        const load = async (source: string) => {
+          const response = await fetch(`${this.options.baseUrl}${source}/male${String(index + 1).padStart(4, '0')}.webp`, { signal: controller.signal, priority: index === this.target ? 'high' : 'low' });
+          if (!response.ok) throw new Error(`Avatar frame HTTP ${response.status}`);
+          return response.blob();
+        };
+        try { return await load(directory); }
+        catch (error) {
+          if (directory !== 'frames-anchors' || controller.signal.aborted) throw error;
+          this.unavailableAnchors.add(index);
+          return load('frames-lowres');
+        }
+      });
       if (controller.signal.aborted || this.disposed) return;
       this.fetchLatency = this.fetchLatency * 0.75 + Math.min(1000, Date.now() - started) * 0.25;
-      this.blobs.set(index, blob);
-      this.downloaded.add(index);
-      this.compressedBytes += blob.size;
+      this.retainBlob(index, blob);
       this.failed.delete(index);
       this.attempts.delete(index);
-      // The complete shipped lowres set is ~8.6 MiB. Bound retention if assets grow.
-      const limit = this.options.compressedBudgetBytes ?? 12 * 1024 * 1024;
-      for (const [victim, data] of this.blobs) {
-        if (this.compressedBytes <= limit) break;
-        if (victim === index || this.decoding.has(victim)) continue;
-        this.blobs.delete(victim);
-        this.compressedBytes -= data.size;
-      }
-    } catch {
-      if (!controller.signal.aborted && !this.disposed) this.fail(index);
+    } catch (error) {
+      if (!this.disposed && !this.paused && (!controller.signal.aborted || (error instanceof DOMException && error.name === 'TimeoutError'))) this.fail(index);
     } finally {
       this.pending.delete(index);
       this.pump();

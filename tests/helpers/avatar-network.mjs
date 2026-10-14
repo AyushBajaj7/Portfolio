@@ -12,6 +12,8 @@ export function installAvatarNetwork({
   decodeMs = 8,
   assetBytes = () => 30_000,
   assetWidth = source => source === 'frames' ? 1280 : 960,
+  // Per-request transport faults, including a body that stalls after HTTP headers.
+  requestBehavior = () => ({}),
 } = {}) {
   const keys = ['fetch', 'createImageBitmap', 'setTimeout', 'clearTimeout'];
   const originals = new Map(keys.map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
@@ -44,33 +46,53 @@ export function installAvatarNetwork({
     const source = match[1];
     const index = Number(match[2]) - 1;
     const bytes = assetBytes(source, index);
-    const request = { url: String(url), source, index, bytes, priority, started: now, ended: null, aborted: false };
+    const attempt = requests.filter(request => request.url === String(url)).length + 1;
+    const behavior = requestBehavior({ source, index, attempt }) ?? {};
+    const status = behavior.status ?? 200;
+    const request = { url: String(url), source, index, attempt, status, bytes, priority, started: now, headersAt: null, bodyStarted: false, ended: null, aborted: false };
     requests.push(request);
     openFetches++;
     maxFetches = Math.max(maxFetches, openFetches);
     return new Promise((resolve, reject) => {
       let settled = false;
+      let rejectBody;
+      const transportTimers = [];
       const finish = () => {
         if (settled) return false;
         settled = true;
         request.ended = now;
         openFetches--;
         signal?.removeEventListener('abort', abort);
+        transportTimers.forEach(clearTimeout);
         return true;
       };
-      const timer = setTimeout(() => {
-        if (!finish()) return;
+      const headers = () => {
+        if (settled) return;
+        request.headersAt = now;
+        const ok = status >= 200 && status < 300;
         const blob = { index, source, size: bytes, width: assetWidth(source), height: assetWidth(source) * 9 / 16 };
-        resolve({ ok: true, status: 200, blob: async () => blob });
-      }, latencyMs + bytes / transferBytesPerSecond * 1000);
+        if (!ok) finish();
+        resolve({ ok, status, blob: () => new Promise((acceptBody, failBody) => {
+          request.bodyStarted = true;
+          rejectBody = failBody;
+          if (signal?.aborted) { failBody(new DOMException('Synthetic body aborted', 'AbortError')); return; }
+          if (behavior.hang === 'body') return;
+          transportTimers.push(setTimeout(() => {
+            if (!finish()) return;
+            acceptBody(blob);
+          }, behavior.bodyDelayMs ?? bytes / transferBytesPerSecond * 1000));
+        }) });
+      };
       const abort = () => {
         if (!finish()) return;
-        clearTimeout(timer);
         request.aborted = true;
-        reject(new DOMException('Synthetic request aborted', 'AbortError'));
+        const error = new DOMException('Synthetic request aborted', 'AbortError');
+        reject(error);
+        rejectBody?.(error);
       };
       signal?.addEventListener('abort', abort, { once: true });
       if (signal?.aborted) abort();
+      else if (behavior.hang !== 'headers') transportTimers.push(setTimeout(headers, behavior.headerDelayMs ?? latencyMs));
     });
   };
 
@@ -106,7 +128,7 @@ export function installAvatarNetwork({
     requests, bitmaps, decodes,
     get now() { return now; },
     get metrics() {
-      const completed = requests.filter(request => request.ended !== null && !request.aborted);
+      const completed = requests.filter(request => request.ended !== null && !request.aborted && request.status >= 200 && request.status < 300);
       return {
         requests: requests.length,
         completedRequests: completed.length,

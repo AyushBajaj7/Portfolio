@@ -98,10 +98,13 @@ export function Scene() {
       canvas.dataset.source = 'frames-lowres';
       canvas.dataset.decodeWidth = String(profile.decodeWidth);
       canvas.dataset.motion = media.matches ? 'reduced' : 'scroll';
+      canvas.dataset.bootstrap = stats.bootstrap;
+      canvas.dataset.requestTimeouts = String(stats.timeouts);
     };
     const schedulePaint = () => { if (!raf && !disposed && !document.hidden) raf = requestAnimationFrame(paint); };
     const frames = new AvatarFrameCache({
       ...profile, baseUrl: import.meta.env.BASE_URL, sourceDirectory: 'frames-lowres',
+      bootstrapUrl: device.connection?.saveData ? undefined : `${import.meta.env.BASE_URL}avatar-bootstrap.bin`,
       onReady: () => { if (painted !== target) schedulePaint(); },
     });
     frames.pause(document.hidden);

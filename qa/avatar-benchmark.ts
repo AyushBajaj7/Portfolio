@@ -33,6 +33,7 @@ runButton.addEventListener('click', () => {
     ...avatarProfile({ width: constrained ? 390 : 1440, coarsePointer: constrained }),
     baseUrl: import.meta.env.BASE_URL,
     sourceDirectory: 'frames-lowres' as const,
+    bootstrapUrl: `${import.meta.env.BASE_URL}avatar-bootstrap.bin`,
     onReady: () => {},
   };
   const phases: Phase[] = [
@@ -70,7 +71,7 @@ runButton.addEventListener('click', () => {
 
   window.fetch = async (input, init) => {
     const url = String(input);
-    if (!/\/frames[^/]*\/male\d+\.webp/.test(url)) return nativeFetch(input, init);
+    if (!/\/(?:frames[^/]*\/male\d+\.webp|avatar-bootstrap\.bin)/.test(url)) return nativeFetch(input, init);
     transport.requests++;
     const previous = requests.get(url) ?? 0;
     requests.set(url, previous + 1);
